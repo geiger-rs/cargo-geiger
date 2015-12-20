@@ -5,3 +5,9 @@ rust:
 - 1.5.0
 script:
 - cargo build
+addons:
+  apt:
+    sources:
+      - kalakris-cmake
+    packages:
+      - cmake
