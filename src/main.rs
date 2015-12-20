@@ -10,6 +10,7 @@ use cargo::util::important_paths;
 use cargo::sources::path::PathSource;
 use std::collections::HashSet;
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 static USAGE: &'static str = "
 Display a tree visualization of a dependency graph
 
@@ -82,7 +83,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     let mut registry = PackageRegistry::new(config);
     try!(registry.add_sources(&[package.package_id().source_id().clone()]));
     let resolve = try!(ops::resolve_pkg(&mut registry, &package));
-    
+
     print_tree(&resolve, symbols);
 
     Ok(None)
@@ -92,7 +93,11 @@ fn print_tree(resolve: &Resolve, symbols: &Symbols) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
 
-    print_dependency(resolve.root(), resolve, symbols, &mut visited_deps, &mut levels_continue);
+    print_dependency(resolve.root(),
+                     resolve,
+                     symbols,
+                     &mut visited_deps,
+                     &mut levels_continue);
 }
 
 fn print_dependency<'a>(package: &'a PackageId,
