@@ -11,7 +11,7 @@ use cargo::sources::path::PathSource;
 use std::collections::HashSet;
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-static USAGE: &'static str = "
+const USAGE: &'static str = "
 Display a tree visualization of a dependency graph
 
 Usage: cargo tree [options]
