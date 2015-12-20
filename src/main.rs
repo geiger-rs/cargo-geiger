@@ -7,7 +7,7 @@ use cargo::{Config, CliResult};
 use cargo::core::{Source, PackageId, Resolve};
 use cargo::core::registry::PackageRegistry;
 use cargo::ops;
-use cargo::util::{important_paths, CargoResult};
+use cargo::util::important_paths;
 use cargo::sources::path::PathSource;
 use std::collections::{HashSet, HashMap};
 use petgraph::EdgeDirection;
@@ -95,15 +95,12 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     try!(registry.add_sources(&[package.package_id().source_id().clone()]));
     let resolve = try!(ops::resolve_pkg(&mut registry, &package));
 
-    let symbols = match flag_charset {
-        Charset::Ascii => &ASCII_SYMBOLS,
-        Charset::Utf8 => &UTF8_SYMBOLS,
-    };
-
     let root = match flag_package {
         Some(ref pkg) => try!(resolve.query(pkg)),
         None => resolve.root(),
     };
+
+    let graph = build_graph(&resolve);
 
     let direction = if flag_invert {
         EdgeDirection::Incoming
@@ -111,8 +108,20 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         EdgeDirection::Outgoing
     };
 
-    let graph = build_graph(&resolve);
-    try!(print_tree(&graph, root, direction, symbols));
+    let symbols = match flag_charset {
+        Charset::Ascii => &ASCII_SYMBOLS,
+        Charset::Utf8 => &UTF8_SYMBOLS,
+    };
+
+    let mut visited_deps = HashSet::new();
+    let mut levels_continue = vec![];
+
+    print_dependency(root,
+                     &graph,
+                     direction,
+                     symbols,
+                     &mut visited_deps,
+                     &mut levels_continue);
 
     Ok(None)
 }
@@ -140,24 +149,6 @@ fn build_graph<'a>(resolve: &'a Resolve) -> Graph<'a> {
     }
 
     graph
-}
-
-fn print_tree<'a>(graph: &Graph<'a>,
-                  root: &'a PackageId,
-                  direction: EdgeDirection,
-                  symbols: &Symbols)
-                  -> CargoResult<()> {
-    let mut visited_deps = HashSet::new();
-    let mut levels_continue = vec![];
-
-    print_dependency(root,
-                     graph,
-                     direction,
-                     symbols,
-                     &mut visited_deps,
-                     &mut levels_continue);
-
-    Ok(())
 }
 
 fn print_dependency<'a>(package: &'a PackageId,
