@@ -23,6 +23,7 @@ Usage: cargo tree [options]
 Options:
     -h, --help              Print this message
     -p, --package PACKAGE   Set the package to be used as the root of the tree
+    -i, --invert            Invert the tree direction
     --charset CHARSET       Set the character set to use in output. Valid
                             values: UTF8, ASCII [default: UTF8]
     --manifest-path PATH    Path to the manifest to analyze
@@ -33,6 +34,7 @@ Options:
 #[derive(RustcDecodable)]
 struct Flags {
     flag_package: Option<String>,
+    flag_invert: bool,
     flag_charset: Charset,
     flag_manifest_path: Option<String>,
     flag_verbose: bool,
@@ -73,6 +75,7 @@ fn main() {
 fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     let Flags {
         flag_package,
+        flag_invert,
         flag_charset,
         flag_manifest_path,
         flag_verbose,
@@ -102,8 +105,14 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         None => resolve.root(),
     };
 
+    let direction = if flag_invert {
+        EdgeDirection::Incoming
+    } else {
+        EdgeDirection::Outgoing
+    };
+
     let graph = build_graph(&resolve);
-    try!(print_tree(&graph, root, symbols));
+    try!(print_tree(&graph, root, direction, symbols));
 
     Ok(None)
 }
@@ -133,12 +142,17 @@ fn build_graph<'a>(resolve: &'a Resolve) -> Graph<'a> {
     graph
 }
 
-fn print_tree<'a>(graph: &Graph<'a>, root: &'a PackageId, symbols: &Symbols) -> CargoResult<()> {
+fn print_tree<'a>(graph: &Graph<'a>,
+                  root: &'a PackageId,
+                  direction: EdgeDirection,
+                  symbols: &Symbols)
+                  -> CargoResult<()> {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
 
     print_dependency(root,
                      graph,
+                     direction,
                      symbols,
                      &mut visited_deps,
                      &mut levels_continue);
@@ -148,6 +162,7 @@ fn print_tree<'a>(graph: &Graph<'a>, root: &'a PackageId, symbols: &Symbols) -> 
 
 fn print_dependency<'a>(package: &'a PackageId,
                         graph: &Graph<'a>,
+                        direction: EdgeDirection,
                         symbols: &Symbols,
                         visited_deps: &mut HashSet<&'a PackageId>,
                         levels_continue: &mut Vec<bool>) {
@@ -183,14 +198,14 @@ fn print_dependency<'a>(package: &'a PackageId,
     }
 
     // Resolve uses Hash data types internally but we want consistent output ordering
-    let mut deps = graph.graph.neighbors_directed(graph.nodes[&package], EdgeDirection::Outgoing)
+    let mut deps = graph.graph.neighbors_directed(graph.nodes[&package], direction)
                               .map(|i| graph.graph[i])
                               .collect::<Vec<_>>();
     deps.sort();
     let mut it = deps.iter().peekable();
     while let Some(dependency) = it.next() {
         levels_continue.push(it.peek().is_some());
-        print_dependency(dependency, graph, symbols, visited_deps, levels_continue);
+        print_dependency(dependency, graph, direction, symbols, visited_deps, levels_continue);
         levels_continue.pop();
     }
 }
