@@ -3,14 +3,12 @@ extern crate docopt;
 extern crate rustc_serialize;
 
 use cargo::{Config, CliResult};
-use cargo::core::Source;
+use cargo::core::{Source, PackageId, Resolve};
 use cargo::core::registry::PackageRegistry;
-use cargo::core::resolver::Resolve;
 use cargo::ops;
 use cargo::util::important_paths;
 use cargo::sources::path::PathSource;
 use std::collections::HashSet;
-use std::io;
 
 static USAGE: &'static str = "
 Display a tree visualization of a dependency graph
@@ -85,11 +83,61 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     try!(registry.add_sources(&[package.package_id().source_id().clone()]));
     let resolve = try!(ops::resolve_pkg(&mut registry, &package));
     
-    print_tree(&resolve, &UTF8_SYMBOLS);
+    print_tree(&resolve, symbols);
 
     Ok(None)
 }
 
 fn print_tree(resolve: &Resolve, symbols: &Symbols) {
     let mut visited_deps = HashSet::new();
+    let mut levels_continue = vec![];
+
+    print_dependency(resolve.root(), resolve, symbols, &mut visited_deps, &mut levels_continue);
+}
+
+fn print_dependency<'a>(package: &'a PackageId,
+                        resolve: &'a Resolve,
+                        symbols: &Symbols,
+                        visited_deps: &mut HashSet<&'a PackageId>,
+                        levels_continue: &mut Vec<bool>) {
+    if let Some((&last_continues, rest)) = levels_continue.split_last() {
+        for &continues in rest {
+            let c = if continues {
+                symbols.down
+            } else {
+                " "
+            };
+            print!("{}  ", c);
+        }
+
+        let c = if last_continues {
+            symbols.tee
+        } else {
+            symbols.ell
+        };
+        print!("{0}{1}{1} ", c, symbols.right);
+    }
+
+    let new = visited_deps.insert(package);
+    let star = if new {
+        ""
+    } else {
+        " (*)"
+    };
+
+    println!("{}{}", package, star);
+
+    if !new {
+        return;
+    }
+
+    // Resolve uses Hash data types internally but we want consistent output
+    let mut deps = resolve.deps(package).unwrap().collect::<Vec<_>>();
+    deps.sort();
+    let mut it = deps.iter().peekable();
+    while let Some(dependency) = it.next() {
+        levels_continue.push(it.peek().is_some());
+        print_dependency(dependency, resolve, symbols, visited_deps, levels_continue);
+        levels_continue.pop();
+    }
 }
