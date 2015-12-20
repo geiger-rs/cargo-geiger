@@ -1,9 +1,15 @@
 # cargo-tree
 
-[![Build Status](https://travis-ci.org/sfackler/cargo-tree.svg?branch=master)](https://travis-ci.org/sfackler/cargo-tree)
+[![Build Status](https://travis-ci.org/sfackler/cargo-tree.svg?branch=master)](https://travis-ci.org/sfackler/cargo-tree) [![Latest Version](https://img.shields.io/crates/v/cargo-tree.svg)](https://crates.io/crates/cargo-tree)
 
 `cargo tree` is a Cargo subcommand that visualizes a crate's dependency graph
 in a tree-like format.
+
+Install it with Cargo:
+
+```
+$ cargo install cargo-tree
+```
 
 In its default mode, `cargo tree` will print the dependency graph from the
 local crate outwards:
