@@ -3,7 +3,6 @@ name = "cargo-tree"
 version = "0.1.0"
 dependencies = [
  "cargo 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "docopt 0.6.78 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

@@ -6,6 +6,5 @@ license = "MIT/Apache-2.0"
 
 [dependencies]
 cargo = "0.6"
-docopt = "0.6"
 rustc-serialize = "0.3"
 petgraph = "0.2"

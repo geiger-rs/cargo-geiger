@@ -1,5 +1,4 @@
 extern crate cargo;
-extern crate docopt;
 extern crate petgraph;
 extern crate rustc_serialize;
 
