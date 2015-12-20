@@ -2,3 +2,4 @@
 name = "cargo-tree"
 version = "0.1.0"
 authors = ["Steven Fackler <sfackler@palantir.com>"]
+license = "MIT/Apache-2.0"
