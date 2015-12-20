@@ -1,5 +1,7 @@
 # cargo-tree
 
+[![Build Status](https://travis-ci.org/sfackler/cargo-tree.svg?branch=master)](https://travis-ci.org/sfackler/cargo-tree)
+
 `cargo tree` is a Cargo subcommand that visualizes a crate's dependency graph
 in a tree-like format.
 
