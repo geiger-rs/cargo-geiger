@@ -6,7 +6,7 @@ use cargo::{Config, CliResult};
 use cargo::core::{Source, PackageId, Resolve};
 use cargo::core::registry::PackageRegistry;
 use cargo::ops;
-use cargo::util::important_paths;
+use cargo::util::{important_paths, CargoResult};
 use cargo::sources::path::PathSource;
 use std::collections::HashSet;
 
@@ -19,6 +19,7 @@ Usage: cargo tree [options]
 
 Options:
     -h, --help              Print this message
+    -p, --package PACKAGE   Set the package to be used as the root of the tree
     --charset CHARSET       Set the character set to use in output. Valid
                             values: UTF8, ASCII [default: UTF8]
     --manifest-path PATH    Path to the manifest to analyze
@@ -28,6 +29,7 @@ Options:
 
 #[derive(RustcDecodable)]
 struct Flags {
+    flag_package: Option<String>,
     flag_charset: Charset,
     flag_manifest_path: Option<String>,
     flag_verbose: bool,
@@ -66,15 +68,18 @@ fn main() {
 }
 
 fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
-    try!(config.shell().set_verbosity(flags.flag_verbose, flags.flag_quiet));
+    let Flags {
+        flag_package,
+        flag_charset,
+        flag_manifest_path,
+        flag_verbose,
+        flag_quiet,
+    } = flags;
 
-    let symbols = match flags.flag_charset {
-        Charset::Ascii => &ASCII_SYMBOLS,
-        Charset::Utf8 => &UTF8_SYMBOLS,
-    };
+    try!(config.shell().set_verbosity(flag_verbose, flag_quiet));
 
     // Load the root package
-    let root = try!(important_paths::find_root_manifest_for_cwd(flags.flag_manifest_path));
+    let root = try!(important_paths::find_root_manifest_for_cwd(flag_manifest_path));
     let mut source = try!(PathSource::for_path(root.parent().unwrap(), config));
     try!(source.update());
     let package = try!(source.root_package());
@@ -84,20 +89,32 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     try!(registry.add_sources(&[package.package_id().source_id().clone()]));
     let resolve = try!(ops::resolve_pkg(&mut registry, &package));
 
-    print_tree(&resolve, symbols);
+    let symbols = match flag_charset {
+        Charset::Ascii => &ASCII_SYMBOLS,
+        Charset::Utf8 => &UTF8_SYMBOLS,
+    };
+
+    try!(print_tree(&resolve, &flag_package, symbols));
 
     Ok(None)
 }
 
-fn print_tree(resolve: &Resolve, symbols: &Symbols) {
+fn print_tree(resolve: &Resolve, package: &Option<String>, symbols: &Symbols) -> CargoResult<()> {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
 
-    print_dependency(resolve.root(),
+    let root = match *package {
+        Some(ref pkg) => try!(resolve.query(pkg)),
+        None => resolve.root(),
+    };
+
+    print_dependency(root,
                      resolve,
                      symbols,
                      &mut visited_deps,
                      &mut levels_continue);
+
+    Ok(())
 }
 
 fn print_dependency<'a>(package: &'a PackageId,
