@@ -1,0 +1,7 @@
+language: rust
+rust:
+- nightly
+- beta
+- 1.5.0
+script:
+- cargo build
