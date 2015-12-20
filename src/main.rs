@@ -7,7 +7,7 @@ use cargo::{Config, CliResult};
 use cargo::core::{Source, PackageId, Resolve};
 use cargo::core::registry::PackageRegistry;
 use cargo::ops;
-use cargo::util::important_paths;
+use cargo::util::{important_paths, CargoResult};
 use cargo::sources::path::PathSource;
 use std::collections::{HashSet, HashMap};
 use petgraph::EdgeDirection;
@@ -84,16 +84,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 
     try!(config.shell().set_verbosity(flag_verbose, flag_quiet));
 
-    // Load the root package
-    let root = try!(important_paths::find_root_manifest_for_cwd(flag_manifest_path));
-    let mut source = try!(PathSource::for_path(root.parent().unwrap(), config));
-    try!(source.update());
-    let package = try!(source.root_package());
-
-    // Resolve all dependencies (generating or using Cargo.lock if necessary)
-    let mut registry = PackageRegistry::new(config);
-    try!(registry.add_sources(&[package.package_id().source_id().clone()]));
-    let resolve = try!(ops::resolve_pkg(&mut registry, &package));
+    let resolve = try!(resolve(config, flag_manifest_path));
 
     let root = match flag_package {
         Some(ref pkg) => try!(resolve.query(pkg)),
@@ -124,6 +115,19 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                      &mut levels_continue);
 
     Ok(None)
+}
+
+fn resolve(config: &Config, manifest_path: Option<String>) -> CargoResult<Resolve> {
+    // Load the root package
+    let root = try!(important_paths::find_root_manifest_for_cwd(manifest_path));
+    let mut source = try!(PathSource::for_path(root.parent().unwrap(), config));
+    try!(source.update());
+    let package = try!(source.root_package());
+
+    // Resolve all dependencies (generating or using Cargo.lock if necessary)
+    let mut registry = PackageRegistry::new(config);
+    try!(registry.add_sources(&[package.package_id().source_id().clone()]));
+    ops::resolve_pkg(&mut registry, &package)
 }
 
 struct Graph<'a> {
