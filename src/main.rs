@@ -1,5 +1,6 @@
 extern crate cargo;
 extern crate docopt;
+extern crate petgraph;
 extern crate rustc_serialize;
 
 use cargo::{Config, CliResult};
@@ -8,7 +9,9 @@ use cargo::core::registry::PackageRegistry;
 use cargo::ops;
 use cargo::util::{important_paths, CargoResult};
 use cargo::sources::path::PathSource;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
+use petgraph::EdgeDirection;
+use petgraph::graph::NodeIndex;
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const USAGE: &'static str = "
@@ -94,22 +97,48 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         Charset::Utf8 => &UTF8_SYMBOLS,
     };
 
-    try!(print_tree(&resolve, &flag_package, symbols));
-
-    Ok(None)
-}
-
-fn print_tree(resolve: &Resolve, package: &Option<String>, symbols: &Symbols) -> CargoResult<()> {
-    let mut visited_deps = HashSet::new();
-    let mut levels_continue = vec![];
-
-    let root = match *package {
+    let root = match flag_package {
         Some(ref pkg) => try!(resolve.query(pkg)),
         None => resolve.root(),
     };
 
+    let graph = build_graph(&resolve);
+    try!(print_tree(&graph, root, symbols));
+
+    Ok(None)
+}
+
+struct Graph<'a> {
+    graph: petgraph::Graph<&'a PackageId, ()>,
+    nodes: HashMap<&'a PackageId, NodeIndex>,
+}
+
+fn build_graph<'a>(resolve: &'a Resolve) -> Graph<'a> {
+    let mut graph = Graph {
+        graph: petgraph::Graph::new(),
+        nodes: HashMap::new(),
+    };
+
+    for pkg in resolve.iter() {
+        let idx = graph.graph.add_node(pkg);
+        graph.nodes.insert(pkg, idx);
+    }
+
+    for pkg in resolve.iter() {
+        for dep in resolve.deps(pkg).unwrap() {
+            graph.graph.add_edge(graph.nodes[&pkg], graph.nodes[&dep], ());
+        }
+    }
+
+    graph
+}
+
+fn print_tree<'a>(graph: &Graph<'a>, root: &'a PackageId, symbols: &Symbols) -> CargoResult<()> {
+    let mut visited_deps = HashSet::new();
+    let mut levels_continue = vec![];
+
     print_dependency(root,
-                     resolve,
+                     graph,
                      symbols,
                      &mut visited_deps,
                      &mut levels_continue);
@@ -118,7 +147,7 @@ fn print_tree(resolve: &Resolve, package: &Option<String>, symbols: &Symbols) ->
 }
 
 fn print_dependency<'a>(package: &'a PackageId,
-                        resolve: &'a Resolve,
+                        graph: &Graph<'a>,
                         symbols: &Symbols,
                         visited_deps: &mut HashSet<&'a PackageId>,
                         levels_continue: &mut Vec<bool>) {
@@ -153,13 +182,15 @@ fn print_dependency<'a>(package: &'a PackageId,
         return;
     }
 
-    // Resolve uses Hash data types internally but we want consistent output
-    let mut deps = resolve.deps(package).unwrap().collect::<Vec<_>>();
+    // Resolve uses Hash data types internally but we want consistent output ordering
+    let mut deps = graph.graph.neighbors_directed(graph.nodes[&package], EdgeDirection::Outgoing)
+                              .map(|i| graph.graph[i])
+                              .collect::<Vec<_>>();
     deps.sort();
     let mut it = deps.iter().peekable();
     while let Some(dependency) = it.next() {
         levels_continue.push(it.peek().is_some());
-        print_dependency(dependency, resolve, symbols, visited_deps, levels_continue);
+        print_dependency(dependency, graph, symbols, visited_deps, levels_continue);
         levels_continue.pop();
     }
 }
