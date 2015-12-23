@@ -5,6 +5,7 @@ extern crate rustc_serialize;
 use cargo::{Config, CliResult};
 use cargo::core::{Source, PackageId, Resolve};
 use cargo::core::registry::PackageRegistry;
+use cargo::core::resolver::Method;
 use cargo::ops;
 use cargo::util::{important_paths, CargoResult};
 use cargo::sources::path::PathSource;
@@ -22,6 +23,8 @@ Usage: cargo tree [options]
 Options:
     -h, --help              Print this message
     -p, --package PACKAGE   Set the package to be used as the root of the tree
+    --features FEATURES     Space separated list of features to include
+    --no-default-features   Do not include the `default` feature
     -i, --invert            Invert the tree direction
     --charset CHARSET       Set the character set to use in output. Valid
                             values: UTF8, ASCII [default: UTF8]
@@ -33,6 +36,8 @@ Options:
 #[derive(RustcDecodable)]
 struct Flags {
     flag_package: Option<String>,
+    flag_features: Vec<String>,
+    flag_no_default_features: bool,
     flag_invert: bool,
     flag_charset: Charset,
     flag_manifest_path: Option<String>,
@@ -74,6 +79,8 @@ fn main() {
 fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     let Flags {
         flag_package,
+        flag_features,
+        flag_no_default_features,
         flag_invert,
         flag_charset,
         flag_manifest_path,
@@ -83,7 +90,10 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 
     try!(config.shell().set_verbosity(flag_verbose, flag_quiet));
 
-    let resolve = try!(resolve(config, flag_manifest_path));
+    let resolve = try!(resolve(config,
+                               flag_features,
+                               flag_no_default_features,
+                               flag_manifest_path));
 
     let root = match flag_package {
         Some(ref pkg) => try!(resolve.query(pkg)),
@@ -116,7 +126,10 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     Ok(None)
 }
 
-fn resolve(config: &Config, manifest_path: Option<String>) -> CargoResult<Resolve> {
+fn resolve(config: &Config,
+           features: Vec<String>,
+           no_default_features: bool,
+           manifest_path: Option<String>) -> CargoResult<Resolve> {
     // Load the root package
     let root = try!(important_paths::find_root_manifest_for_cwd(manifest_path));
     let mut source = try!(PathSource::for_path(root.parent().unwrap(), config));
@@ -126,7 +139,15 @@ fn resolve(config: &Config, manifest_path: Option<String>) -> CargoResult<Resolv
     // Resolve all dependencies (generating or using Cargo.lock if necessary)
     let mut registry = PackageRegistry::new(config);
     try!(registry.add_sources(&[package.package_id().source_id().clone()]));
-    ops::resolve_pkg(&mut registry, &package)
+    let resolve = try!(ops::resolve_pkg(&mut registry, &package));
+
+    let method = Method::Required {
+        dev_deps: true,
+        features: &features,
+        uses_default_features: !no_default_features,
+    };
+
+    ops::resolve_with_previous(&mut registry, &package, method, Some(&resolve), None)
 }
 
 struct Graph<'a> {
