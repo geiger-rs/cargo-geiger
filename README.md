@@ -70,8 +70,8 @@ postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres)
       └── num v0.1.28 (*)
 ```
 
-Output can be switched to development or build dependencies with the `-k`
-flag:
+Output can be switched to development or build dependencies with the `--kind`
+or `-k` flag:
 
 ```
 cargo tree -k build
@@ -89,8 +89,9 @@ postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres)
 
 `cargo tree` can also operate in an "inverse" mode where the dependency tree is
 walked backwards. This is most often useful when trying to determine where
-a certain crate is coming from. The `-p` flag selects the crate to use as the
-root of the tree and the `-i` flag inverts the dependency graph traversal:
+a certain crate is coming from. The `--package` or `-p` flag selects the crate
+to use as the root of the tree and the `--invert` or `-i` flag inverts the
+dependency graph traversal:
 
 ```
 cargo tree --features serde_json -p libc -i
