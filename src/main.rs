@@ -208,7 +208,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
                     let g = &mut graph.graph;
                     *graph.nodes.entry(dep_id).or_insert_with(|| g.add_node(dep_id))
                 };
-                graph.graph.add_edge(idx, dep_idx, ());
+                graph.graph.update_edge(idx, dep_idx, ());
                 pending.push(dep_id);
             }
         }
