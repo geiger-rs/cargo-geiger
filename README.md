@@ -106,3 +106,5 @@ libc v0.2.2
       │     └── postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres) (*)
       └── serde_json v0.6.0 (*)
 ```
+
+More options are available - see the output of `cargo tree --help` for details.
