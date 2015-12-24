@@ -1,6 +1,6 @@
 [package]
 name = "cargo-tree"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Steven Fackler <sfackler@palantir.com>"]
 license = "MIT/Apache-2.0"
 description = "A Cargo subcommand that visualizes a crate's dependency graph in a tree-like format"
