@@ -28,6 +28,7 @@ Options:
                             values: normal, dev, build [default: normal]
     --features FEATURES     Space separated list of features to include
     --no-default-features   Do not include the `default` feature
+    --target TARGET         Set the target triple
     -i, --invert            Invert the tree direction
     --charset CHARSET       Set the character set to use in output. Valid
                             values: utf8, ascii [default: utf8]
@@ -42,6 +43,7 @@ struct Flags {
     flag_kind: RawKind,
     flag_features: Vec<String>,
     flag_no_default_features: bool,
+    flag_target: Option<String>,
     flag_invert: bool,
     flag_charset: Charset,
     flag_manifest_path: Option<String>,
@@ -93,6 +95,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         flag_kind,
         flag_features,
         flag_no_default_features,
+        flag_target,
         flag_invert,
         flag_charset,
         flag_manifest_path,
@@ -119,7 +122,9 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         RawKind::Build => Kind::Build,
     };
 
-    let graph = build_graph(&resolve, &packages, package.package_id(), kind);
+    let target = flag_target.as_ref().unwrap_or(&config.rustc_info().host);
+
+    let graph = build_graph(&resolve, &packages, package.package_id(), kind, target);
 
     let direction = if flag_invert {
         EdgeDirection::Incoming
@@ -173,7 +178,8 @@ struct Graph<'a> {
 fn build_graph<'a>(resolve: &'a Resolve,
                    packages: &[Package],
                    root: &'a PackageId,
-                   kind: Kind) -> Graph<'a> {
+                   kind: Kind,
+                   target: &str) -> Graph<'a> {
     let packages = packages.iter()
                            .map(|p| (p.package_id().clone(), p))
                            .collect::<HashMap<_, _>>();
@@ -201,6 +207,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
                             .iter()
                             .filter(|d| d.matches_id(dep_id))
                             .filter(|d| d.kind() == kind)
+                            .filter(|d| d.only_for_platform().map(|t| t == target).unwrap_or(true))
                             .next()
                             .is_some();
             if exists {
