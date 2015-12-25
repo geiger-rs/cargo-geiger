@@ -108,7 +108,10 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     let mut source = try!(source(config, flag_manifest_path));
     let package = try!(source.root_package());
     let mut registry = try!(registry(config, &package));
-    let resolve = try!(resolve(&mut registry, &package, flag_features, flag_no_default_features));
+    let resolve = try!(resolve(&mut registry,
+                               &package,
+                               flag_features,
+                               flag_no_default_features));
     let packages = try!(ops::get_resolved_packages(&resolve, &mut registry));
 
     let root = match flag_package {
@@ -158,7 +161,8 @@ fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageReg
 fn resolve(registry: &mut PackageRegistry,
            package: &Package,
            features: Vec<String>,
-           no_default_features: bool) -> CargoResult<Resolve> {
+           no_default_features: bool)
+           -> CargoResult<Resolve> {
     let resolve = try!(ops::resolve_pkg(registry, package));
 
     let method = Method::Required {
@@ -179,7 +183,8 @@ fn build_graph<'a>(resolve: &'a Resolve,
                    packages: &[Package],
                    root: &'a PackageId,
                    kind: Kind,
-                   target: &str) -> Graph<'a> {
+                   target: &str)
+                   -> Graph<'a> {
     let packages = packages.iter()
                            .map(|p| (p.package_id().clone(), p))
                            .collect::<HashMap<_, _>>();
@@ -277,9 +282,10 @@ fn print_dependency<'a>(package: &'a PackageId,
     }
 
     // Resolve uses Hash data types internally but we want consistent output ordering
-    let mut deps = graph.graph.neighbors_directed(graph.nodes[&package], direction)
-                              .map(|i| graph.graph[i])
-                              .collect::<Vec<_>>();
+    let mut deps = graph.graph
+                        .neighbors_directed(graph.nodes[&package], direction)
+                        .map(|i| graph.graph[i])
+                        .collect::<Vec<_>>();
     deps.sort();
     let mut it = deps.iter().peekable();
     while let Some(dependency) = it.next() {
