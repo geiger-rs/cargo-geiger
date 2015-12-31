@@ -28,6 +28,7 @@ Options:
                             values: normal, dev, build [default: normal]
     --features FEATURES     Space separated list of features to include
     --no-default-features   Do not include the `default` feature
+    --target TARGET         Set the target triple
     -i, --invert            Invert the tree direction
     --charset CHARSET       Set the character set to use in output. Valid
                             values: utf8, ascii [default: utf8]
@@ -42,6 +43,7 @@ struct Flags {
     flag_kind: RawKind,
     flag_features: Vec<String>,
     flag_no_default_features: bool,
+    flag_target: Option<String>,
     flag_invert: bool,
     flag_charset: Charset,
     flag_manifest_path: Option<String>,
@@ -93,6 +95,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         flag_kind,
         flag_features,
         flag_no_default_features,
+        flag_target,
         flag_invert,
         flag_charset,
         flag_manifest_path,
@@ -105,7 +108,10 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     let mut source = try!(source(config, flag_manifest_path));
     let package = try!(source.root_package());
     let mut registry = try!(registry(config, &package));
-    let resolve = try!(resolve(&mut registry, &package, flag_features, flag_no_default_features));
+    let resolve = try!(resolve(&mut registry,
+                               &package,
+                               flag_features,
+                               flag_no_default_features));
     let packages = try!(ops::get_resolved_packages(&resolve, &mut registry));
 
     let root = match flag_package {
@@ -119,7 +125,9 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         RawKind::Build => Kind::Build,
     };
 
-    let graph = build_graph(&resolve, &packages, package.package_id(), kind);
+    let target = flag_target.as_ref().unwrap_or(&config.rustc_info().host);
+
+    let graph = build_graph(&resolve, &packages, package.package_id(), kind, target);
 
     let direction = if flag_invert {
         EdgeDirection::Incoming
@@ -153,7 +161,8 @@ fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageReg
 fn resolve(registry: &mut PackageRegistry,
            package: &Package,
            features: Vec<String>,
-           no_default_features: bool) -> CargoResult<Resolve> {
+           no_default_features: bool)
+           -> CargoResult<Resolve> {
     let resolve = try!(ops::resolve_pkg(registry, package));
 
     let method = Method::Required {
@@ -173,7 +182,9 @@ struct Graph<'a> {
 fn build_graph<'a>(resolve: &'a Resolve,
                    packages: &[Package],
                    root: &'a PackageId,
-                   kind: Kind) -> Graph<'a> {
+                   kind: Kind,
+                   target: &str)
+                   -> Graph<'a> {
     let packages = packages.iter()
                            .map(|p| (p.package_id().clone(), p))
                            .collect::<HashMap<_, _>>();
@@ -201,6 +212,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
                             .iter()
                             .filter(|d| d.matches_id(dep_id))
                             .filter(|d| d.kind() == kind)
+                            .filter(|d| d.only_for_platform().map(|t| t == target).unwrap_or(true))
                             .next()
                             .is_some();
             if exists {
@@ -270,9 +282,10 @@ fn print_dependency<'a>(package: &'a PackageId,
     }
 
     // Resolve uses Hash data types internally but we want consistent output ordering
-    let mut deps = graph.graph.neighbors_directed(graph.nodes[&package], direction)
-                              .map(|i| graph.graph[i])
-                              .collect::<Vec<_>>();
+    let mut deps = graph.graph
+                        .neighbors_directed(graph.nodes[&package], direction)
+                        .map(|i| graph.graph[i])
+                        .collect::<Vec<_>>();
     deps.sort();
     let mut it = deps.iter().peekable();
     while let Some(dependency) = it.next() {
