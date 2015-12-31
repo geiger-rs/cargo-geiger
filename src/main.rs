@@ -262,7 +262,7 @@ fn print_dependency<'a>(package: &'a PackageId,
             } else {
                 " "
             };
-            print!("{}  ", c);
+            print!("{}   ", c);
         }
 
         let c = if last_continues {
