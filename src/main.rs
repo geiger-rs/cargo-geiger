@@ -103,6 +103,11 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         flag_quiet,
     } = flags;
 
+    let flag_features = flag_features.iter()
+                                     .flat_map(|s| s.split(" "))
+                                     .map(|s| s.to_owned())
+                                     .collect();
+
     try!(config.shell().set_verbosity(flag_verbose, flag_quiet));
 
     let mut source = try!(source(config, flag_manifest_path));
