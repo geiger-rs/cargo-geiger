@@ -21,17 +21,17 @@ postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres)
 ├── byteorder v0.4.2
 ├── hex v0.1.0
 ├── log v0.3.4
-│  └── libc v0.2.2
-├── net2 v0.2.19
-│  ├── cfg-if v0.1.0
-│  ├── kernel32-sys v0.2.1
-│  │  └── winapi v0.2.5
-│  ├── libc v0.2.2 (*)
-│  ├── winapi v0.2.5 (*)
-│  └── ws2_32-sys v0.2.1
-│     └── winapi v0.2.5 (*)
+│   └── libc v0.2.4
+├── net2 v0.2.20
+│   ├── cfg-if v0.1.0
+│   ├── kernel32-sys v0.2.1
+│   │   └── winapi v0.2.5
+│   ├── libc v0.2.4 (*)
+│   ├── winapi v0.2.5 (*)
+│   └── ws2_32-sys v0.2.1
+│       └── winapi v0.2.5 (*)
 └── phf v0.7.9
-   └── phf_shared v0.7.9
+    └── phf_shared v0.7.9
 ```
 
 Crates will only have their dependencies displayed the first time they are
@@ -47,27 +47,27 @@ postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres)
 ├── byteorder v0.4.2
 ├── hex v0.1.0
 ├── log v0.3.4
-│  └── libc v0.2.2
-├── net2 v0.2.19
-│  ├── cfg-if v0.1.0
-│  ├── kernel32-sys v0.2.1
-│  │  └── winapi v0.2.5
-│  ├── libc v0.2.2 (*)
-│  ├── winapi v0.2.5 (*)
-│  └── ws2_32-sys v0.2.1
-│     └── winapi v0.2.5 (*)
+│   └── libc v0.2.4
+├── net2 v0.2.20
+│   ├── cfg-if v0.1.0
+│   ├── kernel32-sys v0.2.1
+│   │   └── winapi v0.2.5
+│   ├── libc v0.2.4 (*)
+│   ├── winapi v0.2.5 (*)
+│   └── ws2_32-sys v0.2.1
+│       └── winapi v0.2.5 (*)
 ├── phf v0.7.9
-│  └── phf_shared v0.7.9
+│   └── phf_shared v0.7.9
 └── serde_json v0.6.0
-   ├── num v0.1.28
-   │  ├── rand v0.3.12
-   │  │  ├── advapi32-sys v0.1.2
-   │  │  │  └── winapi v0.2.5 (*)
-   │  │  ├── libc v0.2.2 (*)
-   │  │  └── winapi v0.2.5 (*)
-   │  └── rustc-serialize v0.3.16
-   └── serde v0.6.1
-      └── num v0.1.28 (*)
+    ├── num v0.1.29
+    │   ├── rand v0.3.12
+    │   │   ├── advapi32-sys v0.1.2
+    │   │   │   └── winapi v0.2.5 (*)
+    │   │   ├── libc v0.2.4 (*)
+    │   │   └── winapi v0.2.5 (*)
+    │   └── rustc-serialize v0.3.16
+    └── serde v0.6.7
+        └── num v0.1.29 (*)
 ```
 
 Output can be switched to development or build dependencies with the `--kind`
@@ -77,14 +77,14 @@ or `-k` flag:
 cargo tree -k build
 postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres)
 └── phf_codegen v0.7.9
-   ├── phf_generator v0.7.9
-   │  ├── phf_shared v0.7.9
-   │  └── rand v0.3.12
-   │     ├── advapi32-sys v0.1.2
-   │     │  └── winapi v0.2.5
-   │     ├── libc v0.2.2
-   │     └── winapi v0.2.5 (*)
-   └── phf_shared v0.7.9 (*)
+    ├── phf_generator v0.7.9
+    │   ├── phf_shared v0.7.9
+    │   └── rand v0.3.12
+    │       ├── advapi32-sys v0.1.2
+    │       │   └── winapi v0.2.5
+    │       ├── libc v0.2.4
+    │       └── winapi v0.2.5 (*)
+    └── phf_shared v0.7.9 (*)
 ```
 
 `cargo tree` can also operate in an "inverse" mode where the dependency tree is
@@ -95,17 +95,17 @@ dependency graph traversal:
 
 ```
 cargo tree --features serde_json -p libc -i
-libc v0.2.2
+libc v0.2.4
 ├── log v0.3.4
-│  └── postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres)
-├── net2 v0.2.19
-│  └── postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres) (*)
+│   └── postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres)
+├── net2 v0.2.20
+│   └── postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres) (*)
 └── rand v0.3.12
-   └── num v0.1.28
-      ├── serde v0.6.1
-      │  └── serde_json v0.6.0
-      │     └── postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres) (*)
-      └── serde_json v0.6.0 (*)
+    └── num v0.1.29
+        ├── serde v0.6.7
+        │   └── serde_json v0.6.0
+        │       └── postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres) (*)
+        └── serde_json v0.6.0 (*)
 ```
 
 More options are available - see the output of `cargo tree --help` for details.
