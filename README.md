@@ -74,7 +74,7 @@ Output can be switched to development or build dependencies with the `--kind`
 or `-k` flag:
 
 ```
-cargo tree -k build
+$ cargo tree -k build
 postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres)
 └── phf_codegen v0.7.9
     ├── phf_generator v0.7.9
@@ -94,7 +94,7 @@ to use as the root of the tree and the `--invert` or `-i` flag inverts the
 dependency graph traversal:
 
 ```
-cargo tree --features serde_json -p libc -i
+$ cargo tree --features serde_json -p libc -i
 libc v0.2.4
 ├── log v0.3.4
 │   └── postgres v0.10.2 (file:///Volumes/git/rust/rust-postgres)
