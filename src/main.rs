@@ -159,7 +159,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 }
 
 fn source(config: &Config, manifest_path: Option<String>) -> CargoResult<PathSource> {
-    let root = try!(important_paths::find_root_manifest_for_cwd(manifest_path));
+    let root = try!(important_paths::find_root_manifest_for_wd(manifest_path, config.cwd()));
     let mut source = try!(PathSource::for_path(root.parent().unwrap(), config));
     try!(source.update());
     Ok(source)
