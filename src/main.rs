@@ -23,6 +23,7 @@ Usage: cargo tree [options]
 
 Options:
     -h, --help              Print this message
+    -V, --version           Print version info and exit
     -p, --package PACKAGE   Set the package to be used as the root of the tree
     -k, --kind KIND         Set the kind of dependencies to analyze. Valid
                             values: normal, dev, build [default: normal]
@@ -39,6 +40,7 @@ Options:
 
 #[derive(RustcDecodable)]
 struct Flags {
+    flag_version: bool,
     flag_package: Option<String>,
     flag_kind: RawKind,
     flag_features: Vec<String>,
@@ -91,6 +93,7 @@ fn main() {
 
 fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     let Flags {
+        flag_version,
         flag_package,
         flag_kind,
         flag_features,
@@ -102,6 +105,11 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         flag_verbose,
         flag_quiet,
     } = flags;
+
+    if flag_version {
+        println!("cargo-tree {}", env!("CARGO_PKG_VERSION"));
+        return Ok(None);
+    }
 
     let flag_features = flag_features.iter()
                                      .flat_map(|s| s.split(" "))
@@ -151,7 +159,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 }
 
 fn source(config: &Config, manifest_path: Option<String>) -> CargoResult<PathSource> {
-    let root = try!(important_paths::find_root_manifest_for_cwd(manifest_path));
+    let root = try!(important_paths::find_root_manifest_for_wd(manifest_path, config.cwd()));
     let mut source = try!(PathSource::for_path(root.parent().unwrap(), config));
     try!(source.update());
     Ok(source)
@@ -262,7 +270,7 @@ fn print_dependency<'a>(package: &'a PackageId,
             } else {
                 " "
             };
-            print!("{}  ", c);
+            print!("{}   ", c);
         }
 
         let c = if last_continues {
