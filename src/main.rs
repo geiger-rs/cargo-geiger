@@ -93,19 +93,17 @@ fn main() {
 }
 
 fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
-    let Flags {
-        flag_version,
-        flag_package,
-        flag_kind,
-        flag_features,
-        flag_no_default_features,
-        flag_target,
-        flag_invert,
-        flag_charset,
-        flag_manifest_path,
-        flag_verbose,
-        flag_quiet,
-    } = flags;
+    let Flags { flag_version,
+                flag_package,
+                flag_kind,
+                flag_features,
+                flag_no_default_features,
+                flag_target,
+                flag_invert,
+                flag_charset,
+                flag_manifest_path,
+                flag_verbose,
+                flag_quiet } = flags;
 
     if flag_version {
         println!("cargo-tree {}", env!("CARGO_PKG_VERSION"));
@@ -222,7 +220,9 @@ fn build_graph<'a>(resolve: &'a Resolve,
                             .iter()
                             .filter(|d| d.matches_id(dep_id))
                             .filter(|d| d.kind() == kind)
-                            .filter(|d| d.platform().map(|p| p.matches(target, None)).unwrap_or(true))
+                            .filter(|d| {
+                                d.platform().map(|p| p.matches(target, None)).unwrap_or(true)
+                            })
                             .next()
                             .is_some();
             if exists {
