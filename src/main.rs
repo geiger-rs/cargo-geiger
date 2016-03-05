@@ -5,6 +5,7 @@ extern crate rustc_serialize;
 use cargo::{Config, CliResult};
 use cargo::core::{Source, PackageId, Package, Resolve};
 use cargo::core::dependency::Kind;
+use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::ops;
@@ -125,7 +126,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                                &package,
                                flag_features,
                                flag_no_default_features));
-    let packages = try!(ops::get_resolved_packages(&resolve, &mut registry));
+    let packages = ops::get_resolved_packages(&resolve, registry);
 
     let root = match flag_package {
         Some(ref pkg) => try!(resolve.query(pkg)),
@@ -140,7 +141,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 
     let target = flag_target.as_ref().unwrap_or(&config.rustc_info().host);
 
-    let graph = build_graph(&resolve, &packages, package.package_id(), kind, target);
+    let graph = try!(build_graph(&resolve, &packages, package.package_id(), kind, target));
 
     let direction = if flag_invert {
         EdgeDirection::Incoming
@@ -193,15 +194,11 @@ struct Graph<'a> {
 }
 
 fn build_graph<'a>(resolve: &'a Resolve,
-                   packages: &[Package],
+                   packages: &PackageSet,
                    root: &'a PackageId,
                    kind: Kind,
                    target: &str)
-                   -> Graph<'a> {
-    let packages = packages.iter()
-                           .map(|p| (p.package_id().clone(), p))
-                           .collect::<HashMap<_, _>>();
-
+                   -> CargoResult<Graph<'a>> {
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
         nodes: HashMap::new(),
@@ -219,13 +216,13 @@ fn build_graph<'a>(resolve: &'a Resolve,
             Kind::Normal
         };
 
-        let pkg = packages[pkg_id];
+        let pkg = try!(packages.get(pkg_id));
         for dep_id in resolve.deps(pkg_id).unwrap() {
             let exists = pkg.dependencies()
                             .iter()
                             .filter(|d| d.matches_id(dep_id))
                             .filter(|d| d.kind() == kind)
-                            .filter(|d| d.only_for_platform().map(|t| t == target).unwrap_or(true))
+                            .filter(|d| d.platform().map(|p| p.matches(target, None)).unwrap_or(true))
                             .next()
                             .is_some();
             if exists {
@@ -239,7 +236,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
         }
     }
 
-    graph
+    Ok(graph)
 }
 
 fn print_tree<'a>(package: &'a PackageId,
