@@ -139,7 +139,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 
     let target = flag_target.as_ref().unwrap_or(&config.rustc_info().host);
 
-    let graph = try!(build_graph(&resolve, &packages, package.package_id(), kind, target));
+    let graph = try!(build_graph(&resolve, &packages, package.package_id(), target));
 
     let direction = if flag_invert {
         EdgeDirection::Incoming
@@ -152,7 +152,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         Charset::Utf8 => &UTF8_SYMBOLS,
     };
 
-    print_tree(root, &graph, direction, symbols);
+    print_tree(root, kind, &graph, direction, symbols);
 
     Ok(None)
 }
@@ -187,14 +187,13 @@ fn resolve(registry: &mut PackageRegistry,
 }
 
 struct Graph<'a> {
-    graph: petgraph::Graph<&'a PackageId, ()>,
+    graph: petgraph::Graph<&'a PackageId, Kind>,
     nodes: HashMap<&'a PackageId, NodeIndex>,
 }
 
 fn build_graph<'a>(resolve: &'a Resolve,
                    packages: &PackageSet,
                    root: &'a PackageId,
-                   kind: Kind,
                    target: &str)
                    -> CargoResult<Graph<'a>> {
     let mut graph = Graph {
@@ -207,30 +206,20 @@ fn build_graph<'a>(resolve: &'a Resolve,
 
     while let Some(pkg_id) = pending.pop() {
         let idx = graph.nodes[&pkg_id];
-
-        let kind = if pkg_id == root {
-            kind
-        } else {
-            Kind::Normal
-        };
-
         let pkg = try!(packages.get(pkg_id));
+
         for dep_id in resolve.deps(pkg_id).unwrap() {
-            let exists = pkg.dependencies()
-                            .iter()
-                            .filter(|d| d.matches_id(dep_id))
-                            .filter(|d| d.kind() == kind)
-                            .filter(|d| {
-                                d.platform().map(|p| p.matches(target, None)).unwrap_or(true)
-                            })
-                            .next()
-                            .is_some();
-            if exists {
+            for dep in pkg.dependencies()
+                          .iter()
+                          .filter(|d| d.matches_id(dep_id))
+                          .filter(|d| {
+                              d.platform().map(|p| p.matches(target, None)).unwrap_or(true)
+                          }) {
                 let dep_idx = {
                     let g = &mut graph.graph;
                     *graph.nodes.entry(dep_id).or_insert_with(|| g.add_node(dep_id))
                 };
-                graph.graph.update_edge(idx, dep_idx, ());
+                graph.graph.update_edge(idx, dep_idx, dep.kind());
                 pending.push(dep_id);
             }
         }
@@ -240,6 +229,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
 }
 
 fn print_tree<'a>(package: &'a PackageId,
+                  kind: Kind,
                   graph: &Graph<'a>,
                   direction: EdgeDirection,
                   symbols: &Symbols) {
@@ -247,6 +237,7 @@ fn print_tree<'a>(package: &'a PackageId,
     let mut levels_continue = vec![];
 
     print_dependency(package,
+                     kind,
                      &graph,
                      direction,
                      symbols,
@@ -255,6 +246,7 @@ fn print_tree<'a>(package: &'a PackageId,
 }
 
 fn print_dependency<'a>(package: &'a PackageId,
+                        kind: Kind,
                         graph: &Graph<'a>,
                         direction: EdgeDirection,
                         symbols: &Symbols,
@@ -293,14 +285,16 @@ fn print_dependency<'a>(package: &'a PackageId,
 
     // Resolve uses Hash data types internally but we want consistent output ordering
     let mut deps = graph.graph
-                        .neighbors_directed(graph.nodes[&package], direction)
-                        .map(|i| graph.graph[i])
+                        .edges_directed(graph.nodes[&package], direction)
+                        .filter(|&(_, &k)| kind == k)
+                        .map(|(i, _)| graph.graph[i])
                         .collect::<Vec<_>>();
     deps.sort();
     let mut it = deps.iter().peekable();
     while let Some(dependency) = it.next() {
         levels_continue.push(it.peek().is_some());
         print_dependency(dependency,
+                         Kind::Normal,
                          graph,
                          direction,
                          symbols,
