@@ -12,6 +12,7 @@ use cargo::ops;
 use cargo::util::{important_paths, CargoResult};
 use cargo::sources::path::PathSource;
 use std::collections::{HashSet, HashMap};
+use std::collections::hash_map::Entry;
 use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
 
@@ -32,6 +33,8 @@ Options:
     --no-default-features   Do not include the `default` feature
     --target TARGET         Set the target triple
     -i, --invert            Invert the tree direction
+    -a, --all               Don't truncate dependencies that have already been
+                            displayed
     --charset CHARSET       Set the character set to use in output. Valid
                             values: utf8, ascii [default: utf8]
     --manifest-path PATH    Path to the manifest to analyze
@@ -48,6 +51,7 @@ struct Flags {
     flag_no_default_features: bool,
     flag_target: Option<String>,
     flag_invert: bool,
+    flag_all: bool,
     flag_charset: Charset,
     flag_manifest_path: Option<String>,
     flag_verbose: bool,
@@ -100,6 +104,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                 flag_no_default_features,
                 flag_target,
                 flag_invert,
+                flag_all,
                 flag_charset,
                 flag_manifest_path,
                 flag_verbose,
@@ -152,7 +157,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         Charset::Utf8 => &UTF8_SYMBOLS,
     };
 
-    print_tree(root, kind, &graph, direction, symbols);
+    print_tree(root, kind, &graph, direction, symbols, flag_all);
 
     Ok(None)
 }
@@ -215,12 +220,14 @@ fn build_graph<'a>(resolve: &'a Resolve,
                           .filter(|d| {
                               d.platform().map(|p| p.matches(target, None)).unwrap_or(true)
                           }) {
-                let dep_idx = {
-                    let g = &mut graph.graph;
-                    *graph.nodes.entry(dep_id).or_insert_with(|| g.add_node(dep_id))
+                let dep_idx = match graph.nodes.entry(dep_id) {
+                    Entry::Occupied(e) => *e.get(),
+                    Entry::Vacant(e) => {
+                        pending.push(dep_id);
+                        *e.insert(graph.graph.add_node(dep_id))
+                    }
                 };
-                graph.graph.update_edge(idx, dep_idx, dep.kind());
-                pending.push(dep_id);
+                graph.graph.add_edge(idx, dep_idx, dep.kind());
             }
         }
     }
@@ -232,7 +239,8 @@ fn print_tree<'a>(package: &'a PackageId,
                   kind: Kind,
                   graph: &Graph<'a>,
                   direction: EdgeDirection,
-                  symbols: &Symbols) {
+                  symbols: &Symbols,
+                  all: bool) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
 
@@ -242,7 +250,8 @@ fn print_tree<'a>(package: &'a PackageId,
                      direction,
                      symbols,
                      &mut visited_deps,
-                     &mut levels_continue);
+                     &mut levels_continue,
+                     all);
 }
 
 fn print_dependency<'a>(package: &'a PackageId,
@@ -251,7 +260,8 @@ fn print_dependency<'a>(package: &'a PackageId,
                         direction: EdgeDirection,
                         symbols: &Symbols,
                         visited_deps: &mut HashSet<&'a PackageId>,
-                        levels_continue: &mut Vec<bool>) {
+                        levels_continue: &mut Vec<bool>,
+                        all: bool) {
     if let Some((&last_continues, rest)) = levels_continue.split_last() {
         for &continues in rest {
             let c = if continues {
@@ -270,7 +280,7 @@ fn print_dependency<'a>(package: &'a PackageId,
         print!("{0}{1}{1} ", c, symbols.right);
     }
 
-    let new = visited_deps.insert(package);
+    let new = all || visited_deps.insert(package);
     let star = if new {
         ""
     } else {
@@ -299,7 +309,8 @@ fn print_dependency<'a>(package: &'a PackageId,
                          direction,
                          symbols,
                          visited_deps,
-                         levels_continue);
+                         levels_continue,
+                         all);
         levels_continue.pop();
     }
 }
