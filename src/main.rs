@@ -8,11 +8,13 @@ use cargo::core::dependency::Kind;
 use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
+use cargo::core::source::SourceId;
 use cargo::ops;
-use cargo::util::{important_paths, CargoResult};
+use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::sources::path::PathSource;
 use std::collections::{HashSet, HashMap};
 use std::collections::hash_map::Entry;
+use std::str::{self, FromStr};
 use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
 
@@ -127,6 +129,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     let mut registry = try!(registry(config, &package));
     let resolve = try!(resolve(&mut registry,
                                &package,
+                               &config,
                                flag_features,
                                flag_no_default_features));
     let packages = ops::get_resolved_packages(&resolve, registry);
@@ -144,7 +147,12 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 
     let target = flag_target.as_ref().unwrap_or(&config.rustc_info().host);
 
-    let graph = try!(build_graph(&resolve, &packages, package.package_id(), target));
+    let cfgs = try!(get_cfgs(config, &flag_target));
+    let graph = try!(build_graph(&resolve,
+                                 &packages,
+                                 package.package_id(),
+                                 target,
+                                 cfgs.as_ref().map(|r| &**r)));
 
     let direction = if flag_invert {
         EdgeDirection::Incoming
@@ -162,9 +170,28 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     Ok(None)
 }
 
+fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<Cfg>>> {
+    let mut process = util::process(config.rustc());
+    process.arg("--print=cfg")
+           .env_remove("RUST_LOG");
+    if let Some(ref s) = *target {
+        process.arg("--target").arg(s);
+    }
+
+    let output = match process.exec_with_output() {
+        Ok(output) => output,
+        Err(_) => return Ok(None),
+    };
+    let output = str::from_utf8(&output.stdout).unwrap();
+    let lines = output.lines();
+    Ok(Some(try!(lines.map(Cfg::from_str).collect())))
+}
+
 fn source(config: &Config, manifest_path: Option<String>) -> CargoResult<PathSource> {
     let root = try!(important_paths::find_root_manifest_for_wd(manifest_path, config.cwd()));
-    let mut source = try!(PathSource::for_path(root.parent().unwrap(), config));
+    let dir = root.parent().unwrap();
+    let id = try!(SourceId::for_path(dir));
+    let mut source = PathSource::new(dir, &id, config);
     try!(source.update());
     Ok(source)
 }
@@ -177,10 +204,11 @@ fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageReg
 
 fn resolve(registry: &mut PackageRegistry,
            package: &Package,
+           config: &Config,
            features: Vec<String>,
            no_default_features: bool)
            -> CargoResult<Resolve> {
-    let resolve = try!(ops::resolve_pkg(registry, package));
+    let resolve = try!(ops::resolve_pkg(registry, package, config));
 
     let method = Method::Required {
         dev_deps: true,
@@ -199,7 +227,8 @@ struct Graph<'a> {
 fn build_graph<'a>(resolve: &'a Resolve,
                    packages: &PackageSet,
                    root: &'a PackageId,
-                   target: &str)
+                   target: &str,
+                   cfgs: Option<&[Cfg]>)
                    -> CargoResult<Graph<'a>> {
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
@@ -213,12 +242,12 @@ fn build_graph<'a>(resolve: &'a Resolve,
         let idx = graph.nodes[&pkg_id];
         let pkg = try!(packages.get(pkg_id));
 
-        for dep_id in resolve.deps(pkg_id).unwrap() {
+        for dep_id in resolve.deps(pkg_id) {
             for dep in pkg.dependencies()
                           .iter()
                           .filter(|d| d.matches_id(dep_id))
                           .filter(|d| {
-                              d.platform().map(|p| p.matches(target, None)).unwrap_or(true)
+                              d.platform().map(|p| p.matches(target, cfgs)).unwrap_or(true)
                           }) {
                 let dep_idx = match graph.nodes.entry(dep_id) {
                     Entry::Occupied(e) => *e.get(),
