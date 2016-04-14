@@ -8,6 +8,7 @@ use cargo::core::dependency::Kind;
 use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
+use cargo::core::source::SourceId;
 use cargo::ops;
 use cargo::util::{important_paths, CargoResult};
 use cargo::sources::path::PathSource;
@@ -127,6 +128,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     let mut registry = try!(registry(config, &package));
     let resolve = try!(resolve(&mut registry,
                                &package,
+                               &config,
                                flag_features,
                                flag_no_default_features));
     let packages = ops::get_resolved_packages(&resolve, registry);
@@ -164,7 +166,9 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 
 fn source(config: &Config, manifest_path: Option<String>) -> CargoResult<PathSource> {
     let root = try!(important_paths::find_root_manifest_for_wd(manifest_path, config.cwd()));
-    let mut source = try!(PathSource::for_path(root.parent().unwrap(), config));
+    let dir = root.parent().unwrap();
+    let id = try!(SourceId::for_path(dir));
+    let mut source = PathSource::new(dir, &id, config);
     try!(source.update());
     Ok(source)
 }
@@ -177,10 +181,11 @@ fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageReg
 
 fn resolve(registry: &mut PackageRegistry,
            package: &Package,
+           config: &Config,
            features: Vec<String>,
            no_default_features: bool)
            -> CargoResult<Resolve> {
-    let resolve = try!(ops::resolve_pkg(registry, package));
+    let resolve = try!(ops::resolve_pkg(registry, package, config));
 
     let method = Method::Required {
         dev_deps: true,
@@ -213,7 +218,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
         let idx = graph.nodes[&pkg_id];
         let pkg = try!(packages.get(pkg_id));
 
-        for dep_id in resolve.deps(pkg_id).unwrap() {
+        for dep_id in resolve.deps(pkg_id) {
             for dep in pkg.dependencies()
                           .iter()
                           .filter(|d| d.matches_id(dep_id))
