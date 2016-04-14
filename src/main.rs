@@ -10,10 +10,11 @@ use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::core::source::SourceId;
 use cargo::ops;
-use cargo::util::{important_paths, CargoResult};
+use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::sources::path::PathSource;
 use std::collections::{HashSet, HashMap};
 use std::collections::hash_map::Entry;
+use std::str::{self, FromStr};
 use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
 
@@ -146,7 +147,12 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 
     let target = flag_target.as_ref().unwrap_or(&config.rustc_info().host);
 
-    let graph = try!(build_graph(&resolve, &packages, package.package_id(), target));
+    let cfgs = try!(get_cfgs(config, &flag_target));
+    let graph = try!(build_graph(&resolve,
+                                 &packages,
+                                 package.package_id(),
+                                 target,
+                                 cfgs.as_ref().map(|r| &**r)));
 
     let direction = if flag_invert {
         EdgeDirection::Incoming
@@ -162,6 +168,23 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     print_tree(root, kind, &graph, direction, symbols, flag_all);
 
     Ok(None)
+}
+
+fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<Cfg>>> {
+    let mut process = util::process(config.rustc());
+    process.arg("--print=cfg")
+           .env_remove("RUST_LOG");
+    if let Some(ref s) = *target {
+        process.arg("--target").arg(s);
+    }
+
+    let output = match process.exec_with_output() {
+        Ok(output) => output,
+        Err(_) => return Ok(None),
+    };
+    let output = str::from_utf8(&output.stdout).unwrap();
+    let lines = output.lines();
+    Ok(Some(try!(lines.map(Cfg::from_str).collect())))
 }
 
 fn source(config: &Config, manifest_path: Option<String>) -> CargoResult<PathSource> {
@@ -204,7 +227,8 @@ struct Graph<'a> {
 fn build_graph<'a>(resolve: &'a Resolve,
                    packages: &PackageSet,
                    root: &'a PackageId,
-                   target: &str)
+                   target: &str,
+                   cfgs: Option<&[Cfg]>)
                    -> CargoResult<Graph<'a>> {
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
@@ -223,7 +247,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
                           .iter()
                           .filter(|d| d.matches_id(dep_id))
                           .filter(|d| {
-                              d.platform().map(|p| p.matches(target, None)).unwrap_or(true)
+                              d.platform().map(|p| p.matches(target, cfgs)).unwrap_or(true)
                           }) {
                 let dep_idx = match graph.nodes.entry(dep_id) {
                     Entry::Occupied(e) => *e.get(),
