@@ -2,7 +2,7 @@
 name = "cargo-tree"
 version = "0.4.1"
 dependencies = [
- "cargo 0.10.0 (git+https://github.com/rust-lang/cargo)",
+ "cargo 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -32,10 +32,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "cargo"
 version = "0.10.0"
-source = "git+https://github.com/rust-lang/cargo#88e30811d3f85a881452d22a852714c7e440ddad"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "advapi32-sys 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "crates-io 0.1.0 (git+https://github.com/rust-lang/cargo)",
+ "crates-io 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "crossbeam 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "curl 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.6.80 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -72,8 +72,8 @@ dependencies = [
 
 [[package]]
 name = "crates-io"
-version = "0.1.0"
-source = "git+https://github.com/rust-lang/cargo#88e30811d3f85a881452d22a852714c7e440ddad"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "curl 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
