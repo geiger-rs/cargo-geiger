@@ -172,8 +172,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 
 fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<Cfg>>> {
     let mut process = util::process(config.rustc());
-    process.arg("--print=cfg")
-           .env_remove("RUST_LOG");
+    process.arg("--print=cfg").env_remove("RUST_LOG");
     if let Some(ref s) = *target {
         process.arg("--target").arg(s);
     }
