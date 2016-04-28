@@ -1,6 +1,8 @@
 extern crate cargo;
 extern crate petgraph;
 extern crate rustc_serialize;
+extern crate regex;
+
 
 use cargo::{Config, CliResult};
 use cargo::core::{Source, PackageId, Package, Resolve};
@@ -9,6 +11,7 @@ use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::core::source::SourceId;
+use cargo::core::manifest::ManifestMetadata;
 use cargo::ops;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::sources::path::PathSource;
@@ -17,6 +20,7 @@ use std::collections::hash_map::Entry;
 use std::str::{self, FromStr};
 use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
+use regex::Regex;
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const USAGE: &'static str = "
@@ -35,12 +39,14 @@ Options:
     --no-default-features   Do not include the `default` feature
     --target TARGET         Set the target triple
     -i, --invert            Invert the tree direction
+    --no-indent             Display dependencies as a list (rather than a graph)
     -a, --all               Don't truncate dependencies that have already been
                             displayed
     -d, --duplicates        Show only dependencies which come in multiple
                             versions (implies --invert)
     --charset CHARSET       Set the character set to use in output. Valid
                             values: utf8, ascii [default: utf8]
+    -f, --format FORMAT     Format string for printing dependencies
     --manifest-path PATH    Path to the manifest to analyze
     -v, --verbose           Use verbose output
     -q, --quiet             No output printed to stdout other than the tree
@@ -55,8 +61,10 @@ struct Flags {
     flag_no_default_features: bool,
     flag_target: Option<String>,
     flag_invert: bool,
+    flag_no_indent: bool,
     flag_all: bool,
     flag_charset: Charset,
+    flag_format: Option<String>,
     flag_manifest_path: Option<String>,
     flag_verbose: bool,
     flag_quiet: bool,
@@ -109,8 +117,10 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                 flag_no_default_features,
                 flag_target,
                 flag_invert,
+                flag_no_indent,
                 flag_all,
                 flag_charset,
+                flag_format,
                 flag_manifest_path,
                 flag_verbose,
                 flag_quiet,
@@ -151,6 +161,11 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 
     let target = flag_target.as_ref().unwrap_or(&config.rustc_info().host);
 
+    let format = match flag_format {
+        Some(r) => r,
+        None => "{p}".to_owned(),
+    };
+
     let cfgs = try!(get_cfgs(config, &flag_target));
     let graph = try!(build_graph(&resolve,
                                  &packages,
@@ -172,11 +187,11 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     if flag_duplicates {
         let dups = find_duplicates(&graph);
         for dup in &dups {
-            print_tree(dup, kind, &graph, direction, symbols, flag_all);
+            print_tree(dup, kind, &graph, &format, direction, symbols, flag_no_indent, flag_all);
             println!("");
         }
     } else {
-        print_tree(root, kind, &graph, direction, symbols, flag_all);
+        print_tree(root, kind, &graph, &format, direction, symbols, flag_no_indent, flag_all);
     }
 
     Ok(None)
@@ -263,6 +278,7 @@ fn resolve(registry: &mut PackageRegistry,
 struct Graph<'a> {
     graph: petgraph::Graph<&'a PackageId, Kind>,
     nodes: HashMap<&'a PackageId, NodeIndex>,
+    node_metadata: HashMap<&'a PackageId, ManifestMetadata>,
 }
 
 fn build_graph<'a>(resolve: &'a Resolve,
@@ -274,6 +290,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
         nodes: HashMap::new(),
+        node_metadata: HashMap::new(),
     };
     graph.nodes.insert(root, graph.graph.add_node(root));
 
@@ -282,6 +299,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
     while let Some(pkg_id) = pending.pop() {
         let idx = graph.nodes[&pkg_id];
         let pkg = try!(packages.get(pkg_id));
+        graph.node_metadata.insert(pkg_id, pkg.manifest().metadata().clone());
 
         for dep_id in resolve.deps(pkg_id) {
             for dep in pkg.dependencies()
@@ -308,8 +326,10 @@ fn build_graph<'a>(resolve: &'a Resolve,
 fn print_tree<'a>(package: &'a PackageId,
                   kind: Kind,
                   graph: &Graph<'a>,
+                  format: &str,
                   direction: EdgeDirection,
                   symbols: &Symbols,
+                  no_indent: bool,
                   all: bool) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
@@ -317,39 +337,38 @@ fn print_tree<'a>(package: &'a PackageId,
     print_dependency(package,
                      kind,
                      &graph,
+                     format,
                      direction,
                      symbols,
                      &mut visited_deps,
                      &mut levels_continue,
+                     no_indent,
                      all);
+}
+
+fn format_dependency<'a>(format: &str, package: &'a PackageId, metadata: ManifestMetadata) -> String {
+    let repo = Regex::new(r"\{r\}").unwrap();
+    let lic = Regex::new(r"\{l\}").unwrap();
+    let pack = Regex::new(r"\{p\}").unwrap();
+
+    let repo_str: &str = &format!("{}", metadata.repository.unwrap());
+    let lic_str: &str = &format!("{}", metadata.license.unwrap());
+    let pack_str: &str = &format!("{}", package);
+    let after_repo = repo.replace(&format, repo_str);
+    let after_lic = lic.replace(&after_repo, lic_str);
+    pack.replace(&after_lic, pack_str)
 }
 
 fn print_dependency<'a>(package: &'a PackageId,
                         kind: Kind,
                         graph: &Graph<'a>,
+                        format: &str,
                         direction: EdgeDirection,
                         symbols: &Symbols,
                         visited_deps: &mut HashSet<&'a PackageId>,
                         levels_continue: &mut Vec<bool>,
+                        no_indent: bool,
                         all: bool) {
-    if let Some((&last_continues, rest)) = levels_continue.split_last() {
-        for &continues in rest {
-            let c = if continues {
-                symbols.down
-            } else {
-                " "
-            };
-            print!("{}   ", c);
-        }
-
-        let c = if last_continues {
-            symbols.tee
-        } else {
-            symbols.ell
-        };
-        print!("{0}{1}{1} ", c, symbols.right);
-    }
-
     let new = all || visited_deps.insert(package);
     let star = if new {
         ""
@@ -357,7 +376,29 @@ fn print_dependency<'a>(package: &'a PackageId,
         " (*)"
     };
 
-    println!("{}{}", package, star);
+    if !no_indent {
+        if let Some((&last_continues, rest)) = levels_continue.split_last() {
+            for &continues in rest {
+                let c = if continues {
+                    symbols.down
+                } else {
+                    " "
+                };
+                print!("{}   ", c);
+            }
+
+            let c = if last_continues {
+                symbols.tee
+            } else {
+                symbols.ell
+            };
+            print!("{0}{1}{1} ", c, symbols.right);
+        }
+    }
+
+    let metadata = graph.node_metadata.get(package).unwrap().clone();
+    let dependency_str = format_dependency(format, package, metadata);
+    println!("{}{}", dependency_str, star);
 
     if !new {
         return;
@@ -376,10 +417,12 @@ fn print_dependency<'a>(package: &'a PackageId,
         print_dependency(dependency,
                          Kind::Normal,
                          graph,
+                         format,
                          direction,
                          symbols,
                          visited_deps,
                          levels_continue,
+                         no_indent,
                          all);
         levels_continue.pop();
     }
