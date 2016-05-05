@@ -37,6 +37,8 @@ Options:
     -i, --invert            Invert the tree direction
     -a, --all               Don't truncate dependencies that have already been
                             displayed
+    -d, --duplicates        Show only dependencies which come in multiple
+                            versions (implies --invert)
     --charset CHARSET       Set the character set to use in output. Valid
                             values: utf8, ascii [default: utf8]
     --manifest-path PATH    Path to the manifest to analyze
@@ -58,6 +60,7 @@ struct Flags {
     flag_manifest_path: Option<String>,
     flag_verbose: bool,
     flag_quiet: bool,
+    flag_duplicates: bool,
 }
 
 #[derive(RustcDecodable)]
@@ -110,7 +113,8 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                 flag_charset,
                 flag_manifest_path,
                 flag_verbose,
-                flag_quiet } = flags;
+                flag_quiet,
+                flag_duplicates } = flags;
 
     if flag_version {
         println!("cargo-tree {}", env!("CARGO_PKG_VERSION"));
@@ -154,7 +158,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                                  target,
                                  cfgs.as_ref().map(|r| &**r)));
 
-    let direction = if flag_invert {
+    let direction = if flag_invert || flag_duplicates {
         EdgeDirection::Incoming
     } else {
         EdgeDirection::Outgoing
@@ -165,9 +169,47 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         Charset::Utf8 => &UTF8_SYMBOLS,
     };
 
-    print_tree(root, kind, &graph, direction, symbols, flag_all);
+    if flag_duplicates {
+        let dups = find_duplicates(&graph);
+        for dup in &dups {
+            print_tree(dup, kind, &graph, direction, symbols, flag_all);
+            println!("");
+        }
+    } else {
+        print_tree(root, kind, &graph, direction, symbols, flag_all);
+    }
 
     Ok(None)
+}
+
+fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
+    let mut counts = HashMap::new();
+
+    // Count by name only. Source and version are irrelevant here.
+    for package in graph.nodes.keys() {
+        let name = package.name();
+
+        let count = counts.entry(name).or_insert(0);
+        *count += 1;
+    }
+
+    let dup_names = counts.drain().filter_map(
+        |(k,v)| if v>1 { Some(k) } else { None });
+
+    // Theoretically inefficient, but in practice we're only listing duplicates and
+    // there won't be enough dependencies for it to matter.
+    let mut dup_ids = Vec::new();
+    for name in dup_names {
+        let ids = graph.nodes.keys().filter_map(|package|
+                if package.name() == name {
+                    Some(package)
+                } else {
+                    None
+                }
+            );
+        dup_ids.extend(ids);
+    };
+    dup_ids
 }
 
 fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<Cfg>>> {
