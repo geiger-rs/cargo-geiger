@@ -187,11 +187,25 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     if flag_duplicates {
         let dups = find_duplicates(&graph);
         for dup in &dups {
-            print_tree(dup, kind, &graph, &format, direction, symbols, flag_no_indent, flag_all);
+            print_tree(dup,
+                       kind,
+                       &graph,
+                       &format,
+                       direction,
+                       symbols,
+                       flag_no_indent,
+                       flag_all);
             println!("");
         }
     } else {
-        print_tree(root, kind, &graph, &format, direction, symbols, flag_no_indent, flag_all);
+        print_tree(root,
+                   kind,
+                   &graph,
+                   &format,
+                   direction,
+                   symbols,
+                   flag_no_indent,
+                   flag_all);
     }
 
     Ok(None)
@@ -208,22 +222,23 @@ fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
         *count += 1;
     }
 
-    let dup_names = counts.drain().filter_map(
-        |(k,v)| if v>1 { Some(k) } else { None });
+    let dup_names = counts.drain().filter_map(|(k, v)| if v > 1 {
+        Some(k)
+    } else {
+        None
+    });
 
     // Theoretically inefficient, but in practice we're only listing duplicates and
     // there won't be enough dependencies for it to matter.
     let mut dup_ids = Vec::new();
     for name in dup_names {
-        let ids = graph.nodes.keys().filter_map(|package|
-                if package.name() == name {
-                    Some(package)
-                } else {
-                    None
-                }
-            );
+        let ids = graph.nodes.keys().filter_map(|package| if package.name() == name {
+            Some(package)
+        } else {
+            None
+        });
         dup_ids.extend(ids);
-    };
+    }
     dup_ids
 }
 
@@ -346,7 +361,10 @@ fn print_tree<'a>(package: &'a PackageId,
                      all);
 }
 
-fn format_dependency<'a>(format: &str, package: &'a PackageId, metadata: ManifestMetadata) -> String {
+fn format_dependency<'a>(format: &str,
+                         package: &'a PackageId,
+                         metadata: ManifestMetadata)
+                         -> String {
     let repo = Regex::new(r"\{r\}").unwrap();
     let lic = Regex::new(r"\{l\}").unwrap();
     let pack = Regex::new(r"\{p\}").unwrap();
