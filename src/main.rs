@@ -292,14 +292,19 @@ fn resolve(registry: &mut PackageRegistry,
     ops::resolve_with_previous(registry, &package, method, Some(&resolve), None)
 }
 
+struct Node<'a> {
+    id: &'a PackageId,
+    metadata: &'a ManifestMetadata,
+}
+
 struct Graph<'a> {
-    graph: petgraph::Graph<&'a PackageId, Kind>,
+    graph: petgraph::Graph<Node<'a>, Kind>,
     nodes: HashMap<&'a PackageId, NodeIndex>,
     node_metadata: HashMap<&'a PackageId, ManifestMetadata>,
 }
 
 fn build_graph<'a>(resolve: &'a Resolve,
-                   packages: &PackageSet,
+                   packages: &'a PackageSet,
                    root: &'a PackageId,
                    target: &str,
                    cfgs: Option<&[Cfg]>)
@@ -309,7 +314,11 @@ fn build_graph<'a>(resolve: &'a Resolve,
         nodes: HashMap::new(),
         node_metadata: HashMap::new(),
     };
-    graph.nodes.insert(root, graph.graph.add_node(root));
+    let node = Node {
+        id: root,
+        metadata: try!(packages.get(root)).manifest().metadata(),
+    };
+    graph.nodes.insert(root, graph.graph.add_node(node));
 
     let mut pending = vec![root];
 
@@ -329,7 +338,11 @@ fn build_graph<'a>(resolve: &'a Resolve,
                     Entry::Occupied(e) => *e.get(),
                     Entry::Vacant(e) => {
                         pending.push(dep_id);
-                        *e.insert(graph.graph.add_node(dep_id))
+                        let node = Node {
+                            id: dep_id,
+                            metadata: try!(packages.get(dep_id)).manifest().metadata(),
+                        };
+                        *e.insert(graph.graph.add_node(node))
                     }
                 };
                 graph.graph.add_edge(idx, dep_idx, dep.kind());
@@ -351,7 +364,8 @@ fn print_tree<'a>(package: &'a PackageId,
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
 
-    print_dependency(package,
+    let node = &graph.graph[graph.nodes[&package]];
+    print_dependency(node,
                      kind,
                      &graph,
                      format,
@@ -363,7 +377,7 @@ fn print_tree<'a>(package: &'a PackageId,
                      all);
 }
 
-fn print_dependency<'a>(package: &'a PackageId,
+fn print_dependency<'a>(package: &Node<'a>,
                         kind: Kind,
                         graph: &Graph<'a>,
                         format: &Pattern,
@@ -373,7 +387,7 @@ fn print_dependency<'a>(package: &'a PackageId,
                         levels_continue: &mut Vec<bool>,
                         no_indent: bool,
                         all: bool) {
-    let new = all || visited_deps.insert(package);
+    let new = all || visited_deps.insert(package.id);
     let star = if new {
         ""
     } else {
@@ -400,8 +414,7 @@ fn print_dependency<'a>(package: &'a PackageId,
         }
     }
 
-    let metadata = graph.node_metadata.get(package).unwrap();
-    println!("{}{}", format.display(package, metadata), star);
+    println!("{}{}", format.display(package.id, package.metadata), star);
 
     if !new {
         return;
@@ -409,11 +422,11 @@ fn print_dependency<'a>(package: &'a PackageId,
 
     // Resolve uses Hash data types internally but we want consistent output ordering
     let mut deps = graph.graph
-                        .edges_directed(graph.nodes[&package], direction)
+                        .edges_directed(graph.nodes[&package.id], direction)
                         .filter(|&(_, &k)| kind == k)
-                        .map(|(i, _)| graph.graph[i])
+                        .map(|(i, _)| &graph.graph[i])
                         .collect::<Vec<_>>();
-    deps.sort();
+    deps.sort_by_key(|n| n.id);
     let mut it = deps.iter().peekable();
     while let Some(dependency) = it.next() {
         levels_continue.push(it.peek().is_some());
