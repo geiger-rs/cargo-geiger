@@ -9,6 +9,7 @@ use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::core::source::SourceId;
+use cargo::core::manifest::ManifestMetadata;
 use cargo::ops;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::sources::path::PathSource;
@@ -17,6 +18,10 @@ use std::collections::hash_map::Entry;
 use std::str::{self, FromStr};
 use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
+
+use format::Pattern;
+
+mod format;
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const USAGE: &'static str = "
@@ -35,10 +40,14 @@ Options:
     --no-default-features   Do not include the `default` feature
     --target TARGET         Set the target triple
     -i, --invert            Invert the tree direction
+    --no-indent             Display dependencies as a list (rather than a graph)
     -a, --all               Don't truncate dependencies that have already been
                             displayed
+    -d, --duplicates        Show only dependencies which come in multiple
+                            versions (implies --invert)
     --charset CHARSET       Set the character set to use in output. Valid
                             values: utf8, ascii [default: utf8]
+    -f, --format FORMAT     Format string for printing dependencies
     --manifest-path PATH    Path to the manifest to analyze
     -v, --verbose           Use verbose output
     -q, --quiet             No output printed to stdout other than the tree
@@ -53,11 +62,14 @@ struct Flags {
     flag_no_default_features: bool,
     flag_target: Option<String>,
     flag_invert: bool,
+    flag_no_indent: bool,
     flag_all: bool,
     flag_charset: Charset,
+    flag_format: Option<String>,
     flag_manifest_path: Option<String>,
     flag_verbose: bool,
     flag_quiet: bool,
+    flag_duplicates: bool,
 }
 
 #[derive(RustcDecodable)]
@@ -106,11 +118,14 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                 flag_no_default_features,
                 flag_target,
                 flag_invert,
+                flag_no_indent,
                 flag_all,
                 flag_charset,
+                flag_format,
                 flag_manifest_path,
                 flag_verbose,
-                flag_quiet } = flags;
+                flag_quiet,
+                flag_duplicates } = flags;
 
     if flag_version {
         println!("cargo-tree {}", env!("CARGO_PKG_VERSION"));
@@ -147,6 +162,12 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
 
     let target = flag_target.as_ref().unwrap_or(&config.rustc_info().host);
 
+    let format = match flag_format {
+        Some(ref r) => &**r,
+        None => "{p}",
+    };
+    let format = try!(Pattern::new(format).map_err(cargo::human));
+
     let cfgs = try!(get_cfgs(config, &flag_target));
     let graph = try!(build_graph(&resolve,
                                  &packages,
@@ -154,7 +175,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                                  target,
                                  cfgs.as_ref().map(|r| &**r)));
 
-    let direction = if flag_invert {
+    let direction = if flag_invert || flag_duplicates {
         EdgeDirection::Incoming
     } else {
         EdgeDirection::Outgoing
@@ -165,15 +186,67 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         Charset::Utf8 => &UTF8_SYMBOLS,
     };
 
-    print_tree(root, kind, &graph, direction, symbols, flag_all);
+    if flag_duplicates {
+        let dups = find_duplicates(&graph);
+        for dup in &dups {
+            print_tree(dup,
+                       kind,
+                       &graph,
+                       &format,
+                       direction,
+                       symbols,
+                       flag_no_indent,
+                       flag_all);
+            println!("");
+        }
+    } else {
+        print_tree(root,
+                   kind,
+                   &graph,
+                   &format,
+                   direction,
+                   symbols,
+                   flag_no_indent,
+                   flag_all);
+    }
 
     Ok(None)
 }
 
+fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
+    let mut counts = HashMap::new();
+
+    // Count by name only. Source and version are irrelevant here.
+    for package in graph.nodes.keys() {
+        let name = package.name();
+
+        let count = counts.entry(name).or_insert(0);
+        *count += 1;
+    }
+
+    let dup_names = counts.drain().filter_map(|(k, v)| if v > 1 {
+        Some(k)
+    } else {
+        None
+    });
+
+    // Theoretically inefficient, but in practice we're only listing duplicates and
+    // there won't be enough dependencies for it to matter.
+    let mut dup_ids = Vec::new();
+    for name in dup_names {
+        let ids = graph.nodes.keys().filter_map(|package| if package.name() == name {
+            Some(package)
+        } else {
+            None
+        });
+        dup_ids.extend(ids);
+    }
+    dup_ids
+}
+
 fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<Cfg>>> {
     let mut process = util::process(config.rustc());
-    process.arg("--print=cfg")
-           .env_remove("RUST_LOG");
+    process.arg("--print=cfg").env_remove("RUST_LOG");
     if let Some(ref s) = *target {
         process.arg("--target").arg(s);
     }
@@ -219,13 +292,19 @@ fn resolve(registry: &mut PackageRegistry,
     ops::resolve_with_previous(registry, &package, method, Some(&resolve), None)
 }
 
+struct Node<'a> {
+    id: &'a PackageId,
+    metadata: &'a ManifestMetadata,
+}
+
 struct Graph<'a> {
-    graph: petgraph::Graph<&'a PackageId, Kind>,
+    graph: petgraph::Graph<Node<'a>, Kind>,
     nodes: HashMap<&'a PackageId, NodeIndex>,
+    node_metadata: HashMap<&'a PackageId, ManifestMetadata>,
 }
 
 fn build_graph<'a>(resolve: &'a Resolve,
-                   packages: &PackageSet,
+                   packages: &'a PackageSet,
                    root: &'a PackageId,
                    target: &str,
                    cfgs: Option<&[Cfg]>)
@@ -233,14 +312,20 @@ fn build_graph<'a>(resolve: &'a Resolve,
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
         nodes: HashMap::new(),
+        node_metadata: HashMap::new(),
     };
-    graph.nodes.insert(root, graph.graph.add_node(root));
+    let node = Node {
+        id: root,
+        metadata: try!(packages.get(root)).manifest().metadata(),
+    };
+    graph.nodes.insert(root, graph.graph.add_node(node));
 
     let mut pending = vec![root];
 
     while let Some(pkg_id) = pending.pop() {
         let idx = graph.nodes[&pkg_id];
         let pkg = try!(packages.get(pkg_id));
+        graph.node_metadata.insert(pkg_id, pkg.manifest().metadata().clone());
 
         for dep_id in resolve.deps(pkg_id) {
             for dep in pkg.dependencies()
@@ -253,7 +338,11 @@ fn build_graph<'a>(resolve: &'a Resolve,
                     Entry::Occupied(e) => *e.get(),
                     Entry::Vacant(e) => {
                         pending.push(dep_id);
-                        *e.insert(graph.graph.add_node(dep_id))
+                        let node = Node {
+                            id: dep_id,
+                            metadata: try!(packages.get(dep_id)).manifest().metadata(),
+                        };
+                        *e.insert(graph.graph.add_node(node))
                     }
                 };
                 graph.graph.add_edge(idx, dep_idx, dep.kind());
@@ -267,56 +356,65 @@ fn build_graph<'a>(resolve: &'a Resolve,
 fn print_tree<'a>(package: &'a PackageId,
                   kind: Kind,
                   graph: &Graph<'a>,
+                  format: &Pattern,
                   direction: EdgeDirection,
                   symbols: &Symbols,
+                  no_indent: bool,
                   all: bool) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
 
-    print_dependency(package,
+    let node = &graph.graph[graph.nodes[&package]];
+    print_dependency(node,
                      kind,
                      &graph,
+                     format,
                      direction,
                      symbols,
                      &mut visited_deps,
                      &mut levels_continue,
+                     no_indent,
                      all);
 }
 
-fn print_dependency<'a>(package: &'a PackageId,
+fn print_dependency<'a>(package: &Node<'a>,
                         kind: Kind,
                         graph: &Graph<'a>,
+                        format: &Pattern,
                         direction: EdgeDirection,
                         symbols: &Symbols,
                         visited_deps: &mut HashSet<&'a PackageId>,
                         levels_continue: &mut Vec<bool>,
+                        no_indent: bool,
                         all: bool) {
-    if let Some((&last_continues, rest)) = levels_continue.split_last() {
-        for &continues in rest {
-            let c = if continues {
-                symbols.down
-            } else {
-                " "
-            };
-            print!("{}   ", c);
-        }
-
-        let c = if last_continues {
-            symbols.tee
-        } else {
-            symbols.ell
-        };
-        print!("{0}{1}{1} ", c, symbols.right);
-    }
-
-    let new = all || visited_deps.insert(package);
+    let new = all || visited_deps.insert(package.id);
     let star = if new {
         ""
     } else {
         " (*)"
     };
 
-    println!("{}{}", package, star);
+    if !no_indent {
+        if let Some((&last_continues, rest)) = levels_continue.split_last() {
+            for &continues in rest {
+                let c = if continues {
+                    symbols.down
+                } else {
+                    " "
+                };
+                print!("{}   ", c);
+            }
+
+            let c = if last_continues {
+                symbols.tee
+            } else {
+                symbols.ell
+            };
+            print!("{0}{1}{1} ", c, symbols.right);
+        }
+    }
+
+    println!("{}{}", format.display(package.id, package.metadata), star);
 
     if !new {
         return;
@@ -324,21 +422,23 @@ fn print_dependency<'a>(package: &'a PackageId,
 
     // Resolve uses Hash data types internally but we want consistent output ordering
     let mut deps = graph.graph
-                        .edges_directed(graph.nodes[&package], direction)
+                        .edges_directed(graph.nodes[&package.id], direction)
                         .filter(|&(_, &k)| kind == k)
-                        .map(|(i, _)| graph.graph[i])
+                        .map(|(i, _)| &graph.graph[i])
                         .collect::<Vec<_>>();
-    deps.sort();
+    deps.sort_by_key(|n| n.id);
     let mut it = deps.iter().peekable();
     while let Some(dependency) = it.next() {
         levels_continue.push(it.peek().is_some());
         print_dependency(dependency,
                          Kind::Normal,
                          graph,
+                         format,
                          direction,
                          symbols,
                          visited_deps,
                          levels_continue,
+                         no_indent,
                          all);
         levels_continue.pop();
     }

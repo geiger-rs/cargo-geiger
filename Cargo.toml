@@ -1,6 +1,6 @@
 [package]
 name = "cargo-tree"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Steven Fackler <sfackler@palantir.com>"]
 license = "MIT/Apache-2.0"
 description = "A Cargo subcommand that visualizes a crate's dependency graph in a tree-like format"
@@ -9,5 +9,5 @@ readme = "README.md"
 
 [dependencies]
 cargo = "0.10"
-rustc-serialize = "0.3"
 petgraph = "0.2"
+rustc-serialize = "0.3"
