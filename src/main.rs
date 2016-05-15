@@ -1,8 +1,6 @@
 extern crate cargo;
 extern crate petgraph;
 extern crate rustc_serialize;
-extern crate regex;
-
 
 use cargo::{Config, CliResult};
 use cargo::core::{Source, PackageId, Package, Resolve};
@@ -20,7 +18,10 @@ use std::collections::hash_map::Entry;
 use std::str::{self, FromStr};
 use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
-use regex::Regex;
+
+use format::Pattern;
+
+mod format;
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const USAGE: &'static str = "
@@ -162,9 +163,10 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     let target = flag_target.as_ref().unwrap_or(&config.rustc_info().host);
 
     let format = match flag_format {
-        Some(r) => r,
-        None => "{p}".to_owned(),
+        Some(ref r) => &**r,
+        None => "{p}",
     };
+    let format = try!(Pattern::new(format).map_err(cargo::human));
 
     let cfgs = try!(get_cfgs(config, &flag_target));
     let graph = try!(build_graph(&resolve,
@@ -341,7 +343,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
 fn print_tree<'a>(package: &'a PackageId,
                   kind: Kind,
                   graph: &Graph<'a>,
-                  format: &str,
+                  format: &Pattern,
                   direction: EdgeDirection,
                   symbols: &Symbols,
                   no_indent: bool,
@@ -361,26 +363,10 @@ fn print_tree<'a>(package: &'a PackageId,
                      all);
 }
 
-fn format_dependency<'a>(format: &str,
-                         package: &'a PackageId,
-                         metadata: ManifestMetadata)
-                         -> String {
-    let repo = Regex::new(r"\{r\}").unwrap();
-    let lic = Regex::new(r"\{l\}").unwrap();
-    let pack = Regex::new(r"\{p\}").unwrap();
-
-    let repo_str: &str = &format!("{}", metadata.repository.unwrap());
-    let lic_str: &str = &format!("{}", metadata.license.unwrap());
-    let pack_str: &str = &format!("{}", package);
-    let after_repo = repo.replace(&format, repo_str);
-    let after_lic = lic.replace(&after_repo, lic_str);
-    pack.replace(&after_lic, pack_str)
-}
-
 fn print_dependency<'a>(package: &'a PackageId,
                         kind: Kind,
                         graph: &Graph<'a>,
-                        format: &str,
+                        format: &Pattern,
                         direction: EdgeDirection,
                         symbols: &Symbols,
                         visited_deps: &mut HashSet<&'a PackageId>,
@@ -414,9 +400,8 @@ fn print_dependency<'a>(package: &'a PackageId,
         }
     }
 
-    let metadata = graph.node_metadata.get(package).unwrap().clone();
-    let dependency_str = format_dependency(format, package, metadata);
-    println!("{}{}", dependency_str, star);
+    let metadata = graph.node_metadata.get(package).unwrap();
+    println!("{}{}", format.display(package, metadata), star);
 
     if !new {
         return;

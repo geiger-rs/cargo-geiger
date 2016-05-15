@@ -4,7 +4,6 @@ version = "0.4.2"
 dependencies = [
  "cargo 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 0.1.69 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
