@@ -300,7 +300,6 @@ struct Node<'a> {
 struct Graph<'a> {
     graph: petgraph::Graph<Node<'a>, Kind>,
     nodes: HashMap<&'a PackageId, NodeIndex>,
-    node_metadata: HashMap<&'a PackageId, ManifestMetadata>,
 }
 
 fn build_graph<'a>(resolve: &'a Resolve,
@@ -312,7 +311,6 @@ fn build_graph<'a>(resolve: &'a Resolve,
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
         nodes: HashMap::new(),
-        node_metadata: HashMap::new(),
     };
     let node = Node {
         id: root,
@@ -325,7 +323,6 @@ fn build_graph<'a>(resolve: &'a Resolve,
     while let Some(pkg_id) = pending.pop() {
         let idx = graph.nodes[&pkg_id];
         let pkg = try!(packages.get(pkg_id));
-        graph.node_metadata.insert(pkg_id, pkg.manifest().metadata().clone());
 
         for dep_id in resolve.deps(pkg_id) {
             for dep in pkg.dependencies()
