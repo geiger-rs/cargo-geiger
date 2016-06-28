@@ -218,28 +218,14 @@ fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
 
     // Count by name only. Source and version are irrelevant here.
     for package in graph.nodes.keys() {
-        let name = package.name();
-
-        let count = counts.entry(name).or_insert(0);
-        *count += 1;
+        *counts.entry(package.name()).or_insert(0) += 1;
     }
-
-    let dup_names = counts.drain().filter_map(|(k, v)| if v > 1 {
-        Some(k)
-    } else {
-        None
-    });
 
     // Theoretically inefficient, but in practice we're only listing duplicates and
     // there won't be enough dependencies for it to matter.
     let mut dup_ids = Vec::new();
-    for name in dup_names {
-        let ids = graph.nodes.keys().filter_map(|package| if package.name() == name {
-            Some(package)
-        } else {
-            None
-        });
-        dup_ids.extend(ids);
+    for name in counts.drain().filter(|&(_, v)| v > 1).map(|(k, _)| k) {
+        dup_ids.extend(graph.nodes.keys().filter(|p| p.name() == name));
     }
     dup_ids
 }
