@@ -325,12 +325,11 @@ fn build_graph<'a>(resolve: &'a Resolve,
         let pkg = try!(packages.get(pkg_id));
 
         for dep_id in resolve.deps(pkg_id) {
-            for dep in pkg.dependencies()
-                          .iter()
-                          .filter(|d| d.matches_id(dep_id))
-                          .filter(|d| {
-                              d.platform().map(|p| p.matches(target, cfgs)).unwrap_or(true)
-                          }) {
+            let it = pkg.dependencies()
+                        .iter()
+                        .filter(|d| d.matches_id(dep_id))
+                        .filter(|d| d.platform().map(|p| p.matches(target, cfgs)).unwrap_or(true));
+            for dep in it {
                 let dep_idx = match graph.nodes.entry(dep_id) {
                     Entry::Occupied(e) => *e.get(),
                     Entry::Vacant(e) => {
