@@ -51,6 +51,7 @@ Options:
     --manifest-path PATH    Path to the manifest to analyze
     -v, --verbose           Use verbose output
     -q, --quiet             No output printed to stdout other than the tree
+    --color WHEN            Coloring: auto, always, never
 ";
 
 #[derive(RustcDecodable)]
@@ -67,8 +68,9 @@ struct Flags {
     flag_charset: Charset,
     flag_format: Option<String>,
     flag_manifest_path: Option<String>,
-    flag_verbose: bool,
-    flag_quiet: bool,
+    flag_verbose: Option<bool>,
+    flag_quiet: Option<bool>,
+    flag_color: Option<String>,
     flag_duplicates: bool,
 }
 
@@ -125,6 +127,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                 flag_manifest_path,
                 flag_verbose,
                 flag_quiet,
+                flag_color,
                 flag_duplicates } = flags;
 
     if flag_version {
@@ -137,7 +140,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                                      .map(|s| s.to_owned())
                                      .collect();
 
-    try!(config.shell().set_verbosity(flag_verbose, flag_quiet));
+    try!(config.configure_shell(flag_verbose, flag_quiet, &flag_color));
 
     let mut source = try!(source(config, flag_manifest_path));
     let package = try!(source.root_package());
@@ -218,28 +221,14 @@ fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
 
     // Count by name only. Source and version are irrelevant here.
     for package in graph.nodes.keys() {
-        let name = package.name();
-
-        let count = counts.entry(name).or_insert(0);
-        *count += 1;
+        *counts.entry(package.name()).or_insert(0) += 1;
     }
-
-    let dup_names = counts.drain().filter_map(|(k, v)| if v > 1 {
-        Some(k)
-    } else {
-        None
-    });
 
     // Theoretically inefficient, but in practice we're only listing duplicates and
     // there won't be enough dependencies for it to matter.
     let mut dup_ids = Vec::new();
-    for name in dup_names {
-        let ids = graph.nodes.keys().filter_map(|package| if package.name() == name {
-            Some(package)
-        } else {
-            None
-        });
-        dup_ids.extend(ids);
+    for name in counts.drain().filter(|&(_, v)| v > 1).map(|(k, _)| k) {
+        dup_ids.extend(graph.nodes.keys().filter(|p| p.name() == name));
     }
     dup_ids
 }
@@ -300,7 +289,6 @@ struct Node<'a> {
 struct Graph<'a> {
     graph: petgraph::Graph<Node<'a>, Kind>,
     nodes: HashMap<&'a PackageId, NodeIndex>,
-    node_metadata: HashMap<&'a PackageId, ManifestMetadata>,
 }
 
 fn build_graph<'a>(resolve: &'a Resolve,
@@ -312,7 +300,6 @@ fn build_graph<'a>(resolve: &'a Resolve,
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
         nodes: HashMap::new(),
-        node_metadata: HashMap::new(),
     };
     let node = Node {
         id: root,
@@ -325,15 +312,13 @@ fn build_graph<'a>(resolve: &'a Resolve,
     while let Some(pkg_id) = pending.pop() {
         let idx = graph.nodes[&pkg_id];
         let pkg = try!(packages.get(pkg_id));
-        graph.node_metadata.insert(pkg_id, pkg.manifest().metadata().clone());
 
         for dep_id in resolve.deps(pkg_id) {
-            for dep in pkg.dependencies()
-                          .iter()
-                          .filter(|d| d.matches_id(dep_id))
-                          .filter(|d| {
-                              d.platform().map(|p| p.matches(target, cfgs)).unwrap_or(true)
-                          }) {
+            let it = pkg.dependencies()
+                        .iter()
+                        .filter(|d| d.matches_id(dep_id))
+                        .filter(|d| d.platform().map(|p| p.matches(target, cfgs)).unwrap_or(true));
+            for dep in it {
                 let dep_idx = match graph.nodes.entry(dep_id) {
                     Entry::Occupied(e) => *e.get(),
                     Entry::Vacant(e) => {
