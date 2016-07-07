@@ -2,7 +2,7 @@ language: rust
 rust:
 - nightly
 - beta
-- 1.7.0
+- 1.8.0
 script:
 - cargo build
 addons:
