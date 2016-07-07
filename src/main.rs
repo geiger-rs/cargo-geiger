@@ -51,6 +51,7 @@ Options:
     --manifest-path PATH    Path to the manifest to analyze
     -v, --verbose           Use verbose output
     -q, --quiet             No output printed to stdout other than the tree
+    --color WHEN            Coloring: auto, always, never
 ";
 
 #[derive(RustcDecodable)]
@@ -67,8 +68,9 @@ struct Flags {
     flag_charset: Charset,
     flag_format: Option<String>,
     flag_manifest_path: Option<String>,
-    flag_verbose: bool,
-    flag_quiet: bool,
+    flag_verbose: Option<bool>,
+    flag_quiet: Option<bool>,
+    flag_color: Option<String>,
     flag_duplicates: bool,
 }
 
@@ -125,6 +127,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                 flag_manifest_path,
                 flag_verbose,
                 flag_quiet,
+                flag_color,
                 flag_duplicates } = flags;
 
     if flag_version {
@@ -137,7 +140,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                                      .map(|s| s.to_owned())
                                      .collect();
 
-    try!(config.shell().set_verbosity(flag_verbose, flag_quiet));
+    try!(config.configure_shell(flag_verbose, flag_quiet, &flag_color));
 
     let mut source = try!(source(config, flag_manifest_path));
     let package = try!(source.root_package());
