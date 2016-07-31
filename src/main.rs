@@ -313,12 +313,16 @@ fn build_graph<'a>(resolve: &'a Resolve,
         let idx = graph.nodes[&pkg_id];
         let pkg = try!(packages.get(pkg_id));
 
-        for dep_id in resolve.deps(pkg_id) {
+        for dep_id in resolve.deps_not_replaced(pkg_id) {
             let it = pkg.dependencies()
                         .iter()
                         .filter(|d| d.matches_id(dep_id))
                         .filter(|d| d.platform().map(|p| p.matches(target, cfgs)).unwrap_or(true));
             for dep in it {
+                let dep_id = match resolve.replacement(dep_id) {
+                    Some(id) => id,
+                    None => dep_id,
+                };
                 let dep_idx = match graph.nodes.entry(dep_id) {
                     Entry::Occupied(e) => *e.get(),
                     Entry::Vacant(e) => {
