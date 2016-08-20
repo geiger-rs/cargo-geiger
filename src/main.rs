@@ -68,7 +68,7 @@ struct Flags {
     flag_charset: Charset,
     flag_format: Option<String>,
     flag_manifest_path: Option<String>,
-    flag_verbose: Option<bool>,
+    flag_verbose: u32,
     flag_quiet: Option<bool>,
     flag_color: Option<String>,
     flag_duplicates: bool,
