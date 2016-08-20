@@ -1,6 +1,6 @@
 [root]
 name = "cargo-tree"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "cargo 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
