@@ -3,16 +3,14 @@ extern crate petgraph;
 extern crate rustc_serialize;
 
 use cargo::{Config, CliResult};
-use cargo::core::{Source, PackageId, Package, Resolve};
+use cargo::core::{PackageId, Package, Resolve, Workspace};
 use cargo::core::dependency::Kind;
 use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
-use cargo::core::source::SourceId;
 use cargo::core::manifest::ManifestMetadata;
 use cargo::ops;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
-use cargo::sources::path::PathSource;
 use std::collections::{HashSet, HashMap};
 use std::collections::hash_map::Entry;
 use std::str::{self, FromStr};
@@ -140,21 +138,20 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                                      .map(|s| s.to_owned())
                                      .collect();
 
-    try!(config.configure_shell(flag_verbose, flag_quiet, &flag_color));
+    try!(config.configure(flag_verbose, flag_quiet, &flag_color, false, false));
 
-    let mut source = try!(source(config, flag_manifest_path));
-    let package = try!(source.root_package());
+    let workspace = try!(workspace(config, flag_manifest_path));
+    let package = try!(workspace.current());
     let mut registry = try!(registry(config, &package));
     let resolve = try!(resolve(&mut registry,
-                               &package,
-                               &config,
+                               &workspace,
                                flag_features,
                                flag_no_default_features));
     let packages = ops::get_resolved_packages(&resolve, registry);
 
     let root = match flag_package {
         Some(ref pkg) => try!(resolve.query(pkg)),
-        None => resolve.root(),
+        None => package.package_id(),
     };
 
     let kind = match flag_kind {
@@ -163,7 +160,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         RawKind::Build => Kind::Build,
     };
 
-    let target = flag_target.as_ref().unwrap_or(&config.rustc_info().host);
+    let target = flag_target.as_ref().unwrap_or(&try!(config.rustc()).host);
 
     let format = match flag_format {
         Some(ref r) => &**r,
@@ -234,7 +231,7 @@ fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
 }
 
 fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<Cfg>>> {
-    let mut process = util::process(config.rustc());
+    let mut process = util::process(&try!(config.rustc()).path);
     process.arg("--print=cfg").env_remove("RUST_LOG");
     if let Some(ref s) = *target {
         process.arg("--target").arg(s);
@@ -249,28 +246,23 @@ fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<
     Ok(Some(try!(lines.map(Cfg::from_str).collect())))
 }
 
-fn source(config: &Config, manifest_path: Option<String>) -> CargoResult<PathSource> {
+fn workspace(config: &Config, manifest_path: Option<String>) -> CargoResult<Workspace> {
     let root = try!(important_paths::find_root_manifest_for_wd(manifest_path, config.cwd()));
-    let dir = root.parent().unwrap();
-    let id = try!(SourceId::for_path(dir));
-    let mut source = PathSource::new(dir, &id, config);
-    try!(source.update());
-    Ok(source)
+    Workspace::new(&root, config)
 }
 
 fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageRegistry<'a>> {
-    let mut registry = PackageRegistry::new(config);
+    let mut registry = try!(PackageRegistry::new(config));
     try!(registry.add_sources(&[package.package_id().source_id().clone()]));
     Ok(registry)
 }
 
 fn resolve(registry: &mut PackageRegistry,
-           package: &Package,
-           config: &Config,
+           workspace: &Workspace,
            features: Vec<String>,
            no_default_features: bool)
            -> CargoResult<Resolve> {
-    let resolve = try!(ops::resolve_pkg(registry, package, config));
+    let resolve = try!(ops::resolve_ws(registry, workspace));
 
     let method = Method::Required {
         dev_deps: true,
@@ -278,7 +270,7 @@ fn resolve(registry: &mut PackageRegistry,
         uses_default_features: !no_default_features,
     };
 
-    ops::resolve_with_previous(registry, &package, method, Some(&resolve), None)
+    ops::resolve_with_previous(registry, workspace, method, Some(&resolve), None)
 }
 
 struct Node<'a> {
