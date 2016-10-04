@@ -134,9 +134,9 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     }
 
     let flag_features = flag_features.iter()
-                                     .flat_map(|s| s.split(" "))
-                                     .map(|s| s.to_owned())
-                                     .collect();
+        .flat_map(|s| s.split(" "))
+        .map(|s| s.to_owned())
+        .collect();
 
     try!(config.configure(flag_verbose, flag_quiet, &flag_color, false, false));
 
@@ -307,9 +307,9 @@ fn build_graph<'a>(resolve: &'a Resolve,
 
         for raw_dep_id in resolve.deps_not_replaced(pkg_id) {
             let it = pkg.dependencies()
-                        .iter()
-                        .filter(|d| d.matches_id(raw_dep_id))
-                        .filter(|d| d.platform().map(|p| p.matches(target, cfgs)).unwrap_or(true));
+                .iter()
+                .filter(|d| d.matches_id(raw_dep_id))
+                .filter(|d| d.platform().map(|p| p.matches(target, cfgs)).unwrap_or(true));
             let dep_id = match resolve.replacement(raw_dep_id) {
                 Some(id) => id,
                 None => raw_dep_id,
@@ -369,20 +369,12 @@ fn print_dependency<'a>(package: &Node<'a>,
                         no_indent: bool,
                         all: bool) {
     let new = all || visited_deps.insert(package.id);
-    let star = if new {
-        ""
-    } else {
-        " (*)"
-    };
+    let star = if new { "" } else { " (*)" };
 
     if !no_indent {
         if let Some((&last_continues, rest)) = levels_continue.split_last() {
             for &continues in rest {
-                let c = if continues {
-                    symbols.down
-                } else {
-                    " "
-                };
+                let c = if continues { symbols.down } else { " " };
                 print!("{}   ", c);
             }
 
@@ -403,10 +395,10 @@ fn print_dependency<'a>(package: &Node<'a>,
 
     // Resolve uses Hash data types internally but we want consistent output ordering
     let mut deps = graph.graph
-                        .edges_directed(graph.nodes[&package.id], direction)
-                        .filter(|&(_, &k)| kind == k)
-                        .map(|(i, _)| &graph.graph[i])
-                        .collect::<Vec<_>>();
+        .edges_directed(graph.nodes[&package.id], direction)
+        .filter(|&(_, &k)| kind == k)
+        .map(|(i, _)| &graph.graph[i])
+        .collect::<Vec<_>>();
     deps.sort_by_key(|n| n.id);
     let mut it = deps.iter().peekable();
     while let Some(dependency) = it.next() {
