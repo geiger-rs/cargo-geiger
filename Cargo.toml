@@ -9,5 +9,5 @@ readme = "README.md"
 
 [dependencies]
 cargo = "0.13"
-petgraph = "0.2"
+petgraph = "0.3"
 rustc-serialize = "0.3"
