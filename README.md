@@ -5,6 +5,8 @@
 `cargo tree` is a Cargo subcommand that visualizes a crate's dependency graph
 in a tree-like format.
 
+Requirements: `cmake`.  OSX users can install via [homebrew](http://brew.sh/): `brew install cmake` .
+
 Install it with Cargo:
 
 ```
