@@ -270,7 +270,7 @@ fn resolve(registry: &mut PackageRegistry,
         uses_default_features: !no_default_features,
     };
 
-    ops::resolve_with_previous(registry, workspace, method, Some(&resolve), None)
+    ops::resolve_with_previous(registry, workspace, method, Some(&resolve), None, &[])
 }
 
 struct Node<'a> {

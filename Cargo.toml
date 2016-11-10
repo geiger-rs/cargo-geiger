@@ -8,6 +8,6 @@ repository = "https://github.com/sfackler/cargo-tree"
 readme = "README.md"
 
 [dependencies]
-cargo = "0.13"
+cargo = "0.14"
 petgraph = "0.3"
 rustc-serialize = "0.3"
