@@ -16,6 +16,7 @@ use std::collections::hash_map::Entry;
 use std::str::{self, FromStr};
 use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
+use petgraph::visit::EdgeRef;
 
 use format::Pattern;
 
@@ -396,8 +397,13 @@ fn print_dependency<'a>(package: &Node<'a>,
     // Resolve uses Hash data types internally but we want consistent output ordering
     let mut deps = graph.graph
         .edges_directed(graph.nodes[&package.id], direction)
-        .filter(|&(_, &k)| kind == k)
-        .map(|(i, _)| &graph.graph[i])
+        .filter(|edge| edge.weight() == &kind)
+        .map(|edge| {
+            match direction {
+                EdgeDirection::Incoming => &graph.graph[edge.source()],
+                EdgeDirection::Outgoing => &graph.graph[edge.target()],
+            }
+        })
         .collect::<Vec<_>>();
     deps.sort_by_key(|n| n.id);
     let mut it = deps.iter().peekable();
