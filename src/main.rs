@@ -139,19 +139,19 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         .map(|s| s.to_owned())
         .collect();
 
-    try!(config.configure(flag_verbose, flag_quiet, &flag_color, false, false));
+    config.configure(flag_verbose, flag_quiet, &flag_color, false, false)?;
 
-    let workspace = try!(workspace(config, flag_manifest_path));
-    let package = try!(workspace.current());
-    let mut registry = try!(registry(config, &package));
-    let resolve = try!(resolve(&mut registry,
-                               &workspace,
-                               flag_features,
-                               flag_no_default_features));
+    let workspace = workspace(config, flag_manifest_path)?;
+    let package = workspace.current()?;
+    let mut registry = registry(config, &package)?;
+    let resolve = resolve(&mut registry,
+                          &workspace,
+                          flag_features,
+                          flag_no_default_features)?;
     let packages = ops::get_resolved_packages(&resolve, registry);
 
     let root = match flag_package {
-        Some(ref pkg) => try!(resolve.query(pkg)),
+        Some(ref pkg) => resolve.query(pkg)?,
         None => package.package_id(),
     };
 
@@ -161,20 +161,20 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         RawKind::Build => Kind::Build,
     };
 
-    let target = flag_target.as_ref().unwrap_or(&try!(config.rustc()).host);
+    let target = flag_target.as_ref().unwrap_or(&config.rustc()?.host);
 
     let format = match flag_format {
         Some(ref r) => &**r,
         None => "{p}",
     };
-    let format = try!(Pattern::new(format).map_err(cargo::human));
+    let format = Pattern::new(format).map_err(cargo::human)?;
 
-    let cfgs = try!(get_cfgs(config, &flag_target));
-    let graph = try!(build_graph(&resolve,
-                                 &packages,
-                                 package.package_id(),
-                                 target,
-                                 cfgs.as_ref().map(|r| &**r)));
+    let cfgs = get_cfgs(config, &flag_target)?;
+    let graph = build_graph(&resolve,
+                            &packages,
+                            package.package_id(),
+                            target,
+                            cfgs.as_ref().map(|r| &**r))?;
 
     let direction = if flag_invert || flag_duplicates {
         EdgeDirection::Incoming
@@ -232,7 +232,7 @@ fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
 }
 
 fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<Cfg>>> {
-    let mut process = util::process(&try!(config.rustc()).path);
+    let mut process = util::process(&config.rustc()?.path);
     process.arg("--print=cfg").env_remove("RUST_LOG");
     if let Some(ref s) = *target {
         process.arg("--target").arg(s);
@@ -244,17 +244,17 @@ fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<
     };
     let output = str::from_utf8(&output.stdout).unwrap();
     let lines = output.lines();
-    Ok(Some(try!(lines.map(Cfg::from_str).collect())))
+    Ok(Some(lines.map(Cfg::from_str).collect::<CargoResult<Vec<_>>>()?))
 }
 
 fn workspace(config: &Config, manifest_path: Option<String>) -> CargoResult<Workspace> {
-    let root = try!(important_paths::find_root_manifest_for_wd(manifest_path, config.cwd()));
+    let root = important_paths::find_root_manifest_for_wd(manifest_path, config.cwd())?;
     Workspace::new(&root, config)
 }
 
 fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageRegistry<'a>> {
-    let mut registry = try!(PackageRegistry::new(config));
-    try!(registry.add_sources(&[package.package_id().source_id().clone()]));
+    let mut registry = PackageRegistry::new(config)?;
+    registry.add_sources(&[package.package_id().source_id().clone()])?;
     Ok(registry)
 }
 
@@ -263,7 +263,7 @@ fn resolve(registry: &mut PackageRegistry,
            features: Vec<String>,
            no_default_features: bool)
            -> CargoResult<Resolve> {
-    let resolve = try!(ops::resolve_ws(registry, workspace));
+    let resolve = ops::resolve_ws(registry, workspace)?;
 
     let method = Method::Required {
         dev_deps: true,
@@ -296,7 +296,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
     };
     let node = Node {
         id: root,
-        metadata: try!(packages.get(root)).manifest().metadata(),
+        metadata: packages.get(root)?.manifest().metadata(),
     };
     graph.nodes.insert(root, graph.graph.add_node(node));
 
@@ -304,7 +304,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
 
     while let Some(pkg_id) = pending.pop() {
         let idx = graph.nodes[&pkg_id];
-        let pkg = try!(packages.get(pkg_id));
+        let pkg = packages.get(pkg_id)?;
 
         for raw_dep_id in resolve.deps_not_replaced(pkg_id) {
             let it = pkg.dependencies()
@@ -322,7 +322,7 @@ fn build_graph<'a>(resolve: &'a Resolve,
                         pending.push(dep_id);
                         let node = Node {
                             id: dep_id,
-                            metadata: try!(packages.get(dep_id)).manifest().metadata(),
+                            metadata: packages.get(dep_id)?.manifest().metadata(),
                         };
                         *e.insert(graph.graph.add_node(node))
                     }
