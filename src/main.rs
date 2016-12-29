@@ -118,86 +118,65 @@ fn main() {
 }
 
 fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
-    let Flags { flag_version,
-                flag_package,
-                flag_kind,
-                flag_features,
-                flag_all_features,
-                flag_no_default_features,
-                flag_target,
-                flag_invert,
-                flag_no_indent,
-                flag_all,
-                flag_charset,
-                flag_format,
-                flag_manifest_path,
-                flag_verbose,
-                flag_quiet,
-                flag_color,
-                flag_duplicates,
-                flag_frozen,
-                flag_locked } = flags;
-
-    if flag_version {
+    if flags.flag_version {
         println!("cargo-tree {}", env!("CARGO_PKG_VERSION"));
         return Ok(None);
     }
 
-    let flag_features = flag_features.iter()
-        .flat_map(|s| s.split(" "))
-        .map(|s| s.to_owned())
-        .collect();
+    config.configure(flags.flag_verbose,
+                     flags.flag_quiet,
+                     &flags.flag_color,
+                     flags.flag_frozen,
+                     flags.flag_locked)?;
 
-    config.configure(flag_verbose, flag_quiet, &flag_color, flag_frozen, flag_locked)?;
-
-    let workspace = workspace(config, flag_manifest_path)?;
+    let workspace = workspace(config, flags.flag_manifest_path)?;
     let package = workspace.current()?;
     let mut registry = registry(config, &package)?;
     let resolve = resolve(&mut registry,
                           &workspace,
-                          flag_features,
-                          flag_all_features,
-                          flag_no_default_features)?;
+                          flags.flag_features,
+                          flags.flag_all_features,
+                          flags.flag_no_default_features)?;
     let packages = ops::get_resolved_packages(&resolve, registry);
 
-    let root = match flag_package {
+    let root = match flags.flag_package {
         Some(ref pkg) => resolve.query(pkg)?,
         None => package.package_id(),
     };
 
-    let kind = match flag_kind {
+    let kind = match flags.flag_kind {
         RawKind::Normal => Kind::Normal,
         RawKind::Dev => Kind::Development,
         RawKind::Build => Kind::Build,
     };
 
-    let target = flag_target.as_ref().unwrap_or(&config.rustc()?.host);
+    let target = flags.flag_target.as_ref().unwrap_or(&config.rustc()?.host);
 
-    let format = match flag_format {
+    let format = match flags.flag_format {
         Some(ref r) => &**r,
         None => "{p}",
     };
     let format = Pattern::new(format).map_err(cargo::human)?;
 
-    let cfgs = get_cfgs(config, &flag_target)?;
+    let cfgs = get_cfgs(config, &flags.flag_target)?;
     let graph = build_graph(&resolve,
                             &packages,
                             package.package_id(),
                             target,
                             cfgs.as_ref().map(|r| &**r))?;
 
-    let direction = if flag_invert || flag_duplicates {
+    let direction = if flags.flag_invert || flags.flag_duplicates {
         EdgeDirection::Incoming
     } else {
         EdgeDirection::Outgoing
     };
 
-    let symbols = match flag_charset {
+    let symbols = match flags.flag_charset {
         Charset::Ascii => &ASCII_SYMBOLS,
         Charset::Utf8 => &UTF8_SYMBOLS,
     };
 
-    if flag_duplicates {
+    if flags.flag_duplicates {
         let dups = find_duplicates(&graph);
         for dup in &dups {
             print_tree(dup,
@@ -206,8 +185,8 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                        &format,
                        direction,
                        symbols,
-                       flag_no_indent,
-                       flag_all);
+                       flags.flag_no_indent,
+                       flags.flag_all);
             println!("");
         }
     } else {
@@ -217,8 +196,8 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                    &format,
                    direction,
                    symbols,
-                   flag_no_indent,
-                   flag_all);
+                   flags.flag_no_indent,
+                   flags.flag_all);
     }
 
     Ok(None)
