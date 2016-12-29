@@ -36,6 +36,7 @@ Options:
     -k, --kind KIND         Set the kind of dependencies to analyze. Valid
                             values: normal, dev, build [default: normal]
     --features FEATURES     Space separated list of features to include
+    --all-features          Include all available features
     --no-default-features   Do not include the `default` feature
     --target TARGET         Set the target triple
     -i, --invert            Invert the tree direction
@@ -51,6 +52,8 @@ Options:
     -v, --verbose           Use verbose output
     -q, --quiet             No output printed to stdout other than the tree
     --color WHEN            Coloring: auto, always, never
+    --frozen                Require Cargo.lock and cache are up to date
+    --locked                Require Cargo.lock is up to date
 ";
 
 #[derive(RustcDecodable)]
@@ -59,6 +62,7 @@ struct Flags {
     flag_package: Option<String>,
     flag_kind: RawKind,
     flag_features: Vec<String>,
+    flag_all_features: bool,
     flag_no_default_features: bool,
     flag_target: Option<String>,
     flag_invert: bool,
@@ -71,6 +75,8 @@ struct Flags {
     flag_quiet: Option<bool>,
     flag_color: Option<String>,
     flag_duplicates: bool,
+    flag_frozen: bool,
+    flag_locked: bool,
 }
 
 #[derive(RustcDecodable)]
@@ -116,6 +122,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                 flag_package,
                 flag_kind,
                 flag_features,
+                flag_all_features,
                 flag_no_default_features,
                 flag_target,
                 flag_invert,
@@ -127,7 +134,9 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                 flag_verbose,
                 flag_quiet,
                 flag_color,
-                flag_duplicates } = flags;
+                flag_duplicates,
+                flag_frozen,
+                flag_locked } = flags;
 
     if flag_version {
         println!("cargo-tree {}", env!("CARGO_PKG_VERSION"));
@@ -139,7 +148,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
         .map(|s| s.to_owned())
         .collect();
 
-    config.configure(flag_verbose, flag_quiet, &flag_color, false, false)?;
+    config.configure(flag_verbose, flag_quiet, &flag_color, flag_frozen, flag_locked)?;
 
     let workspace = workspace(config, flag_manifest_path)?;
     let package = workspace.current()?;
@@ -147,6 +156,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     let resolve = resolve(&mut registry,
                           &workspace,
                           flag_features,
+                          flag_all_features,
                           flag_no_default_features)?;
     let packages = ops::get_resolved_packages(&resolve, registry);
 
@@ -261,14 +271,19 @@ fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageReg
 fn resolve(registry: &mut PackageRegistry,
            workspace: &Workspace,
            features: Vec<String>,
+           all_features: bool,
            no_default_features: bool)
            -> CargoResult<Resolve> {
     let resolve = ops::resolve_ws(registry, workspace)?;
 
-    let method = Method::Required {
-        dev_deps: true,
-        features: &features,
-        uses_default_features: !no_default_features,
+    let method = if all_features {
+        Method::Everything
+    } else {
+        Method::Required {
+            dev_deps: true,
+            features: &features,
+            uses_default_features: !no_default_features,
+        }
     };
 
     ops::resolve_with_previous(registry, workspace, method, Some(&resolve), None, &[])
