@@ -253,6 +253,10 @@ fn resolve(registry: &mut PackageRegistry,
            all_features: bool,
            no_default_features: bool)
            -> CargoResult<Resolve> {
+    let features = features.iter().flat_map(|s| {
+        s.split_whitespace()
+    }).map(|s| s.to_string()).collect::<Vec<String>>();
+
     let resolve = ops::resolve_ws(registry, workspace)?;
 
     let method = if all_features {
