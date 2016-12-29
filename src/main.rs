@@ -27,7 +27,6 @@ const USAGE: &'static str = "
 Display a tree visualization of a dependency graph
 
 Usage: cargo tree [options]
-       cargo tree --help
 
 Options:
     -h, --help              Print this message
