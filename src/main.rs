@@ -131,12 +131,13 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
     let workspace = workspace(config, flags.flag_manifest_path)?;
     let package = workspace.current()?;
     let mut registry = registry(config, &package)?;
-    let resolve = resolve(&mut registry,
-                          &workspace,
-                          flags.flag_features,
-                          flags.flag_all_features,
-                          flags.flag_no_default_features)?;
-    let packages = ops::get_resolved_packages(&resolve, registry);
+    let (packages, resolve) = resolve(&mut registry,
+                                      &workspace,
+                                      flags.flag_features,
+                                      flags.flag_all_features,
+                                      flags.flag_no_default_features)?;
+    let ids = packages.package_ids().cloned().collect::<Vec<_>>();
+    let packages = registry.get(&ids);
 
     let root = match flags.flag_package {
         Some(ref pkg) => resolve.query(pkg)?,
@@ -246,17 +247,17 @@ fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageReg
     Ok(registry)
 }
 
-fn resolve(registry: &mut PackageRegistry,
-           workspace: &Workspace,
+fn resolve<'a>(registry: &mut PackageRegistry,
+           workspace: &'a Workspace,
            features: Vec<String>,
            all_features: bool,
            no_default_features: bool)
-           -> CargoResult<Resolve> {
+           -> CargoResult<(PackageSet<'a>, Resolve)> {
     let features = features.iter().flat_map(|s| {
         s.split_whitespace()
     }).map(|s| s.to_string()).collect::<Vec<String>>();
 
-    let resolve = ops::resolve_ws(registry, workspace)?;
+    let (packages, resolve) = ops::resolve_ws(workspace)?;
 
     let method = if all_features {
         Method::Everything
@@ -268,7 +269,13 @@ fn resolve(registry: &mut PackageRegistry,
         }
     };
 
-    ops::resolve_with_previous(registry, workspace, method, Some(&resolve), None, &[])
+    let resolve = ops::resolve_with_previous(registry,
+                                             workspace,
+                                             method,
+                                             Some(&resolve),
+                                             None,
+                                             &[])?;
+    Ok((packages, resolve))
 }
 
 struct Node<'a> {
