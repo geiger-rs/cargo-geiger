@@ -217,6 +217,7 @@ fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
     for name in counts.drain().filter(|&(_, v)| v > 1).map(|(k, _)| k) {
         dup_ids.extend(graph.nodes.keys().filter(|p| p.name() == name));
     }
+    dup_ids.sort();
     dup_ids
 }
 
