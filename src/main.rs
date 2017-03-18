@@ -1,22 +1,25 @@
 extern crate cargo;
+extern crate env_logger;
 extern crate petgraph;
 extern crate rustc_serialize;
 
 use cargo::{Config, CliResult};
 use cargo::core::{PackageId, Package, Resolve, Workspace};
 use cargo::core::dependency::Kind;
+use cargo::core::manifest::ManifestMetadata;
 use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
-use cargo::core::manifest::ManifestMetadata;
+use cargo::core::shell::{Verbosity, ColorConfig};
 use cargo::ops;
-use cargo::util::{self, important_paths, CargoResult, Cfg};
-use std::collections::{HashSet, HashMap};
-use std::collections::hash_map::Entry;
-use std::str::{self, FromStr};
+use cargo::util::{self, important_paths, CargoResult, Cfg, human};
 use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
+use std::collections::{HashSet, HashMap};
+use std::collections::hash_map::Entry;
+use std::env;
+use std::str::{self, FromStr};
 
 use format::Pattern;
 
@@ -113,13 +116,35 @@ static ASCII_SYMBOLS: Symbols = Symbols {
 };
 
 fn main() {
-    cargo::execute_main_without_stdin(real_main, false, USAGE);
+    env_logger::init().unwrap();
+
+    let config = match Config::default() {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            let mut shell = cargo::shell(Verbosity::Verbose, ColorConfig::Auto);
+            cargo::handle_cli_error(e.into(), &mut shell)
+        }
+    };
+
+    let result = (|| {
+        let args: Vec<_> = try!(env::args_os().map(|s| {
+            s.into_string().map_err(|s| {
+                human(format!("invalid unicode in argument: {:?}", s))
+            })
+        }).collect());
+        cargo::call_main_without_stdin(real_main, &config, USAGE, &args, false)
+    })();
+
+    match result {
+        Err(e) => cargo::handle_cli_error(e, &mut *config.shell()),
+        Ok(()) => {},
+    }
 }
 
-fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
+fn real_main(flags: Flags, config: &Config) -> CliResult {
     if flags.flag_version {
         println!("cargo-tree {}", env!("CARGO_PKG_VERSION"));
-        return Ok(None);
+        return Ok(());
     }
 
     config.configure(flags.flag_verbose,
@@ -200,7 +225,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult<Option<()>> {
                    flags.flag_all);
     }
 
-    Ok(None)
+    Ok(())
 }
 
 fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
