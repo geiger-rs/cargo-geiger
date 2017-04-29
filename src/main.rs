@@ -122,7 +122,7 @@ fn main() {
         Ok(cfg) => cfg,
         Err(e) => {
             let mut shell = cargo::shell(Verbosity::Verbose, ColorConfig::Auto);
-            cargo::handle_cli_error(e.into(), &mut shell)
+            cargo::exit_with_error(e.into(), &mut shell)
         }
     };
 
@@ -136,7 +136,7 @@ fn main() {
     })();
 
     match result {
-        Err(e) => cargo::handle_cli_error(e, &mut *config.shell()),
+        Err(e) => cargo::exit_with_error(e, &mut *config.shell()),
         Ok(()) => {},
     }
 }
