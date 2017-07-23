@@ -12,7 +12,7 @@ use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::core::shell::{Verbosity, ColorConfig};
 use cargo::ops;
-use cargo::util::{self, important_paths, CargoResult, Cfg, human};
+use cargo::util::{self, important_paths, CargoResult, Cfg, CargoError};
 use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
@@ -129,7 +129,7 @@ fn main() {
     let result = (|| {
         let args: Vec<_> = try!(env::args_os().map(|s| {
             s.into_string().map_err(|s| {
-                human(format!("invalid unicode in argument: {:?}", s))
+                CargoError::from(format!("invalid unicode in argument: {:?}", s))
             })
         }).collect());
         cargo::call_main_without_stdin(real_main, &config, USAGE, &args, false)
@@ -181,7 +181,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult {
         Some(ref r) => &**r,
         None => "{p}",
     };
-    let format = Pattern::new(format).map_err(cargo::human)?;
+    let format = Pattern::new(format).map_err(|e| CargoError::from(e.to_string()))?;
 
     let cfgs = get_cfgs(config, &flags.flag_target)?;
     let graph = build_graph(&resolve,
