@@ -279,9 +279,12 @@ fn resolve<'a>(registry: &mut PackageRegistry,
            all_features: bool,
            no_default_features: bool)
            -> CargoResult<(PackageSet<'a>, Resolve)> {
-    let features = features.iter().flat_map(|s| {
-        s.split_whitespace()
-    }).map(|s| s.to_string()).collect::<Vec<String>>();
+    let features = features.iter()
+        .flat_map(|s| s.split_whitespace())
+        .flat_map(|s| s.split(','))
+        .filter(|s| s.len() > 0)
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
 
     let (packages, resolve) = ops::resolve_ws(workspace)?;
 
