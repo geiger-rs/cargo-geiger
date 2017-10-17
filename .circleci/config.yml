@@ -27,7 +27,7 @@ jobs:
   build:
     working_directory: ~/build
     docker:
-      - image: jimmycuadra/rust:1.19.0
+      - image: rust:1.19.0
     steps:
       - checkout
       - run: apt-get update
