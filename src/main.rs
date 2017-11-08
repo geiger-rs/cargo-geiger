@@ -1,7 +1,9 @@
 extern crate cargo;
 extern crate env_logger;
 extern crate petgraph;
-extern crate rustc_serialize;
+
+#[macro_use]
+extern crate serde_derive;
 
 use cargo::{CliResult, Config};
 use cargo::core::{Package, PackageId, Resolve, Workspace};
@@ -10,7 +12,7 @@ use cargo::core::manifest::ManifestMetadata;
 use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
-use cargo::core::shell::{ColorConfig, Verbosity};
+use cargo::core::shell::Shell;
 use cargo::ops;
 use cargo::util::{self, important_paths, CargoError, CargoResult, Cfg};
 use petgraph::EdgeDirection;
@@ -56,9 +58,10 @@ Options:
     --color WHEN            Coloring: auto, always, never
     --frozen                Require Cargo.lock and cache are up to date
     --locked                Require Cargo.lock is up to date
+    -Z FLAG ...             Unstable (nightly-only) flags to Cargo
 ";
 
-#[derive(RustcDecodable)]
+#[derive(Deserialize)]
 struct Flags {
     flag_version: bool,
     flag_package: Option<String>,
@@ -79,15 +82,16 @@ struct Flags {
     flag_duplicates: bool,
     flag_frozen: bool,
     flag_locked: bool,
+    #[serde(rename = "flag_Z")] flag_z: Vec<String>,
 }
 
-#[derive(RustcDecodable)]
+#[derive(Deserialize)]
 enum Charset {
     Utf8,
     Ascii,
 }
 
-#[derive(RustcDecodable)]
+#[derive(Deserialize)]
 enum RawKind {
     Normal,
     Dev,
@@ -118,10 +122,10 @@ static ASCII_SYMBOLS: Symbols = Symbols {
 fn main() {
     env_logger::init().unwrap();
 
-    let config = match Config::default() {
+    let mut config = match Config::default() {
         Ok(cfg) => cfg,
         Err(e) => {
-            let mut shell = cargo::shell(Verbosity::Verbose, ColorConfig::Auto);
+            let mut shell = Shell::new();
             cargo::exit_with_error(e.into(), &mut shell)
         }
     };
@@ -136,7 +140,8 @@ fn main() {
                 })
                 .collect()
         );
-        cargo::call_main_without_stdin(real_main, &config, USAGE, &args, false)
+        let rest = &args;
+        cargo::call_main_without_stdin(real_main, &mut config, USAGE, rest, false)
     })();
 
     match result {
@@ -157,6 +162,7 @@ fn real_main(flags: Flags, config: &Config) -> CliResult {
         &flags.flag_color,
         flags.flag_frozen,
         flags.flag_locked,
+        &flags.flag_z,
     )?;
 
     let workspace = workspace(config, flags.flag_manifest_path)?;
@@ -316,8 +322,15 @@ fn resolve<'a>(
         }
     };
 
-    let resolve =
-        ops::resolve_with_previous(registry, workspace, method, Some(&resolve), None, &[])?;
+    let resolve = ops::resolve_with_previous(
+        registry,
+        workspace,
+        method,
+        Some(&resolve),
+        None,
+        &[],
+        false,
+    )?;
     Ok((packages, resolve))
 }
 
