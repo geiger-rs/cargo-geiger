@@ -37,10 +37,11 @@ impl Pattern {
         Ok(Pattern(chunks))
     }
 
-    pub fn display<'a>(&'a self,
-                       package: &'a PackageId,
-                       metadata: &'a ManifestMetadata)
-                       -> Display<'a> {
+    pub fn display<'a>(
+        &'a self,
+        package: &'a PackageId,
+        metadata: &'a ManifestMetadata,
+    ) -> Display<'a> {
         Display {
             pattern: self,
             package: package,
@@ -61,16 +62,12 @@ impl<'a> fmt::Display for Display<'a> {
             match *chunk {
                 Chunk::Raw(ref s) => try!(fmt.write_str(s)),
                 Chunk::Package => try!(write!(fmt, "{}", self.package)),
-                Chunk::License => {
-                    if let Some(ref license) = self.metadata.license {
-                        try!(write!(fmt, "{}", license))
-                    }
-                }
-                Chunk::Repository => {
-                    if let Some(ref repository) = self.metadata.repository {
-                        try!(write!(fmt, "{}", repository))
-                    }
-                }
+                Chunk::License => if let Some(ref license) = self.metadata.license {
+                    try!(write!(fmt, "{}", license))
+                },
+                Chunk::Repository => if let Some(ref repository) = self.metadata.repository {
+                    try!(write!(fmt, "{}", repository))
+                },
             }
         }
 

@@ -3,20 +3,20 @@ extern crate env_logger;
 extern crate petgraph;
 extern crate rustc_serialize;
 
-use cargo::{Config, CliResult};
-use cargo::core::{PackageId, Package, Resolve, Workspace};
+use cargo::{CliResult, Config};
+use cargo::core::{Package, PackageId, Resolve, Workspace};
 use cargo::core::dependency::Kind;
 use cargo::core::manifest::ManifestMetadata;
 use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
-use cargo::core::shell::{Verbosity, ColorConfig};
+use cargo::core::shell::{ColorConfig, Verbosity};
 use cargo::ops;
-use cargo::util::{self, important_paths, CargoResult, Cfg, CargoError};
+use cargo::util::{self, important_paths, CargoError, CargoResult, Cfg};
 use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::env;
 use std::str::{self, FromStr};
@@ -127,17 +127,21 @@ fn main() {
     };
 
     let result = (|| {
-        let args: Vec<_> = try!(env::args_os().map(|s| {
-            s.into_string().map_err(|s| {
-                CargoError::from(format!("invalid unicode in argument: {:?}", s))
-            })
-        }).collect());
+        let args: Vec<_> = try!(
+            env::args_os()
+                .map(|s| {
+                    s.into_string().map_err(|s| {
+                        CargoError::from(format!("invalid unicode in argument: {:?}", s))
+                    })
+                })
+                .collect()
+        );
         cargo::call_main_without_stdin(real_main, &config, USAGE, &args, false)
     })();
 
     match result {
         Err(e) => cargo::exit_with_error(e, &mut *config.shell()),
-        Ok(()) => {},
+        Ok(()) => {}
     }
 }
 
@@ -147,20 +151,24 @@ fn real_main(flags: Flags, config: &Config) -> CliResult {
         return Ok(());
     }
 
-    config.configure(flags.flag_verbose,
-                     flags.flag_quiet,
-                     &flags.flag_color,
-                     flags.flag_frozen,
-                     flags.flag_locked)?;
+    config.configure(
+        flags.flag_verbose,
+        flags.flag_quiet,
+        &flags.flag_color,
+        flags.flag_frozen,
+        flags.flag_locked,
+    )?;
 
     let workspace = workspace(config, flags.flag_manifest_path)?;
     let package = workspace.current()?;
     let mut registry = registry(config, &package)?;
-    let (packages, resolve) = resolve(&mut registry,
-                                      &workspace,
-                                      flags.flag_features,
-                                      flags.flag_all_features,
-                                      flags.flag_no_default_features)?;
+    let (packages, resolve) = resolve(
+        &mut registry,
+        &workspace,
+        flags.flag_features,
+        flags.flag_all_features,
+        flags.flag_no_default_features,
+    )?;
     let ids = packages.package_ids().cloned().collect::<Vec<_>>();
     let packages = registry.get(&ids);
 
@@ -184,11 +192,13 @@ fn real_main(flags: Flags, config: &Config) -> CliResult {
     let format = Pattern::new(format).map_err(|e| CargoError::from(e.to_string()))?;
 
     let cfgs = get_cfgs(config, &flags.flag_target)?;
-    let graph = build_graph(&resolve,
-                            &packages,
-                            package.package_id(),
-                            target,
-                            cfgs.as_ref().map(|r| &**r))?;
+    let graph = build_graph(
+        &resolve,
+        &packages,
+        package.package_id(),
+        target,
+        cfgs.as_ref().map(|r| &**r),
+    )?;
 
     let direction = if flags.flag_invert || flags.flag_duplicates {
         EdgeDirection::Incoming
@@ -204,25 +214,29 @@ fn real_main(flags: Flags, config: &Config) -> CliResult {
     if flags.flag_duplicates {
         let dups = find_duplicates(&graph);
         for dup in &dups {
-            print_tree(dup,
-                       kind,
-                       &graph,
-                       &format,
-                       direction,
-                       symbols,
-                       flags.flag_no_indent,
-                       flags.flag_all);
+            print_tree(
+                dup,
+                kind,
+                &graph,
+                &format,
+                direction,
+                symbols,
+                flags.flag_no_indent,
+                flags.flag_all,
+            );
             println!("");
         }
     } else {
-        print_tree(root,
-                   kind,
-                   &graph,
-                   &format,
-                   direction,
-                   symbols,
-                   flags.flag_no_indent,
-                   flags.flag_all);
+        print_tree(
+            root,
+            kind,
+            &graph,
+            &format,
+            direction,
+            symbols,
+            flags.flag_no_indent,
+            flags.flag_all,
+        );
     }
 
     Ok(())
@@ -259,7 +273,9 @@ fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<
     };
     let output = str::from_utf8(&output.stdout).unwrap();
     let lines = output.lines();
-    Ok(Some(lines.map(Cfg::from_str).collect::<CargoResult<Vec<_>>>()?))
+    Ok(Some(
+        lines.map(Cfg::from_str).collect::<CargoResult<Vec<_>>>()?,
+    ))
 }
 
 fn workspace(config: &Config, manifest_path: Option<String>) -> CargoResult<Workspace> {
@@ -273,13 +289,15 @@ fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageReg
     Ok(registry)
 }
 
-fn resolve<'a>(registry: &mut PackageRegistry,
-           workspace: &'a Workspace,
-           features: Vec<String>,
-           all_features: bool,
-           no_default_features: bool)
-           -> CargoResult<(PackageSet<'a>, Resolve)> {
-    let features = features.iter()
+fn resolve<'a>(
+    registry: &mut PackageRegistry,
+    workspace: &'a Workspace,
+    features: Vec<String>,
+    all_features: bool,
+    no_default_features: bool,
+) -> CargoResult<(PackageSet<'a>, Resolve)> {
+    let features = features
+        .iter()
         .flat_map(|s| s.split_whitespace())
         .flat_map(|s| s.split(','))
         .filter(|s| s.len() > 0)
@@ -298,12 +316,8 @@ fn resolve<'a>(registry: &mut PackageRegistry,
         }
     };
 
-    let resolve = ops::resolve_with_previous(registry,
-                                             workspace,
-                                             method,
-                                             Some(&resolve),
-                                             None,
-                                             &[])?;
+    let resolve =
+        ops::resolve_with_previous(registry, workspace, method, Some(&resolve), None, &[])?;
     Ok((packages, resolve))
 }
 
@@ -317,12 +331,13 @@ struct Graph<'a> {
     nodes: HashMap<&'a PackageId, NodeIndex>,
 }
 
-fn build_graph<'a>(resolve: &'a Resolve,
-                   packages: &'a PackageSet,
-                   root: &'a PackageId,
-                   target: &str,
-                   cfgs: Option<&[Cfg]>)
-                   -> CargoResult<Graph<'a>> {
+fn build_graph<'a>(
+    resolve: &'a Resolve,
+    packages: &'a PackageSet,
+    root: &'a PackageId,
+    target: &str,
+    cfgs: Option<&[Cfg]>,
+) -> CargoResult<Graph<'a>> {
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
         nodes: HashMap::new(),
@@ -343,7 +358,11 @@ fn build_graph<'a>(resolve: &'a Resolve,
             let it = pkg.dependencies()
                 .iter()
                 .filter(|d| d.matches_id(raw_dep_id))
-                .filter(|d| d.platform().map(|p| p.matches(target, cfgs)).unwrap_or(true));
+                .filter(|d| {
+                    d.platform()
+                        .map(|p| p.matches(target, cfgs))
+                        .unwrap_or(true)
+                });
             let dep_id = match resolve.replacement(raw_dep_id) {
                 Some(id) => id,
                 None => raw_dep_id,
@@ -368,40 +387,46 @@ fn build_graph<'a>(resolve: &'a Resolve,
     Ok(graph)
 }
 
-fn print_tree<'a>(package: &'a PackageId,
-                  kind: Kind,
-                  graph: &Graph<'a>,
-                  format: &Pattern,
-                  direction: EdgeDirection,
-                  symbols: &Symbols,
-                  no_indent: bool,
-                  all: bool) {
+fn print_tree<'a>(
+    package: &'a PackageId,
+    kind: Kind,
+    graph: &Graph<'a>,
+    format: &Pattern,
+    direction: EdgeDirection,
+    symbols: &Symbols,
+    no_indent: bool,
+    all: bool,
+) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
 
     let node = &graph.graph[graph.nodes[&package]];
-    print_dependency(node,
-                     kind,
-                     &graph,
-                     format,
-                     direction,
-                     symbols,
-                     &mut visited_deps,
-                     &mut levels_continue,
-                     no_indent,
-                     all);
+    print_dependency(
+        node,
+        kind,
+        &graph,
+        format,
+        direction,
+        symbols,
+        &mut visited_deps,
+        &mut levels_continue,
+        no_indent,
+        all,
+    );
 }
 
-fn print_dependency<'a>(package: &Node<'a>,
-                        kind: Kind,
-                        graph: &Graph<'a>,
-                        format: &Pattern,
-                        direction: EdgeDirection,
-                        symbols: &Symbols,
-                        visited_deps: &mut HashSet<&'a PackageId>,
-                        levels_continue: &mut Vec<bool>,
-                        no_indent: bool,
-                        all: bool) {
+fn print_dependency<'a>(
+    package: &Node<'a>,
+    kind: Kind,
+    graph: &Graph<'a>,
+    format: &Pattern,
+    direction: EdgeDirection,
+    symbols: &Symbols,
+    visited_deps: &mut HashSet<&'a PackageId>,
+    levels_continue: &mut Vec<bool>,
+    no_indent: bool,
+    all: bool,
+) {
     let new = all || visited_deps.insert(package.id);
     let star = if new { "" } else { " (*)" };
 
@@ -428,30 +453,31 @@ fn print_dependency<'a>(package: &Node<'a>,
     }
 
     // Resolve uses Hash data types internally but we want consistent output ordering
-    let mut deps = graph.graph
+    let mut deps = graph
+        .graph
         .edges_directed(graph.nodes[&package.id], direction)
         .filter(|edge| edge.weight() == &kind)
-        .map(|edge| {
-            match direction {
-                EdgeDirection::Incoming => &graph.graph[edge.source()],
-                EdgeDirection::Outgoing => &graph.graph[edge.target()],
-            }
+        .map(|edge| match direction {
+            EdgeDirection::Incoming => &graph.graph[edge.source()],
+            EdgeDirection::Outgoing => &graph.graph[edge.target()],
         })
         .collect::<Vec<_>>();
     deps.sort_by_key(|n| n.id);
     let mut it = deps.iter().peekable();
     while let Some(dependency) = it.next() {
         levels_continue.push(it.peek().is_some());
-        print_dependency(dependency,
-                         Kind::Normal,
-                         graph,
-                         format,
-                         direction,
-                         symbols,
-                         visited_deps,
-                         levels_continue,
-                         no_indent,
-                         all);
+        print_dependency(
+            dependency,
+            Kind::Normal,
+            graph,
+            format,
+            direction,
+            symbols,
+            visited_deps,
+            levels_continue,
+            no_indent,
+            all,
+        );
         levels_continue.pop();
     }
 }
