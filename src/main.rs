@@ -37,8 +37,6 @@ Options:
     -h, --help              Print this message
     -V, --version           Print version info and exit
     -p, --package PACKAGE   Set the package to be used as the root of the tree
-    -k, --kind KIND         Set the kind of dependencies to analyze. Valid
-                            values: normal, dev, build [default: normal]
     --features FEATURES     Space separated list of features to include
     --all-features          Include all available features
     --no-default-features   Do not include the `default` feature
@@ -65,7 +63,6 @@ Options:
 struct Flags {
     flag_version: bool,
     flag_package: Option<String>,
-    flag_kind: RawKind,
     flag_features: Vec<String>,
     flag_all_features: bool,
     flag_no_default_features: bool,
@@ -89,13 +86,6 @@ struct Flags {
 enum Charset {
     Utf8,
     Ascii,
-}
-
-#[derive(Deserialize)]
-enum RawKind {
-    Normal,
-    Dev,
-    Build,
 }
 
 struct Symbols {
@@ -183,12 +173,6 @@ fn real_main(flags: Flags, config: &Config) -> CliResult {
         None => package.package_id(),
     };
 
-    let kind = match flags.flag_kind {
-        RawKind::Normal => Kind::Normal,
-        RawKind::Dev => Kind::Development,
-        RawKind::Build => Kind::Build,
-    };
-
     let target = flags.flag_target.as_ref().unwrap_or(&config.rustc()?.host);
 
     let format = match flags.flag_format {
@@ -222,7 +206,6 @@ fn real_main(flags: Flags, config: &Config) -> CliResult {
         for dup in &dups {
             print_tree(
                 dup,
-                kind,
                 &graph,
                 &format,
                 direction,
@@ -235,7 +218,6 @@ fn real_main(flags: Flags, config: &Config) -> CliResult {
     } else {
         print_tree(
             root,
-            kind,
             &graph,
             &format,
             direction,
@@ -402,7 +384,6 @@ fn build_graph<'a>(
 
 fn print_tree<'a>(
     package: &'a PackageId,
-    kind: Kind,
     graph: &Graph<'a>,
     format: &Pattern,
     direction: EdgeDirection,
@@ -416,7 +397,6 @@ fn print_tree<'a>(
     let node = &graph.graph[graph.nodes[&package]];
     print_dependency(
         node,
-        kind,
         &graph,
         format,
         direction,
@@ -430,7 +410,6 @@ fn print_tree<'a>(
 
 fn print_dependency<'a>(
     package: &Node<'a>,
-    kind: Kind,
     graph: &Graph<'a>,
     format: &Pattern,
     direction: EdgeDirection,
@@ -465,23 +444,97 @@ fn print_dependency<'a>(
         return;
     }
 
-    // Resolve uses Hash data types internally but we want consistent output ordering
-    let mut deps = graph
+    let mut normal = vec![];
+    let mut build = vec![];
+    let mut development = vec![];
+    for edge in graph
         .graph
         .edges_directed(graph.nodes[&package.id], direction)
-        .filter(|edge| edge.weight() == &kind)
-        .map(|edge| match direction {
+    {
+        let dep = match direction {
             EdgeDirection::Incoming => &graph.graph[edge.source()],
             EdgeDirection::Outgoing => &graph.graph[edge.target()],
-        })
-        .collect::<Vec<_>>();
+        };
+        match *edge.weight() {
+            Kind::Normal => normal.push(dep),
+            Kind::Build => build.push(dep),
+            Kind::Development => development.push(dep),
+        }
+    }
+
+    print_dependency_kind(
+        Kind::Normal,
+        normal,
+        graph,
+        format,
+        direction,
+        symbols,
+        visited_deps,
+        levels_continue,
+        no_indent,
+        all,
+    );
+    print_dependency_kind(
+        Kind::Build,
+        build,
+        graph,
+        format,
+        direction,
+        symbols,
+        visited_deps,
+        levels_continue,
+        no_indent,
+        all,
+    );
+    print_dependency_kind(
+        Kind::Development,
+        development,
+        graph,
+        format,
+        direction,
+        symbols,
+        visited_deps,
+        levels_continue,
+        no_indent,
+        all,
+    );
+}
+
+fn print_dependency_kind<'a>(
+    kind: Kind,
+    mut deps: Vec<&Node<'a>>,
+    graph: &Graph<'a>,
+    format: &Pattern,
+    direction: EdgeDirection,
+    symbols: &Symbols,
+    visited_deps: &mut HashSet<&'a PackageId>,
+    levels_continue: &mut Vec<bool>,
+    no_indent: bool,
+    all: bool,
+) {
+    if deps.is_empty() {
+        return;
+    }
+
+    // Resolve uses Hash data types internally but we want consistent output ordering
     deps.sort_by_key(|n| n.id);
+
+    for &continues in &**levels_continue {
+        let c = if continues { symbols.down } else { " " };
+        print!("{}   ", c);
+    }
+    let name = match kind {
+        Kind::Normal => "[dependencies]",
+        Kind::Build => "[build-dependencies]",
+        Kind::Development => "[dev-dependencies]",
+    };
+    println!("{}", name);
+
     let mut it = deps.iter().peekable();
     while let Some(dependency) = it.next() {
         levels_continue.push(it.peek().is_some());
         print_dependency(
             dependency,
-            Kind::Normal,
             graph,
             format,
             direction,
