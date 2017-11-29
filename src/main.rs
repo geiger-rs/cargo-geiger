@@ -140,7 +140,7 @@ fn main() {
     }
 }
 
-fn real_main(flags: Flags, config: &Config) -> CliResult {
+fn real_main(flags: Flags, config: &mut Config) -> CliResult {
     if flags.flag_version {
         println!("cargo-tree {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
