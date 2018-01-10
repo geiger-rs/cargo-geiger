@@ -1,0 +1,8 @@
+[package]
+name = "cargo-osha"
+version = "0.1.0"
+authors = ["Simon Heath <icefoxen@gmail.com>"]
+
+[dependencies]
+#syn = "0.12"
+syn = {version = "0.12", features = ["parsing", "printing", "clone-impls", "full", "extra-traits"]}
