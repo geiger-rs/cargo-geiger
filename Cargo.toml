@@ -5,4 +5,4 @@ authors = ["Simon Heath <icefoxen@gmail.com>"]
 
 [dependencies]
 #syn = "0.12"
-syn = {version = "0.12", features = ["parsing", "printing", "clone-impls", "full", "extra-traits"]}
+syn = {version = "0.12", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"]}
