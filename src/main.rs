@@ -1,10 +1,11 @@
 extern crate syn;
+extern crate clap;
 
-use std::env;
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
-use std::process;
 
+use clap::{Arg, App};
 use syn::visit;
 
 unsafe fn foo() {
@@ -13,61 +14,113 @@ unsafe fn foo() {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct UnsafeTracker {
-    functions: u64,
-    unsafe_functions: u64,
-
-    exprs: u64,
-    unsafe_exprs: u64,
-
-    itemimpls: u64,
-    unsafe_itemimpls: u64,
+#[derive(Debug, Copy, Clone, Default)]
+pub struct Count {
+    num: u64,
+    unsafe_num: u64,
 }
 
-impl<'ast> visit::Visit<'ast> for UnsafeTracker {
-    fn visit_item_fn(&mut self, i: &'ast syn::ItemFn) {
-        self.functions += 1;
-        if i.unsafety.is_some() {
-            self.unsafe_functions += 1;
+impl Count {
+    fn count(&mut self, is_unsafe: bool) {
+        self.num += 1;
+        if is_unsafe {
+            self.unsafe_num += 1
         }
+    }
+}
+
+impl fmt::Display for Count {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
+        write!(f, "{}/{}", self.unsafe_num, self.num)
+    }
+}
+
+
+#[derive(Debug, Copy, Clone, Default)]
+pub struct UnsafeCounter {
+    functions: Count,
+
+    exprs: Count,
+
+    itemimpls: Count,
+
+    itemtraits: Count,
+
+    methods: Count,
+}
+
+impl<'ast> visit::Visit<'ast> for UnsafeCounter {
+    fn visit_item_fn(&mut self, i: &'ast syn::ItemFn) {
+        // fn definitions
+        self.functions.count(i.unsafety.is_some());
+        visit::visit_item_fn(self, i);
     }
 
     fn visit_expr(&mut self, i: &'ast syn::Expr) {
         // Total number of expressions of any type
-        self.exprs += 1;
+        self.exprs.count(false);
         visit::visit_expr(self, i);
     }
 
     fn visit_expr_unsafe(&mut self, i: &'ast syn::ExprUnsafe) {
-        // unsafe {} blocks
-        // BUGGO: Doesn't seem to work?
-        // BECAUSE, we have to actually recurse explicitly
-        // to walk the syntax tree.  Bah.  Bah!
-        self.unsafe_exprs += 1;
+        // unsafe {} expression blocks
+        self.exprs.count(true);
         visit::visit_expr_unsafe(self, i);
+    }
+
+    fn visit_item_impl(&mut self, i: &'ast syn::ItemImpl) {
+        // unsafe trait impl's
+        self.itemimpls.count(i.unsafety.is_some());
+        visit::visit_item_impl(self, i);
+    }
+
+    fn visit_item_trait(&mut self, i: &'ast syn::ItemTrait) {
+        // Unsafe traits
+        self.itemtraits.count(i.unsafety.is_some());
+        visit::visit_item_trait(self, i);
+
+    }
+
+    fn visit_impl_item_method(&mut self, i: &'ast syn::ImplItemMethod) {
+        self.methods.count(i.sig.unsafety.is_some());
+        visit::visit_impl_item_method(self, i);
+    }
+}
+
+impl fmt::Display for UnsafeCounter {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
+        writeln!(f, "Unsafe functions: {}", self.functions)?;
+        writeln!(f, "Unsafe expressions: {}", self.exprs)?;
+        writeln!(f, "Unsafe traits: {}", self.itemtraits)?;
+        writeln!(f, "Unsafe methods: {}", self.methods)?;
+        write!(f, "Unsafe impls: {}", self.itemimpls)
     }
 }
 
 fn main() {
-    let mut args = env::args();
-    let _ = args.next(); // executable name
+    let matches = App::new("cargo-osha")
+        .about("Prints statistics on the number of `unsafe` blocks in a Rust file.")
+        .arg(Arg::with_name("files")
+             .required(true)
+             .takes_value(true)
+             .multiple(true)
+             .help("Files to process")
+        )
+        .get_matches();
 
-    let filename = match (args.next(), args.next()) {
-        (Some(filename), None) => filename,
-        _ => {
-            eprintln!("Usage: cargo run -- path/to/filename.rs");
-            process::exit(1);
+    let tracker = &mut UnsafeCounter::default();
+    
+    if let Some(v) = matches.values_of("files") {
+        for filename in v {
+            println!("Processing file {}", filename);
+            let mut file = File::open(filename).expect("Unable to open file");
+            
+            let mut src = String::new();
+            file.read_to_string(&mut src).expect("Unable to read file");
+            
+            let syntax = syn::parse_file(&src).expect("Unable to parse file");
+            syn::visit::visit_file(tracker, &syntax);
         }
-    };
-
-    let mut file = File::open(&filename).expect("Unable to open file");
-
-    let mut src = String::new();
-    file.read_to_string(&mut src).expect("Unable to read file");
-
-    let syntax = syn::parse_file(&src).expect("Unable to parse file");
-    let tracker = &mut UnsafeTracker::default();
-    syn::visit::visit_file(tracker, &syntax);
-    println!("{:#?}", tracker);
+    }
+    println!("{}", tracker);
 }
