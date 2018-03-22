@@ -1,4 +1,7 @@
 extern crate cargo;
+
+#[macro_use]
+extern crate failure;
 extern crate env_logger;
 extern crate petgraph;
 
@@ -110,7 +113,7 @@ static ASCII_SYMBOLS: Symbols = Symbols {
 };
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
 
     let mut config = match Config::default() {
         Ok(cfg) => cfg,
@@ -125,7 +128,7 @@ fn main() {
             env::args_os()
                 .map(|s| {
                     s.into_string().map_err(|s| {
-                        CargoError::from(format!("invalid unicode in argument: {:?}", s))
+                        CargoError::from(format_err!("invalid unicode in argument: {:?}", s))
                     })
                 })
                 .collect()
@@ -179,7 +182,7 @@ fn real_main(flags: Flags, config: &mut Config) -> CliResult {
         Some(ref r) => &**r,
         None => "{p}",
     };
-    let format = Pattern::new(format).map_err(|e| CargoError::from(e.to_string()))?;
+    let format = Pattern::new(format).map_err(|e| failure::err_msg(e.to_string()))?;
 
     let cfgs = get_cfgs(config, &flags.flag_target)?;
     let graph = build_graph(
