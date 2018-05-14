@@ -1,5 +1,5 @@
 deps_key: &DEPS_KEY
-  key: dependencies-1.20-{{ checksum "Cargo.lock" }}
+  key: dependencies-1.26-{{ checksum "Cargo.lock" }}
 
 restore_registry: &RESTORE_REGISTRY
   restore_cache:
@@ -27,7 +27,7 @@ jobs:
   build:
     working_directory: ~/build
     docker:
-      - image: rust:1.20.0
+      - image: rust:1.26.0
     steps:
       - checkout
       - run: apt-get update
