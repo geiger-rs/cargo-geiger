@@ -1,94 +1,123 @@
 extern crate cargo;
-
-#[macro_use]
-extern crate failure;
 extern crate env_logger;
+extern crate failure;
 extern crate petgraph;
 
 #[macro_use]
-extern crate serde_derive;
+extern crate structopt;
 
-use cargo::{CliResult, Config};
-use cargo::core::{Package, PackageId, Resolve, Workspace};
 use cargo::core::dependency::Kind;
 use cargo::core::manifest::ManifestMetadata;
 use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::core::shell::Shell;
+use cargo::core::{Package, PackageId, Resolve, Workspace};
 use cargo::ops;
-use cargo::util::{self, important_paths, CargoError, CargoResult, Cfg};
-use petgraph::EdgeDirection;
+use cargo::util::{self, important_paths, CargoResult, Cfg};
+use cargo::{CliResult, Config};
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
-use std::collections::{HashMap, HashSet};
+use petgraph::EdgeDirection;
 use std::collections::hash_map::Entry;
-use std::env;
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::str::{self, FromStr};
+use structopt::clap::AppSettings;
+use structopt::StructOpt;
 
 use format::Pattern;
 
 mod format;
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
-const USAGE: &'static str = "
-Display a tree visualization of a dependency graph
-
-Usage: cargo tree [options]
-
-Options:
-    -h, --help              Print this message
-    -V, --version           Print version info and exit
-    -p, --package PACKAGE   Set the package to be used as the root of the tree
-    --features FEATURES     Space separated list of features to include
-    --all-features          Include all available features
-    --no-default-features   Do not include the `default` feature
-    --target TARGET         Set the target triple
-    -i, --invert            Invert the tree direction
-    --no-indent             Display dependencies as a list (rather than a graph)
-    -a, --all               Don't truncate dependencies that have already been
-                            displayed
-    -d, --duplicates        Show only dependencies which come in multiple
-                            versions (implies --invert)
-    --charset CHARSET       Set the character set to use in output. Valid
-                            values: utf8, ascii [default: utf8]
-    -f, --format FORMAT     Format string for printing dependencies
-    --manifest-path PATH    Path to the manifest to analyze
-    -v, --verbose           Use verbose output
-    -q, --quiet             No output printed to stdout other than the tree
-    --color WHEN            Coloring: auto, always, never
-    --frozen                Require Cargo.lock and cache are up to date
-    --locked                Require Cargo.lock is up to date
-    -Z FLAG ...             Unstable (nightly-only) flags to Cargo
-";
-
-#[derive(Deserialize)]
-struct Flags {
-    flag_version: bool,
-    flag_package: Option<String>,
-    flag_features: Vec<String>,
-    flag_all_features: bool,
-    flag_no_default_features: bool,
-    flag_target: Option<String>,
-    flag_invert: bool,
-    flag_no_indent: bool,
-    flag_all: bool,
-    flag_charset: Charset,
-    flag_format: Option<String>,
-    flag_manifest_path: Option<String>,
-    flag_verbose: u32,
-    flag_quiet: Option<bool>,
-    flag_color: Option<String>,
-    flag_duplicates: bool,
-    flag_frozen: bool,
-    flag_locked: bool,
-    #[serde(rename = "flag_Z")] flag_z: Vec<String>,
+#[derive(StructOpt)]
+#[structopt(bin_name = "cargo")]
+enum Opts {
+    #[structopt(
+        name = "tree",
+        raw(
+            setting = "AppSettings::UnifiedHelpMessage",
+            setting = "AppSettings::DeriveDisplayOrder",
+            setting = "AppSettings::DontCollapseArgsInUsage"
+        )
+    )]
+    /// Display a tree visualization of a dependency graph
+    Tree(Args),
 }
 
-#[derive(Deserialize)]
+#[derive(StructOpt)]
+struct Args {
+    #[structopt(long = "package", short = "p", value_name = "SPEC")]
+    /// Package to be used as the root of the tree
+    package: Option<String>,
+    #[structopt(long = "features", value_name = "FEATURES")]
+    /// Space-separated list of features to activate
+    features: Option<String>,
+    #[structopt(long = "all-features")]
+    /// Activate all available features
+    all_features: bool,
+    #[structopt(long = "no-default-features")]
+    /// Do not activate the `default` feature
+    no_default_features: bool,
+    #[structopt(long = "target", value_name = "TARGET")]
+    /// Set the target triple
+    target: Option<String>,
+    #[structopt(long = "manifest-path", value_name = "PATH", parse(from_os_str))]
+    /// Path to Cargo.toml
+    manifest_path: Option<PathBuf>,
+    #[structopt(long = "invert", short = "i")]
+    /// Invert the tree direction
+    invert: bool,
+    #[structopt(long = "no-indent")]
+    /// Display the dependencies as a list (rather than a tree)
+    no_indent: bool,
+    #[structopt(long = "all", short = "a")]
+    /// Don't truncate dependencies that have already been displayed
+    all: bool,
+    #[structopt(long = "duplicate", short = "d")]
+    /// Show only dependencies which come in multiple versions (implies -i)
+    duplicates: bool,
+    #[structopt(long = "charset", value_name = "CHARSET", default_value = "utf8")]
+    /// Character set to use in output: utf8, ascii
+    charset: Charset,
+    #[structopt(long = "format", short = "f", value_name = "FORMAT", default_value = "{p}")]
+    /// Format string used for printing dependencies
+    format: String,
+    #[structopt(long = "verbose", short = "v", parse(from_occurrences))]
+    /// Use verbose output (-vv very verbose/build.rs output)
+    verbose: u32,
+    #[structopt(long = "quiet", short = "q")]
+    /// No output printed to stdout other than the tree
+    quiet: Option<bool>,
+    #[structopt(long = "color", value_name = "WHEN")]
+    /// Coloring: auto, always, never
+    color: Option<String>,
+    #[structopt(long = "frozen")]
+    /// Require Cargo.lock and cache are up to date
+    frozen: bool,
+    #[structopt(long = "locked")]
+    /// Require Cargo.lock is up to date
+    locked: bool,
+    #[structopt(short = "Z", value_name = "FLAG")]
+    /// Unstable (nightly-only) flags to Cargo
+    unstable_flags: Vec<String>,
+}
+
 enum Charset {
     Utf8,
     Ascii,
+}
+
+impl FromStr for Charset {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Charset, &'static str> {
+        match s {
+            "utf8" => Ok(Charset::Utf8),
+            "ascii" => Ok(Charset::Ascii),
+            _ => Err("invalid charset"),
+        }
+    }
 }
 
 struct Symbols {
@@ -123,68 +152,47 @@ fn main() {
         }
     };
 
-    let result = (|| {
-        let args: Vec<_> = try!(
-            env::args_os()
-                .map(|s| {
-                    s.into_string().map_err(|s| {
-                        CargoError::from(format_err!("invalid unicode in argument: {:?}", s))
-                    })
-                })
-                .collect()
-        );
-        let rest = &args;
-        cargo::call_main_without_stdin(real_main, &mut config, USAGE, rest, false)
-    })();
+    let Opts::Tree(args) = Opts::from_args();
 
-    match result {
-        Err(e) => cargo::exit_with_error(e, &mut *config.shell()),
-        Ok(()) => {}
+    if let Err(e) = real_main(args, &mut config) {
+        let mut shell = Shell::new();
+        cargo::exit_with_error(e.into(), &mut shell)
     }
 }
 
-fn real_main(flags: Flags, config: &mut Config) -> CliResult {
-    if flags.flag_version {
-        println!("cargo-tree {}", env!("CARGO_PKG_VERSION"));
-        return Ok(());
-    }
-
+fn real_main(args: Args, config: &mut Config) -> CliResult {
     config.configure(
-        flags.flag_verbose,
-        flags.flag_quiet,
-        &flags.flag_color,
-        flags.flag_frozen,
-        flags.flag_locked,
-        &flags.flag_z,
+        args.verbose,
+        args.quiet,
+        &args.color,
+        args.frozen,
+        args.locked,
+        &args.unstable_flags,
     )?;
 
-    let workspace = workspace(config, flags.flag_manifest_path)?;
+    let workspace = workspace(config, args.manifest_path)?;
     let package = workspace.current()?;
     let mut registry = registry(config, &package)?;
     let (packages, resolve) = resolve(
         &mut registry,
         &workspace,
-        flags.flag_features,
-        flags.flag_all_features,
-        flags.flag_no_default_features,
+        args.features,
+        args.all_features,
+        args.no_default_features,
     )?;
     let ids = packages.package_ids().cloned().collect::<Vec<_>>();
     let packages = registry.get(&ids);
 
-    let root = match flags.flag_package {
+    let root = match args.package {
         Some(ref pkg) => resolve.query(pkg)?,
         None => package.package_id(),
     };
 
-    let target = flags.flag_target.as_ref().unwrap_or(&config.rustc()?.host);
+    let target = args.target.as_ref().unwrap_or(&config.rustc()?.host);
 
-    let format = match flags.flag_format {
-        Some(ref r) => &**r,
-        None => "{p}",
-    };
-    let format = Pattern::new(format).map_err(|e| failure::err_msg(e.to_string()))?;
+    let format = Pattern::new(&args.format).map_err(|e| failure::err_msg(e.to_string()))?;
 
-    let cfgs = get_cfgs(config, &flags.flag_target)?;
+    let cfgs = get_cfgs(config, &args.target)?;
     let graph = build_graph(
         &resolve,
         &packages,
@@ -193,18 +201,18 @@ fn real_main(flags: Flags, config: &mut Config) -> CliResult {
         cfgs.as_ref().map(|r| &**r),
     )?;
 
-    let direction = if flags.flag_invert || flags.flag_duplicates {
+    let direction = if args.invert || args.duplicates {
         EdgeDirection::Incoming
     } else {
         EdgeDirection::Outgoing
     };
 
-    let symbols = match flags.flag_charset {
+    let symbols = match args.charset {
         Charset::Ascii => &ASCII_SYMBOLS,
         Charset::Utf8 => &UTF8_SYMBOLS,
     };
 
-    if flags.flag_duplicates {
+    if args.duplicates {
         let dups = find_duplicates(&graph);
         for dup in &dups {
             print_tree(
@@ -213,10 +221,10 @@ fn real_main(flags: Flags, config: &mut Config) -> CliResult {
                 &format,
                 direction,
                 symbols,
-                flags.flag_no_indent,
-                flags.flag_all,
+                args.no_indent,
+                args.all,
             );
-            println!("");
+            println!();
         }
     } else {
         print_tree(
@@ -225,8 +233,8 @@ fn real_main(flags: Flags, config: &mut Config) -> CliResult {
             &format,
             direction,
             symbols,
-            flags.flag_no_indent,
-            flags.flag_all,
+            args.no_indent,
+            args.all,
         );
     }
 
@@ -264,13 +272,16 @@ fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<
     };
     let output = str::from_utf8(&output.stdout).unwrap();
     let lines = output.lines();
-    Ok(Some(
-        lines.map(Cfg::from_str).collect::<CargoResult<Vec<_>>>()?,
-    ))
+    Ok(Some(lines
+        .map(Cfg::from_str)
+        .collect::<CargoResult<Vec<_>>>()?))
 }
 
-fn workspace(config: &Config, manifest_path: Option<String>) -> CargoResult<Workspace> {
-    let root = important_paths::find_root_manifest_for_wd(manifest_path, config.cwd())?;
+fn workspace(config: &Config, manifest_path: Option<PathBuf>) -> CargoResult<Workspace> {
+    let root = match manifest_path {
+        Some(path) => path,
+        None => important_paths::find_root_manifest_for_wd(config.cwd())?,
+    };
     Workspace::new(&root, config)
 }
 
@@ -280,31 +291,22 @@ fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageReg
     Ok(registry)
 }
 
-fn resolve<'a>(
-    registry: &mut PackageRegistry,
-    workspace: &'a Workspace,
-    features: Vec<String>,
+fn resolve<'a, 'cfg>(
+    registry: &mut PackageRegistry<'cfg>,
+    workspace: &'a Workspace<'cfg>,
+    features: Option<String>,
     all_features: bool,
     no_default_features: bool,
 ) -> CargoResult<(PackageSet<'a>, Resolve)> {
-    let features = features
-        .iter()
-        .flat_map(|s| s.split_whitespace())
-        .flat_map(|s| s.split(','))
-        .filter(|s| s.len() > 0)
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
+    let features = Method::split_features(&features.into_iter().collect::<Vec<_>>());
 
     let (packages, resolve) = ops::resolve_ws(workspace)?;
 
-    let method = if all_features {
-        Method::Everything
-    } else {
-        Method::Required {
-            dev_deps: true,
-            features: &features,
-            uses_default_features: !no_default_features,
-        }
+    let method = Method::Required {
+        dev_deps: true,
+        features: &features,
+        all_features,
+        uses_default_features: !no_default_features,
     };
 
     let resolve = ops::resolve_with_previous(
@@ -314,7 +316,8 @@ fn resolve<'a>(
         Some(&resolve),
         None,
         &[],
-        false,
+        true,
+        true,
     )?;
     Ok((packages, resolve))
 }

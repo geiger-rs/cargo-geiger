@@ -1,16 +1,15 @@
 [package]
 name = "cargo-tree"
 version = "0.17.0"
-authors = ["Steven Fackler <sfackler@palantir.com>"]
+authors = ["Steven Fackler <sfackler@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "A Cargo subcommand that visualizes a crate's dependency graph in a tree-like format"
 repository = "https://github.com/sfackler/cargo-tree"
 readme = "README.md"
 
 [dependencies]
-cargo = "0.25"
+cargo = "0.27"
 env_logger = "0.5"
 failure = "0.1"
 petgraph = "0.4"
-serde = "1.0"
-serde_derive = "1.0"
+structopt = "0.2"
