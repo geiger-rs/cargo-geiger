@@ -525,16 +525,19 @@ fn print_dependency_kind<'a>(
     // Resolve uses Hash data types internally but we want consistent output ordering
     deps.sort_by_key(|n| n.id);
 
-    for &continues in &**levels_continue {
-        let c = if continues { symbols.down } else { " " };
-        print!("{}   ", c);
-    }
     let name = match kind {
-        Kind::Normal => "[dependencies]",
-        Kind::Build => "[build-dependencies]",
-        Kind::Development => "[dev-dependencies]",
+        Kind::Normal => None,
+        Kind::Build => Some("[build-dependencies]"),
+        Kind::Development => Some("[dev-dependencies]"),
     };
-    println!("{}", name);
+    if let Some(name) = name {
+        for &continues in &**levels_continue {
+            let c = if continues { symbols.down } else { " " };
+            print!("{}   ", c);
+        }
+
+        println!("{}", name);
+    }
 
     let mut it = deps.iter().peekable();
     while let Some(dependency) = it.next() {
