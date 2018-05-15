@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-tree"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "cargo 0.27.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
