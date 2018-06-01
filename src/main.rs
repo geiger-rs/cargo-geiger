@@ -62,6 +62,9 @@ struct Args {
     #[structopt(long = "target", value_name = "TARGET")]
     /// Set the target triple
     target: Option<String>,
+    #[structopt(long = "all-targets")]
+    /// Return dependencies for all targets. By default only the host target is matched.
+    all_targets: bool,
     #[structopt(long = "manifest-path", value_name = "PATH", parse(from_os_str))]
     /// Path to Cargo.toml
     manifest_path: Option<PathBuf>,
@@ -188,7 +191,11 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         None => package.package_id(),
     };
 
-    let target = args.target.as_ref().unwrap_or(&config.rustc()?.host);
+    let target = if args.all_targets {
+        None
+    } else {
+        Some(args.target.as_ref().unwrap_or(&config.rustc()?.host).as_str())
+    };
 
     let format = Pattern::new(&args.format).map_err(|e| failure::err_msg(e.to_string()))?;
 
@@ -336,7 +343,7 @@ fn build_graph<'a>(
     resolve: &'a Resolve,
     packages: &'a PackageSet,
     root: &'a PackageId,
-    target: &str,
+    target: Option<&str>,
     cfgs: Option<&[Cfg]>,
 ) -> CargoResult<Graph<'a>> {
     let mut graph = Graph {
@@ -361,7 +368,7 @@ fn build_graph<'a>(
                 .filter(|d| d.matches_id(raw_dep_id))
                 .filter(|d| {
                     d.platform()
-                        .map(|p| p.matches(target, cfgs))
+                        .and_then(|p| target.map(|t| p.matches(t, cfgs)))
                         .unwrap_or(true)
                 });
             let dep_id = match resolve.replacement(raw_dep_id) {
