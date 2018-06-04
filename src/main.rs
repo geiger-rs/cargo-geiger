@@ -62,6 +62,9 @@ struct Args {
     #[structopt(long = "target", value_name = "TARGET")]
     /// Set the target triple
     target: Option<String>,
+    #[structopt(long = "all-targets")]
+    /// Return dependencies for all targets. By default only the host target is matched.
+    all_targets: bool,
     #[structopt(long = "manifest-path", value_name = "PATH", parse(from_os_str))]
     /// Path to Cargo.toml
     manifest_path: Option<PathBuf>,
@@ -71,6 +74,9 @@ struct Args {
     #[structopt(long = "no-indent")]
     /// Display the dependencies as a list (rather than a tree)
     no_indent: bool,
+    #[structopt(long = "prefix-depth")]
+    /// Display the dependencies as a list (rather than a tree), but prefixed with the depth
+    prefix_depth: bool,
     #[structopt(long = "all", short = "a")]
     /// Don't truncate dependencies that have already been displayed
     all: bool,
@@ -106,6 +112,13 @@ struct Args {
 enum Charset {
     Utf8,
     Ascii,
+}
+
+#[derive(Clone, Copy)]
+enum Prefix {
+    None,
+    Indent,
+    Depth,
 }
 
 impl FromStr for Charset {
@@ -188,7 +201,11 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         None => package.package_id(),
     };
 
-    let target = args.target.as_ref().unwrap_or(&config.rustc()?.host);
+    let target = if args.all_targets {
+        None
+    } else {
+        Some(args.target.as_ref().unwrap_or(&config.rustc()?.host).as_str())
+    };
 
     let format = Pattern::new(&args.format).map_err(|e| failure::err_msg(e.to_string()))?;
 
@@ -212,6 +229,14 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         Charset::Utf8 => &UTF8_SYMBOLS,
     };
 
+    let prefix = if args.prefix_depth {
+        Prefix::Depth
+    } else if args.no_indent {
+        Prefix::None
+    } else {
+        Prefix::Indent
+    };
+
     if args.duplicates {
         let dups = find_duplicates(&graph);
         for dup in &dups {
@@ -221,7 +246,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
                 &format,
                 direction,
                 symbols,
-                args.no_indent,
+                prefix,
                 args.all,
             );
             println!();
@@ -233,7 +258,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
             &format,
             direction,
             symbols,
-            args.no_indent,
+            prefix,
             args.all,
         );
     }
@@ -336,7 +361,7 @@ fn build_graph<'a>(
     resolve: &'a Resolve,
     packages: &'a PackageSet,
     root: &'a PackageId,
-    target: &str,
+    target: Option<&str>,
     cfgs: Option<&[Cfg]>,
 ) -> CargoResult<Graph<'a>> {
     let mut graph = Graph {
@@ -361,7 +386,7 @@ fn build_graph<'a>(
                 .filter(|d| d.matches_id(raw_dep_id))
                 .filter(|d| {
                     d.platform()
-                        .map(|p| p.matches(target, cfgs))
+                        .and_then(|p| target.map(|t| p.matches(t, cfgs)))
                         .unwrap_or(true)
                 });
             let dep_id = match resolve.replacement(raw_dep_id) {
@@ -394,7 +419,7 @@ fn print_tree<'a>(
     format: &Pattern,
     direction: EdgeDirection,
     symbols: &Symbols,
-    no_indent: bool,
+    prefix: Prefix,
     all: bool,
 ) {
     let mut visited_deps = HashSet::new();
@@ -409,7 +434,7 @@ fn print_tree<'a>(
         symbols,
         &mut visited_deps,
         &mut levels_continue,
-        no_indent,
+        prefix,
         all,
     );
 }
@@ -422,26 +447,30 @@ fn print_dependency<'a>(
     symbols: &Symbols,
     visited_deps: &mut HashSet<&'a PackageId>,
     levels_continue: &mut Vec<bool>,
-    no_indent: bool,
+    prefix: Prefix,
     all: bool,
 ) {
     let new = all || visited_deps.insert(package.id);
     let star = if new { "" } else { " (*)" };
 
-    if !no_indent {
-        if let Some((&last_continues, rest)) = levels_continue.split_last() {
-            for &continues in rest {
-                let c = if continues { symbols.down } else { " " };
-                print!("{}   ", c);
-            }
+    match prefix {
+        Prefix::Depth => print!("{} ", levels_continue.len()),
+        Prefix::Indent => {
+            if let Some((&last_continues, rest)) = levels_continue.split_last() {
+                for &continues in rest {
+                    let c = if continues { symbols.down } else { " " };
+                    print!("{}   ", c);
+                }
 
-            let c = if last_continues {
-                symbols.tee
-            } else {
-                symbols.ell
-            };
-            print!("{0}{1}{1} ", c, symbols.right);
-        }
+                let c = if last_continues {
+                    symbols.tee
+                } else {
+                    symbols.ell
+                };
+                print!("{0}{1}{1} ", c, symbols.right);
+            }
+        },
+        Prefix::None => ()
     }
 
     println!("{}{}", format.display(package.id, package.metadata), star);
@@ -477,7 +506,7 @@ fn print_dependency<'a>(
         symbols,
         visited_deps,
         levels_continue,
-        no_indent,
+        prefix,
         all,
     );
     print_dependency_kind(
@@ -489,7 +518,7 @@ fn print_dependency<'a>(
         symbols,
         visited_deps,
         levels_continue,
-        no_indent,
+        prefix,
         all,
     );
     print_dependency_kind(
@@ -501,7 +530,7 @@ fn print_dependency<'a>(
         symbols,
         visited_deps,
         levels_continue,
-        no_indent,
+        prefix,
         all,
     );
 }
@@ -515,7 +544,7 @@ fn print_dependency_kind<'a>(
     symbols: &Symbols,
     visited_deps: &mut HashSet<&'a PackageId>,
     levels_continue: &mut Vec<bool>,
-    no_indent: bool,
+    prefix: Prefix,
     all: bool,
 ) {
     if deps.is_empty() {
@@ -530,13 +559,15 @@ fn print_dependency_kind<'a>(
         Kind::Build => Some("[build-dependencies]"),
         Kind::Development => Some("[dev-dependencies]"),
     };
-    if let Some(name) = name {
-        for &continues in &**levels_continue {
-            let c = if continues { symbols.down } else { " " };
-            print!("{}   ", c);
-        }
+    if let Prefix::Indent = prefix {
+        if let Some(name) = name {
+            for &continues in &**levels_continue {
+                let c = if continues { symbols.down } else { " " };
+                print!("{}   ", c);
+            }
 
-        println!("{}", name);
+            println!("{}", name);
+        }
     }
 
     let mut it = deps.iter().peekable();
@@ -550,7 +581,7 @@ fn print_dependency_kind<'a>(
             symbols,
             visited_deps,
             levels_continue,
-            no_indent,
+            prefix,
             all,
         );
         levels_continue.pop();
