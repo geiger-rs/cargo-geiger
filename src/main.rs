@@ -559,13 +559,15 @@ fn print_dependency_kind<'a>(
         Kind::Build => Some("[build-dependencies]"),
         Kind::Development => Some("[dev-dependencies]"),
     };
-    if let Some(name) = name {
-        for &continues in &**levels_continue {
-            let c = if continues { symbols.down } else { " " };
-            print!("{}   ", c);
-        }
+    if let Prefix::Indent = prefix {
+        if let Some(name) = name {
+            for &continues in &**levels_continue {
+                let c = if continues { symbols.down } else { " " };
+                print!("{}   ", c);
+            }
 
-        println!("{}", name);
+            println!("{}", name);
+        }
     }
 
     let mut it = deps.iter().peekable();
