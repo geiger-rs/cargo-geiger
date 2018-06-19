@@ -10,6 +10,7 @@ use syn::visit;
 
 unsafe fn foo() {
     unsafe {
+        let a = 10;
         println!("Bar");
     }
 }
@@ -47,6 +48,8 @@ pub struct UnsafeCounter {
     itemtraits: Count,
 
     methods: Count,
+
+    in_unsafe_block: bool,
 }
 
 impl<'ast> visit::Visit<'ast> for UnsafeCounter {
@@ -58,14 +61,15 @@ impl<'ast> visit::Visit<'ast> for UnsafeCounter {
 
     fn visit_expr(&mut self, i: &'ast syn::Expr) {
         // Total number of expressions of any type
-        self.exprs.count(false);
+        self.exprs.count(self.in_unsafe_block);
         visit::visit_expr(self, i);
     }
 
     fn visit_expr_unsafe(&mut self, i: &'ast syn::ExprUnsafe) {
         // unsafe {} expression blocks
-        self.exprs.count(true);
+        self.in_unsafe_block = true;
         visit::visit_expr_unsafe(self, i);
+        self.in_unsafe_block = false;
     }
 
     fn visit_item_impl(&mut self, i: &'ast syn::ItemImpl) {
