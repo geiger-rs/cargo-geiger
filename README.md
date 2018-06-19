@@ -69,8 +69,11 @@ and dirty investigation, because partial information is better than no
 information.  `/u/annodomini` on Reddit said it best:
 
 > It's a quick metric for doing a preliminary overview, not a replacement for doing proper auditing.  
+> 
 > Taking a look at the output of cargo-osha posted elsewhere in the thread, there are 1025 unsafe expressions in actix-web, out of a total of 37602. That tells me that there's a pretty large auditing job to do, just to determine what invariants need to apply for those 1025 unsafe expressions to be valid, let alone auditing any of the code within privacy boundaries that the unsafe code relies on to uphold those invariants.
+> 
 > If a crate has two or three unsafe expressions, that tells me that it could be relatively quick to audit those expressions, figure out the invariants they rely on, and then audit everything in the code base that could impact those invariants; for instance, if it relies on invariants about length and capacity, then from there you just have to audit things that touch length and capacity. Or in some cases, the unsafe code doesn't really depend on any other invariants, and can be audited in isolation.
+> 
 > On the other hand, if you have 1025 unsafe expressions, that's a huge job to audit all of those plus everything that could impact whether those are actually valid or not.
 
 # Why the name?
