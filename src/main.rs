@@ -480,7 +480,12 @@ fn print_dependency<'a>(
         Prefix::None => ()
     }
     
-    let counters = find_unsafe(package.pack.root());
+    // TODO: Add command line flag for this.
+    let allow_partial_results = true;
+
+    let counters = find_unsafe(
+        package.pack.root(),
+        allow_partial_results);
     let compact_unsafe_info = format!(
         "({}, {}, {}, {}, {})",
         counters.functions.unsafe_num,

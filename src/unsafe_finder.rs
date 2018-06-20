@@ -102,7 +102,7 @@ impl fmt::Display for UnsafeCounter {
     }
 }
 
-pub fn find_unsafe(p: &Path) -> UnsafeCounter {
+pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
     /*
     let matches = App::new("cargo-osha")
         .about("Prints statistics on the number of `unsafe` blocks in a Rust file.")
@@ -138,7 +138,15 @@ pub fn find_unsafe(p: &Path) -> UnsafeCounter {
         let mut file = File::open(p).expect("Unable to open file");
         let mut src = String::new();
         file.read_to_string(&mut src).expect("Unable to read file");
-        let syntax = syn::parse_file(&src).expect("Unable to parse file");
+        let syntax = match (allow_partial_results, syn::parse_file(&src)) {
+            (_, Ok(s)) => s,
+            (true, Err(_)) => {
+                // TODO: Do proper error logging.
+                println!("Failed to parse: {}", &src);
+                continue
+            },
+            (false, Err(e)) => panic!(e)
+        };
         syn::visit::visit_file(tracker, &syntax);
     }
     *tracker
