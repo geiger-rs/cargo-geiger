@@ -1,9 +1,10 @@
 # cargo-osha
 
-A Cargo plugin to list unsafe code in a Rust project.  Right now
-mostly a proof of concept.
+A program to list unsafe code in a Rust project.  Not actually a cargo plugin (yet).
 
-Not actually a cargo plugin yet.
+**Right now this is a proof of concept.**  I wanted to play with a tool like this to see if
+it was feasible.  I don't really intend to be actively developing it.  If someone wants to
+work on it, or a similar tool, go ahead with my blessing.  
 
 # Example
 
@@ -19,6 +20,9 @@ Unsafe traits: 0/14
 Unsafe methods: 14/460
 Unsafe impls: 21/136
 ```
+
+So, out of 85 functions in the files, 20 of them are marked `unsafe`.  Out of 460 methods,
+14 of them are `unsafe`, and so on.
 
 Example from `ggez`, a crate that mostly uses dependencies that
 provide safe wrappers, and so needs little unsafe code itself:
