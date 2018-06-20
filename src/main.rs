@@ -481,7 +481,7 @@ fn print_dependency<'a>(
     }
     
     // TODO: Add command line flag for this.
-    let allow_partial_results = true;
+    let allow_partial_results = false;
 
     let counters = find_unsafe(
         package.pack.root(),

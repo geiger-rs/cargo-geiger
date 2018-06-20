@@ -7,7 +7,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use self::syn::visit;
-use self::walkdir::{DirEntry, WalkDir};
+use self::walkdir::WalkDir;
 
 /*
 I'm guessing this is intended for testing?
