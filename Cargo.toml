@@ -14,5 +14,5 @@ maintenance = { status = "as-is" }
 
 
 [dependencies]
-syn = {version = "0.12", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"]}
+syn = {version = "0.14", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"]}
 clap = "2"
