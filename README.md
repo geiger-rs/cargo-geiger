@@ -1,57 +1,55 @@
-# cargo-osha
+# cargo-geiger
 
-A program to list unsafe code in a Rust project.  Not actually a cargo plugin (yet).
+A program to list unsafe code in a Rust project.
 
-**Right now this is a proof of concept.**  I wanted to play with a tool like this to see if
-it was feasible.  I don't really intend to be actively developing it.  If someone wants to
-work on it, or a similar tool, go ahead with my blessing.  
+This project is in its current state a quick-n-dirty, glued together, remix of
+two other cargo plugin projects:
+<https://github.com/icefoxen/cargo-osha> and
+<https://github.com/sfackler/cargo-tree>.
 
-# Example
-
-Example from `winit`, a crate that does a large amount of
-platform-specific FFI:
-
-```
-> cargo run -- winit/src/**.rs
-...
-Unsafe functions: 20/85
-Unsafe expressions: 222/16847
-Unsafe traits: 0/14
-Unsafe methods: 14/460
-Unsafe impls: 21/136
-```
-
-So, out of 85 functions in the files, 20 of them are marked `unsafe`.  Out of 460 methods,
-14 of them are `unsafe`, and so on.
-
-Example from `ggez`, a crate that mostly uses dependencies that
-provide safe wrappers, and so needs little unsafe code itself:
-
-```
-> cargo run -- ggez/src/**.rs
-...
-Unsafe functions: 0/101
-Unsafe expressions: 0/6786
-Unsafe traits: 0/7
-Unsafe methods: 0/312
-Unsafe impls: 1/122
-```
 
 # Usage
 
-Right now it only provides a simple command line program that reads in
-N Rust source files.  Doesn't walk dependencies or anything, you have
-to provide all files on the command line.  It has no command line
-flags worth speaking of.
+1. `cargo install cargo-geiger`
+2. Navigate to the same directory as the Cargo.toml you want to analyze.
+3. `cargo geiger`
+4. Please don't look at the `--help` flags, they are inherited from cargo-tree
+   and may not work as intended. TODO: Review and update command line flags.
 
-The code itself is nigh trivial, just read the source.  It uses `syn`
-to walk a Rust source code file and counts up the occurances of
-`unsafe` in various places.  There may be some it misses, just open an
-issue or whatever.
+# Output example:
+```
+Compact unsafe info: (functions, expressions, impls, traits, methods)
 
-Should be split into a library someday maybe.
+cargo-geiger v0.1.0 (file:///Users/u/code/cargo-geiger) (0, 0, 0, 0, 0) 
+├── cargo v0.27.0 (3, 148, 2, 0, 4) ☢
+│   ├── atty v0.2.10 (2, 8, 0, 0, 0) ☢
+│   │   └── libc v0.2.40 (0, 0, 0, 0, 0) 
+│   ├── clap v2.31.2 (0, 1, 0, 0, 0) ☢
+│   │   ├── ansi_term v0.11.0 (0, 23, 0, 0, 0) ☢
+│   │   ├── atty v0.2.10 (2, 8, 0, 0, 0) ☢
+│   │   ├── bitflags v1.0.3 (0, 0, 0, 0, 0) 
+│   │   ├── strsim v0.7.0 (0, 0, 0, 0, 0) 
+│   │   ├── textwrap v0.9.0 (0, 0, 0, 0, 0) 
+│   │   │   └── unicode-width v0.1.4 (0, 0, 0, 0, 0) 
+│   │   ├── unicode-width v0.1.4 (0, 0, 0, 0, 0) 
+│   │   └── vec_map v0.8.1 (0, 0, 0, 0, 0) 
+│   ├── core-foundation v0.5.1 (0, 530, 2, 1, 13) ☢
+│   │   ├── core-foundation-sys v0.5.1 (0, 0, 0, 0, 2) ☢
+│   │   │   └── libc v0.2.40 (0, 0, 0, 0, 0) 
+│   │   └── libc v0.2.40 (0, 0, 0, 0, 0) 
+│   ├── crates-io v0.16.0 (0, 0, 0, 0, 0) 
+│   │   ├── curl v0.4.12 (4, 598, 5, 0, 1) ☢
+```
 
-# On Unsafe
+# Why the name?
+
+<https://en.wikipedia.org/wiki/Geiger_counter>
+
+Unsafe Rust and ionizing radiation have something incommon, they are both
+inevitable in some situations, but should preferably be safely contained!
+
+
+# On Unsafe (originally from the cargo-osha README):
 
 > Number of lines of code inside the unsafe blocks themselves isn't a useful estimate.
 > 
@@ -66,7 +64,7 @@ Should be split into a library someday maybe.
 > 37 guns.  You might not bring him to your sister's wedding, but if
 > you need something blown up, he is THERE for you.
 > 
-> -- me
+> -- icefoxen
 
 This tool isn't intended to "measure unsafety", it's intended to be a quick
 and dirty investigation, because partial information is better than no
@@ -80,8 +78,3 @@ information.  `/u/annodomini` on Reddit said it best:
 > 
 > On the other hand, if you have 1025 unsafe expressions, that's a huge job to audit all of those plus everything that could impact whether those are actually valid or not.
 
-# Why the name?
-
-In the USA, OSHA (Operational Safety and Health Administration) is the part of the government responsible for workplace safety.  It's their job to make sure that construction workers wear hard hats, miners don't breathe asbestos, factory workers aren't crushed by machinery, and all that sort of useful stuff.  OSHA has an impossible job, because if they did it perfectly then nothing would ever get done, but the world is still a much better place because they exist.
-
-Apologies for the obscure name to the rest of the world!
