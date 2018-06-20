@@ -9,13 +9,6 @@ use self::walkdir::WalkDir;
 
 use syn::{visit, ItemFn, Expr, ItemImpl, ItemTrait, ImplItemMethod};
 
-unsafe fn foo() {
-    unsafe {
-        let a = 10;
-        println!("Bar");
-    }
-}
-
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Count {
     pub num: u64,
@@ -195,7 +188,7 @@ use colored::*;
 #[structopt(bin_name = "cargo")]
 enum Opts {
     #[structopt(
-        name = "osha",
+        name = "geiger",
         raw(
             setting = "AppSettings::UnifiedHelpMessage",
             setting = "AppSettings::DeriveDisplayOrder",
@@ -642,8 +635,8 @@ fn print_dependency<'a>(
         Prefix::None => ()
     }
     
-    // TODO: Add command line flag for this.
-    let allow_partial_results = false;
+    // TODO: Add command line flag for this and make it default to false.
+    let allow_partial_results = true;
 
     let counters = find_unsafe(
         package.pack.root(),

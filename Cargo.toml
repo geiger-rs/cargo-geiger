@@ -1,9 +1,9 @@
 [package]
-name = "cargo-osha"
+name = "cargo-geiger"
 description = "A small utility to count the uses of unsafe code in a Rust program."
-version = "0.1.1"
-authors = ["Simon Heath <icefoxen@gmail.com>", "Steven Fackler <sfackler@gmail.com>"]
-repository = "https://github.com/icefoxen/cargo-osha"
+version = "0.1.0"
+authors = ["anderejd <rajder@gmail.com>"]
+repository = "https://github.com/anderejd/cargo-geiger"
 readme = "README.md"
 keywords = ["unsafe", "cargo", "plugin"]
 categories = ["command-line-utilities", "development-tools", "development-tools::cargo-plugins", "parsing"]
@@ -13,8 +13,8 @@ license = "Apache-2.0/MIT"
 maintenance = { status = "as-is" }
 
 [dependencies]
-syn = {version = "0.14", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"]}
-clap = "2"
+syn = { version = "0.14.2", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
+clap = "2.31.2"
 cargo = "0.27.0"
 env_logger = "0.5.10"
 failure = "0.1.1"
