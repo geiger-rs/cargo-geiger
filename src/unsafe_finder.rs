@@ -119,7 +119,8 @@ pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
     for entry in walker {
         let entry = entry.expect("walkdir error, TODO: Implement error handling");
         if !entry.file_type().is_file() {
-            println!("Skipping non-file: {}", p.display());
+            // TODO: Add --verbose flag and proper logging.
+            // println!("Skipping non-file: {}", p.display());
             continue;
         }
         let p = entry.path();
@@ -131,21 +132,23 @@ pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
         // compatible extension and we do not keep the possibly lossy result
         // around.
         if ext.to_string_lossy() != "rs" {
-            println!("Skipping non-rust: {}", p.display());
+            // TODO: Add --verbose flag and proper logging.
+            // println!("Skipping non-rust: {}", p.display());
             continue;
         }
-        println!("Processing file {}", p.display());
+        // TODO: Add --verbose flag and proper logging.
+        // println!("Processing file {}", p.display());
         let mut file = File::open(p).expect("Unable to open file");
         let mut src = String::new();
         file.read_to_string(&mut src).expect("Unable to read file");
         let syntax = match (allow_partial_results, syn::parse_file(&src)) {
             (_, Ok(s)) => s,
-            (true, Err(_)) => {
+            (true, Err(e)) => {
                 // TODO: Do proper error logging.
-                println!("Failed to parse: {}", &src);
+                println!("Failed to parse file: {}, {:?}", p.display(), e);
                 continue
             },
-            (false, Err(e)) => panic!(e)
+            (false, Err(e)) => panic!("Failed to parse file: {}, {:?} ", p.display(), e)
         };
         syn::visit::visit_file(tracker, &syntax);
     }
