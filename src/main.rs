@@ -6,6 +6,7 @@ extern crate cargo;
 extern crate env_logger;
 extern crate failure;
 extern crate petgraph;
+extern crate colored;
 
 #[macro_use]
 extern crate structopt;
@@ -35,6 +36,7 @@ mod format;
 mod unsafe_finder;
 
 use unsafe_finder::find_unsafe;
+use colored::*;
 
 #[derive(StructOpt)]
 #[structopt(bin_name = "cargo")]
@@ -243,7 +245,9 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         Prefix::Indent
     };
 
-    println!("Compact unsafe info: (functions, expressions, impls, traits, methods)");
+    println!();
+    println!("{}", "Compact unsafe info: (functions, expressions, impls, traits, methods)".bold());
+    println!();
 
     if args.duplicates {
         let dups = find_duplicates(&graph);
@@ -491,19 +495,29 @@ fn print_dependency<'a>(
     let counters = find_unsafe(
         package.pack.root(),
         allow_partial_results);
-    let compact_unsafe_info = format!(
-        "({}, {}, {}, {}, {})",
+    let counts = [
         counters.functions.unsafe_num,
         counters.exprs.unsafe_num,
         counters.itemimpls.unsafe_num,
         counters.itemtraits.unsafe_num,
-        counters.methods.unsafe_num);
-    println!("{} {}",
+        counters.methods.unsafe_num
+    ];
+    let unsafe_found = counts.iter().any(|c| *c > 0);
+    let rad = if unsafe_found { "☢" } else { "" };
+    let compact_unsafe_info = 
+        counts
+        .iter()
+        .map(|c| c.to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
+    let line = format!(
+        "{} ({})",
         format.display(
             package.id,
             package.pack.manifest().metadata()),
         compact_unsafe_info);
-
+    let line = if unsafe_found { line.red().bold() } else { line.green() };
+    println!("{} {}", line, rad);
     if !new {
         return;
     }

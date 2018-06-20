@@ -39,7 +39,7 @@ pub struct UnsafeCounter {
     pub itemimpls: Count,
     pub itemtraits: Count,
     pub methods: Count,
-    pub in_unsafe_block: bool,
+    in_unsafe_block: bool,
 }
 
 impl<'ast> visit::Visit<'ast> for UnsafeCounter {
