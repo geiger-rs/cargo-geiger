@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::Read;
 
 use clap::{Arg, App};
-use syn::visit;
+use syn::{visit, ItemFn, Expr, ExprUnsafe, ItemImpl, ItemTrait, ImplItemMethod};
 
 unsafe fn foo() {
     unsafe {
@@ -31,7 +31,7 @@ impl Count {
 }
 
 impl fmt::Display for Count {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}/{}", self.unsafe_num, self.num)
     }
 }
@@ -53,46 +53,46 @@ pub struct UnsafeCounter {
 }
 
 impl<'ast> visit::Visit<'ast> for UnsafeCounter {
-    fn visit_item_fn(&mut self, i: &syn::ItemFn) {
+    fn visit_item_fn(&mut self, i: &ItemFn) {
         // fn definitions
         self.functions.count(i.unsafety.is_some());
         visit::visit_item_fn(self, i);
     }
 
-    fn visit_expr(&mut self, i: &syn::Expr) {
+    fn visit_expr(&mut self, i: &Expr) {
         // Total number of expressions of any type
         self.exprs.count(self.in_unsafe_block);
         visit::visit_expr(self, i);
     }
 
-    fn visit_expr_unsafe(&mut self, i: &syn::ExprUnsafe) {
+    fn visit_expr_unsafe(&mut self, i: &ExprUnsafe) {
         // unsafe {} expression blocks
         self.in_unsafe_block = true;
         visit::visit_expr_unsafe(self, i);
         self.in_unsafe_block = false;
     }
 
-    fn visit_item_impl(&mut self, i: &syn::ItemImpl) {
+    fn visit_item_impl(&mut self, i: &ItemImpl) {
         // unsafe trait impl's
         self.itemimpls.count(i.unsafety.is_some());
         visit::visit_item_impl(self, i);
     }
 
-    fn visit_item_trait(&mut self, i: &syn::ItemTrait) {
+    fn visit_item_trait(&mut self, i: &ItemTrait) {
         // Unsafe traits
         self.itemtraits.count(i.unsafety.is_some());
         visit::visit_item_trait(self, i);
 
     }
 
-    fn visit_impl_item_method(&mut self, i: &syn::ImplItemMethod) {
+    fn visit_impl_item_method(&mut self, i: &ImplItemMethod) {
         self.methods.count(i.sig.unsafety.is_some());
         visit::visit_impl_item_method(self, i);
     }
 }
 
 impl fmt::Display for UnsafeCounter {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Unsafe functions: {}", self.functions)?;
         writeln!(f, "Unsafe expressions: {}", self.exprs)?;
         writeln!(f, "Unsafe traits: {}", self.itemtraits)?;
@@ -123,7 +123,7 @@ fn main() {
             file.read_to_string(&mut src).expect("Unable to read file");
             
             let syntax = syn::parse_file(&src).expect("Unable to parse file");
-            syn::visit::visit_file(tracker, &syntax);
+            visit::visit_file(tracker, &syntax);
         }
     }
     println!("{}", tracker);
