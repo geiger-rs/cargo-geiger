@@ -1,3 +1,5 @@
+//! This file is based on the source from the original cargo-osha.
+
 extern crate syn;
 extern crate walkdir;
 
@@ -8,18 +10,6 @@ use std::io::Read;
 use std::path::Path;
 use self::syn::visit;
 use self::walkdir::WalkDir;
-
-/*
-I'm guessing this is intended for testing?
-Removing to avoid warnings for now.
-
-unsafe fn foo() {
-    unsafe {
-        let a = 10;
-        println!("Bar");
-    }
-}
-*/
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Count {
@@ -41,7 +31,6 @@ impl fmt::Display for Count {
         write!(f, "{}/{}", self.unsafe_num, self.num)
     }
 }
-
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct UnsafeCounter {
@@ -103,18 +92,7 @@ impl fmt::Display for UnsafeCounter {
 }
 
 pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
-    /*
-    let matches = App::new("cargo-osha")
-        .about("Prints statistics on the number of `unsafe` blocks in a Rust file.")
-        .arg(Arg::with_name("files")
-             .required(true)
-             .takes_value(true)
-             .multiple(true)
-             .help("Files to process")
-        )
-        .get_matches();
-    */
-    let tracker = &mut UnsafeCounter::default();
+    let counters = &mut UnsafeCounter::default();
     let walker = WalkDir::new(p).into_iter();
     for entry in walker {
         let entry = entry.expect("walkdir error, TODO: Implement error handling");
@@ -150,7 +128,7 @@ pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
             },
             (false, Err(e)) => panic!("Failed to parse file: {}, {:?} ", p.display(), e)
         };
-        syn::visit::visit_file(tracker, &syntax);
+        syn::visit::visit_file(counters, &syntax);
     }
-    *tracker
+    *counters
 }

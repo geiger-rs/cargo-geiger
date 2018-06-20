@@ -1,3 +1,7 @@
+//! This file is based on the source from cargo-tree.
+//! There is a whole lot of code that could be deleted or moved to a library
+//! used by both cargo-tree and this project.
+
 extern crate cargo;
 extern crate env_logger;
 extern crate failure;
@@ -7,7 +11,6 @@ extern crate petgraph;
 extern crate structopt;
 
 use cargo::core::dependency::Kind;
-//use cargo::core::manifest::ManifestMetadata;
 use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
@@ -239,6 +242,8 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     } else {
         Prefix::Indent
     };
+
+    println!("Compact unsafe info: (functions, expressions, impls, traits, methods)");
 
     if args.duplicates {
         let dups = find_duplicates(&graph);
