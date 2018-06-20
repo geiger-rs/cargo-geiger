@@ -45,7 +45,7 @@ cargo-geiger v0.1.0 (file:///Users/u/code/cargo-geiger) (0, 0, 0, 0, 0)
 
 <https://en.wikipedia.org/wiki/Geiger_counter>
 
-Unsafe Rust and ionizing radiation have something incommon, they are both
+Unsafe Rust and ionizing radiation have something in common, they are both
 inevitable in some situations, but should preferably be safely contained!
 
 
