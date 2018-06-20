@@ -2,7 +2,7 @@
 name = "cargo-osha"
 description = "A small utility to count the uses of unsafe code in a Rust program."
 version = "0.1.1"
-authors = ["Simon Heath <icefoxen@gmail.com>"]
+authors = ["Simon Heath <icefoxen@gmail.com>", "Steven Fackler <sfackler@gmail.com>"]
 repository = "https://github.com/icefoxen/cargo-osha"
 readme = "README.md"
 keywords = ["unsafe", "cargo", "plugin"]
@@ -12,7 +12,13 @@ license = "Apache-2.0/MIT"
 [badges]
 maintenance = { status = "as-is" }
 
-
 [dependencies]
 syn = {version = "0.14", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"]}
 clap = "2"
+cargo = "0.27.0"
+env_logger = "0.5.10"
+failure = "0.1.1"
+petgraph = "0.4.12"
+structopt = "0.2.10"
+walkdir = "2.1.4"
+colored = "1.6.0"
