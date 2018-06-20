@@ -1,6 +1,5 @@
 [package]
 name = "cargo-osha"
-license = "Apache-2.0/MIT"
 description = "A small utility to count the uses of unsafe code in a Rust program."
 version = "0.1.1"
 authors = ["Simon Heath <icefoxen@gmail.com>", "Steven Fackler <sfackler@gmail.com>"]
@@ -8,6 +7,7 @@ repository = "https://github.com/icefoxen/cargo-osha"
 readme = "README.md"
 keywords = ["unsafe", "cargo", "plugin"]
 categories = ["command-line-utilities", "development-tools", "development-tools::cargo-plugins", "parsing"]
+license = "Apache-2.0/MIT"
 
 [badges]
 maintenance = { status = "as-is" }
