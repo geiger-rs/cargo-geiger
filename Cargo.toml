@@ -15,8 +15,8 @@ categories = ["command-line-utilities", "development-tools", "development-tools:
 maintenance = { status = "as-is" }
 
 [dependencies]
-syn = { version = "0.14.2", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
-clap = "2.31.2"
+syn = {version = "0.14", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"]}
+clap = "2"
 cargo = "0.27.0"
 env_logger = "0.5.10"
 failure = "0.1.1"
