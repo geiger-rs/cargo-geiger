@@ -1,12 +1,17 @@
 extern crate syn;
-extern crate clap;
+extern crate walkdir;
 
+use std;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
+use self::syn::visit;
+use self::walkdir::{DirEntry, WalkDir};
 
-use clap::{Arg, App};
-use syn::visit;
+/*
+I'm guessing this is intended for testing?
+Removing to avoid warnings for now.
 
 unsafe fn foo() {
     unsafe {
@@ -14,11 +19,12 @@ unsafe fn foo() {
         println!("Bar");
     }
 }
+*/
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Count {
-    num: u64,
-    unsafe_num: u64,
+    pub num: u64,
+    pub unsafe_num: u64,
 }
 
 impl Count {
@@ -39,17 +45,12 @@ impl fmt::Display for Count {
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct UnsafeCounter {
-    functions: Count,
-
-    exprs: Count,
-
-    itemimpls: Count,
-
-    itemtraits: Count,
-
-    methods: Count,
-
-    in_unsafe_block: bool,
+    pub functions: Count,
+    pub exprs: Count,
+    pub itemimpls: Count,
+    pub itemtraits: Count,
+    pub methods: Count,
+    pub in_unsafe_block: bool,
 }
 
 impl<'ast> visit::Visit<'ast> for UnsafeCounter {
@@ -101,7 +102,8 @@ impl fmt::Display for UnsafeCounter {
     }
 }
 
-fn main() {
+pub fn find_unsafe(p: &Path) -> UnsafeCounter {
+    /*
     let matches = App::new("cargo-osha")
         .about("Prints statistics on the number of `unsafe` blocks in a Rust file.")
         .arg(Arg::with_name("files")
@@ -111,20 +113,33 @@ fn main() {
              .help("Files to process")
         )
         .get_matches();
-
+    */
     let tracker = &mut UnsafeCounter::default();
-    
-    if let Some(v) = matches.values_of("files") {
-        for filename in v {
-            println!("Processing file {}", filename);
-            let mut file = File::open(filename).expect("Unable to open file");
-            
-            let mut src = String::new();
-            file.read_to_string(&mut src).expect("Unable to read file");
-            
-            let syntax = syn::parse_file(&src).expect("Unable to parse file");
-            syn::visit::visit_file(tracker, &syntax);
+    let walker = WalkDir::new(p).into_iter();
+    for entry in walker {
+        let entry = entry.expect("walkdir error, TODO: Implement error handling");
+        if !entry.file_type().is_file() {
+            println!("Skipping non-file: {}", p.display());
+            continue;
         }
+        let p = entry.path();
+        let ext = match p.extension() {
+            Some(e) => e,
+            None    => continue
+        };
+        // to_string_lossy is ok since we only want to match against an ASCII
+        // compatible extension and we do not keep the possibly lossy result
+        // around.
+        if ext.to_string_lossy() != "rs" {
+            println!("Skipping non-rust: {}", p.display());
+            continue;
+        }
+        println!("Processing file {}", p.display());
+        let mut file = File::open(p).expect("Unable to open file");
+        let mut src = String::new();
+        file.read_to_string(&mut src).expect("Unable to read file");
+        let syntax = syn::parse_file(&src).expect("Unable to parse file");
+        syn::visit::visit_file(tracker, &syntax);
     }
-    println!("{}", tracker);
+    *tracker
 }

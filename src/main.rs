@@ -7,7 +7,7 @@ extern crate petgraph;
 extern crate structopt;
 
 use cargo::core::dependency::Kind;
-use cargo::core::manifest::ManifestMetadata;
+//use cargo::core::manifest::ManifestMetadata;
 use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
@@ -29,12 +29,15 @@ use structopt::StructOpt;
 use format::Pattern;
 
 mod format;
+mod unsafe_finder;
+
+use unsafe_finder::find_unsafe;
 
 #[derive(StructOpt)]
 #[structopt(bin_name = "cargo")]
 enum Opts {
     #[structopt(
-        name = "tree",
+        name = "osha",
         raw(
             setting = "AppSettings::UnifiedHelpMessage",
             setting = "AppSettings::DeriveDisplayOrder",
@@ -349,7 +352,7 @@ fn resolve<'a, 'cfg>(
 
 struct Node<'a> {
     id: &'a PackageId,
-    metadata: &'a ManifestMetadata,
+    pack: &'a Package,
 }
 
 struct Graph<'a> {
@@ -357,6 +360,8 @@ struct Graph<'a> {
     nodes: HashMap<&'a PackageId, NodeIndex>,
 }
 
+/// Almost unmodified compared to the original in cargo-tree, should be fairly
+/// simple to move this and the dependency graph structure out to a library.
 fn build_graph<'a>(
     resolve: &'a Resolve,
     packages: &'a PackageSet,
@@ -370,7 +375,7 @@ fn build_graph<'a>(
     };
     let node = Node {
         id: root,
-        metadata: packages.get(root)?.manifest().metadata(),
+        pack: packages.get(root)?
     };
     graph.nodes.insert(root, graph.graph.add_node(node));
 
@@ -400,7 +405,7 @@ fn build_graph<'a>(
                         pending.push(dep_id);
                         let node = Node {
                             id: dep_id,
-                            metadata: packages.get(dep_id)?.manifest().metadata(),
+                            pack: packages.get(dep_id)?
                         };
                         *e.insert(graph.graph.add_node(node))
                     }
@@ -439,6 +444,8 @@ fn print_tree<'a>(
     );
 }
 
+/// Review please: Is this a sane way to do it for cargo-osha or should the
+/// output be a table perhaps? Or a simple list?
 fn print_dependency<'a>(
     package: &Node<'a>,
     graph: &Graph<'a>,
@@ -451,7 +458,7 @@ fn print_dependency<'a>(
     all: bool,
 ) {
     let new = all || visited_deps.insert(package.id);
-    let star = if new { "" } else { " (*)" };
+    //let star = if new { "" } else { " (*)" };
 
     match prefix {
         Prefix::Depth => print!("{} ", levels_continue.len()),
@@ -472,8 +479,20 @@ fn print_dependency<'a>(
         },
         Prefix::None => ()
     }
-
-    println!("{}{}", format.display(package.id, package.metadata), star);
+    
+    let counters = find_unsafe(package.pack.root());
+    let compact_unsafe_info = format!(
+        "({}, {}, {}, {}, {})",
+        counters.functions.unsafe_num,
+        counters.exprs.unsafe_num,
+        counters.itemimpls.unsafe_num,
+        counters.itemtraits.unsafe_num,
+        counters.methods.unsafe_num);
+    println!("{} {}",
+        format.display(
+            package.id,
+            package.pack.manifest().metadata()),
+        compact_unsafe_info);
 
     if !new {
         return;
