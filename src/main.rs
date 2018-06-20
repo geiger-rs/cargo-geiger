@@ -8,7 +8,7 @@ use std::path::Path;
 use self::walkdir::WalkDir;
 
 use clap::{Arg, App};
-use syn::{visit, ItemFn, Expr, ExprUnsafe, ItemImpl, ItemTrait, ImplItemMethod};
+use syn::{visit, ItemFn, Expr, ItemImpl, ItemTrait, ImplItemMethod};
 
 unsafe fn foo() {
     unsafe {
@@ -62,15 +62,21 @@ impl<'ast> visit::Visit<'ast> for UnsafeCounter {
 
     fn visit_expr(&mut self, i: &Expr) {
         // Total number of expressions of any type
-        self.exprs.count(self.in_unsafe_block);
-        visit::visit_expr(self, i);
-    }
-
-    fn visit_expr_unsafe(&mut self, i: &ExprUnsafe) {
-        // unsafe {} expression blocks
-        self.in_unsafe_block = true;
-        visit::visit_expr_unsafe(self, i);
-        self.in_unsafe_block = false;
+        match i {
+            Expr::Unsafe(i) => {
+                self.in_unsafe_block = true;
+                visit::visit_expr_unsafe(self, i);
+                self.in_unsafe_block = false;
+            }
+            Expr::Path(_) | Expr::Lit(_) => {
+                // Do not count. The expression `f(x)` should count as one
+                // expression, not three.
+            }
+            other => {
+                self.exprs.count(self.in_unsafe_block);
+                visit::visit_expr(self, other);
+            }
+        }
     }
 
     fn visit_item_impl(&mut self, i: &ItemImpl) {
