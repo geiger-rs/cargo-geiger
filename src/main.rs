@@ -7,7 +7,7 @@ use std::io::Read;
 use std::path::Path;
 use self::walkdir::WalkDir;
 
-use clap::{Arg, App};
+//use clap::{Arg, App};
 use syn::{visit, ItemFn, Expr, ItemImpl, ItemTrait, ImplItemMethod};
 
 unsafe fn foo() {
