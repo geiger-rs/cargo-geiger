@@ -52,3 +52,10 @@ inevitable in some situations and both should preferably be safely contained!
 - Could probably benefit from parallelization. One `.rs` file per core should
   be parsed at all times.
 
+# Roadmap
+
+- An optional whitelist file at the root crate level to specify crates that are trusted to use unsafe (should only have an effect if placed in the root project).
+- More and better ways to analyse unsafe usage
+- Improved output format?
+- Additional output formats?
+- Fixing known issues! :)
