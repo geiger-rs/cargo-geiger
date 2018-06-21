@@ -26,10 +26,10 @@ two other cargo plugin projects:
 When and why to use unsafe Rust is out of scope for this project, it is simply
 a tool that provides information to aid auditing and hopefully to guide
 dependency selection. It is however the opinion of the author of this project
-that _libraries choosing to abstain from unsafe Rust usage when possible should
-be promoted_.
+that __libraries choosing to abstain from unsafe Rust usage when possible should
+be promoted__.
 
-This project is an attempt to create pressure against _unnecessary_ usage of
+This project is an attempt to create pressure against __unnecessary__ usage of
 unsafe Rust in public Rust libraries.
 
 
