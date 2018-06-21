@@ -17,29 +17,8 @@ two other cargo plugin projects:
    and may not work as intended. TODO: Review and update command line flags.
 
 # Output example:
-```
-Compact unsafe info: (functions, expressions, impls, traits, methods)
+![Example output](cargo-geiger-example-output.png)
 
-cargo-geiger v0.1.0 (file:///Users/u/code/cargo-geiger) (0, 0, 0, 0, 0) 
-├── cargo v0.27.0 (3, 148, 2, 0, 4) ☢
-│   ├── atty v0.2.10 (2, 8, 0, 0, 0) ☢
-│   │   └── libc v0.2.40 (0, 0, 0, 0, 0) 
-│   ├── clap v2.31.2 (0, 1, 0, 0, 0) ☢
-│   │   ├── ansi_term v0.11.0 (0, 23, 0, 0, 0) ☢
-│   │   ├── atty v0.2.10 (2, 8, 0, 0, 0) ☢
-│   │   ├── bitflags v1.0.3 (0, 0, 0, 0, 0) 
-│   │   ├── strsim v0.7.0 (0, 0, 0, 0, 0) 
-│   │   ├── textwrap v0.9.0 (0, 0, 0, 0, 0) 
-│   │   │   └── unicode-width v0.1.4 (0, 0, 0, 0, 0) 
-│   │   ├── unicode-width v0.1.4 (0, 0, 0, 0, 0) 
-│   │   └── vec_map v0.8.1 (0, 0, 0, 0, 0) 
-│   ├── core-foundation v0.5.1 (0, 530, 2, 1, 13) ☢
-│   │   ├── core-foundation-sys v0.5.1 (0, 0, 0, 0, 2) ☢
-│   │   │   └── libc v0.2.40 (0, 0, 0, 0, 0) 
-│   │   └── libc v0.2.40 (0, 0, 0, 0, 0) 
-│   ├── crates-io v0.16.0 (0, 0, 0, 0, 0) 
-│   │   ├── curl v0.4.12 (4, 598, 5, 0, 1) ☢
-```
 
 # Why the name?
 
