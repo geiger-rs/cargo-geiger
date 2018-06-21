@@ -10,7 +10,7 @@ categories = ["command-line-utilities", "development-tools", "development-tools:
 license = "Apache-2.0/MIT"
 
 [badges]
-maintenance = { status = "as-is" }
+maintenance = { status = "experimental" }
 
 [dependencies]
 syn = { version = "0.14.2", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
