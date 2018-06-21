@@ -43,6 +43,7 @@ inevitable in some situations and both should preferably be safely contained!
 
 # Known issues
 
+- Crates with nested crates can currently report inaccurate stats.
 - Both base projects, cargo-tree and cargo-osha could be depended on if
   refactored into library and application parts.
 - Proper logging should be sorted out.
