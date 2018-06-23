@@ -427,6 +427,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
                 symbols,
                 prefix,
                 args.all,
+                args.compact,
             );
             println!();
         }
@@ -439,6 +440,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
             symbols,
             prefix,
             args.all,
+            args.compact,
         );
     }
 
@@ -602,6 +604,7 @@ fn print_tree<'a>(
     symbols: &Symbols,
     prefix: Prefix,
     all: bool,
+    compact_output: bool,
 ) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
@@ -617,6 +620,7 @@ fn print_tree<'a>(
         &mut levels_continue,
         prefix,
         all,
+        compact_output,
     );
 }
 
@@ -632,6 +636,7 @@ fn print_dependency<'a>(
     levels_continue: &mut Vec<bool>,
     prefix: Prefix,
     all: bool,
+    compact_output: bool,
 ) {
     let new = all || visited_deps.insert(package.id);
     //let star = if new { "" } else { " (*)" };
@@ -682,9 +687,6 @@ fn print_dependency<'a>(
         package.pack.manifest().metadata())
     ));
 
-    // TODO: bring this in from args
-    let compact_output = false;
-
     if compact_output {
         let compact_unsafe_info = format!("({}, {}, {}, {}, {})",
             counters.functions.unsafe_num,
@@ -732,6 +734,7 @@ fn print_dependency<'a>(
         levels_continue,
         prefix,
         all,
+        compact_output,
     );
     print_dependency_kind(
         Kind::Build,
@@ -744,6 +747,7 @@ fn print_dependency<'a>(
         levels_continue,
         prefix,
         all,
+        compact_output,
     );
     print_dependency_kind(
         Kind::Development,
@@ -756,6 +760,7 @@ fn print_dependency<'a>(
         levels_continue,
         prefix,
         all,
+        compact_output,
     );
 }
 
@@ -770,6 +775,7 @@ fn print_dependency_kind<'a>(
     levels_continue: &mut Vec<bool>,
     prefix: Prefix,
     all: bool,
+    compact_output: bool,
 ) {
     if deps.is_empty() {
         return;
@@ -785,7 +791,9 @@ fn print_dependency_kind<'a>(
     };
     if let Prefix::Indent = prefix {
         if let Some(name) = name {
-            print!("{}", table_row_empty()); // TODO: predicate this on non-compact output
+            if !compact_output {
+                print!("{}", table_row_empty());
+            }
             for &continues in &**levels_continue {
                 let c = if continues { symbols.down } else { " " };
                 print!("{}   ", c);
@@ -808,6 +816,7 @@ fn print_dependency_kind<'a>(
             levels_continue,
             prefix,
             all,
+            compact_output,
         );
         levels_continue.pop();
     }
