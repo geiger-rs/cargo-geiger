@@ -1,5 +1,5 @@
-use cargo::core::PackageId;
 use cargo::core::manifest::ManifestMetadata;
+use cargo::core::PackageId;
 use std::error::Error;
 use std::fmt;
 

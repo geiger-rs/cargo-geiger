@@ -3,13 +3,13 @@
 extern crate syn;
 extern crate walkdir;
 
+use self::walkdir::WalkDir;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use self::walkdir::WalkDir;
 
-use syn::{visit, ItemFn, Expr, ItemImpl, ItemTrait, ImplItemMethod};
+use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemTrait};
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Count {
@@ -50,10 +50,10 @@ pub struct UnsafeCounter {
 impl UnsafeCounter {
     fn has_unsafe(&self) -> bool {
         self.functions.unsafe_num > 0
-        || self.exprs.unsafe_num > 0
-        || self.itemimpls.unsafe_num > 0
-        || self.itemtraits.unsafe_num > 0
-        || self.methods.unsafe_num > 0
+            || self.exprs.unsafe_num > 0
+            || self.itemimpls.unsafe_num > 0
+            || self.itemtraits.unsafe_num > 0
+            || self.methods.unsafe_num > 0
     }
 }
 
@@ -93,7 +93,6 @@ impl<'ast> visit::Visit<'ast> for UnsafeCounter {
         // Unsafe traits
         self.itemtraits.count(i.unsafety.is_some());
         visit::visit_item_trait(self, i);
-
     }
 
     fn visit_impl_item_method(&mut self, i: &ImplItemMethod) {
@@ -125,7 +124,7 @@ pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
         let p = entry.path();
         let ext = match p.extension() {
             Some(e) => e,
-            None    => continue
+            None => continue,
         };
         // to_string_lossy is ok since we only want to match against an ASCII
         // compatible extension and we do not keep the possibly lossy result
@@ -145,16 +144,14 @@ pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
             (true, Err(e)) => {
                 // TODO: Do proper error logging.
                 println!("Failed to parse file: {}, {:?}", p.display(), e);
-                continue
-            },
-            (false, Err(e)) => panic!("Failed to parse file: {}, {:?} ", p.display(), e)
+                continue;
+            }
+            (false, Err(e)) => panic!("Failed to parse file: {}, {:?} ", p.display(), e),
         };
         syn::visit::visit_file(counters, &syntax);
     }
     *counters
 }
-
-
 
 // The code below is based on the source from cargo-tree.
 // There is a whole lot of code that could be deleted or moved to a library
@@ -163,10 +160,10 @@ pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
 // hypothetical PR merge.
 
 extern crate cargo;
+extern crate colored;
 extern crate env_logger;
 extern crate failure;
 extern crate petgraph;
-extern crate colored;
 
 #[macro_use]
 extern crate structopt;
@@ -375,7 +372,12 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     let target = if args.all_targets {
         None
     } else {
-        Some(args.target.as_ref().unwrap_or(&config.rustc()?.host).as_str())
+        Some(
+            args.target
+                .as_ref()
+                .unwrap_or(&config.rustc()?.host)
+                .as_str(),
+        )
     };
 
     let format = Pattern::new(&args.format).map_err(|e| failure::err_msg(e.to_string()))?;
@@ -410,9 +412,20 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
 
     println!();
     if args.compact {
-        println!("{}", "Compact unsafe info: (functions, expressions, impls, traits, methods)".bold());
+        println!(
+            "{}",
+            "Compact unsafe info: (functions, expressions, impls, traits, methods)".bold()
+        );
     } else {
-        println!("{}", UNSAFE_COUNTERS_HEADER.iter().map(|s| s.to_owned()).collect::<Vec<_>>().join(" ").bold());
+        println!(
+            "{}",
+            UNSAFE_COUNTERS_HEADER
+                .iter()
+                .map(|s| s.to_owned())
+                .collect::<Vec<_>>()
+                .join(" ")
+                .bold()
+        );
     }
     println!();
 
@@ -478,9 +491,9 @@ fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<
     };
     let output = str::from_utf8(&output.stdout).unwrap();
     let lines = output.lines();
-    Ok(Some(lines
-        .map(Cfg::from_str)
-        .collect::<CargoResult<Vec<_>>>()?))
+    Ok(Some(
+        lines.map(Cfg::from_str).collect::<CargoResult<Vec<_>>>()?,
+    ))
 }
 
 fn workspace(config: &Config, manifest_path: Option<PathBuf>) -> CargoResult<Workspace> {
@@ -553,7 +566,7 @@ fn build_graph<'a>(
     };
     let node = Node {
         id: root,
-        pack: packages.get(root)?
+        pack: packages.get(root)?,
     };
     graph.nodes.insert(root, graph.graph.add_node(node));
 
@@ -564,7 +577,8 @@ fn build_graph<'a>(
         let pkg = packages.get(pkg_id)?;
 
         for raw_dep_id in resolve.deps_not_replaced(pkg_id) {
-            let it = pkg.dependencies()
+            let it = pkg
+                .dependencies()
                 .iter()
                 .filter(|d| d.matches_id(raw_dep_id))
                 .filter(|d| {
@@ -583,7 +597,7 @@ fn build_graph<'a>(
                         pending.push(dep_id);
                         let node = Node {
                             id: dep_id,
-                            pack: packages.get(dep_id)?
+                            pack: packages.get(dep_id)?,
                         };
                         *e.insert(graph.graph.add_node(node))
                     }
@@ -659,16 +673,14 @@ fn print_dependency<'a>(
                 buf.push_str(&format!("{0}{1}{1} ", c, symbols.right));
             }
             buf
-        },
+        }
         Prefix::None => "".into(),
     };
-    
+
     // TODO: Add command line flag for this and make it default to false.
     let allow_partial_results = true;
 
-    let counters = find_unsafe(
-        package.pack.root(),
-        allow_partial_results);
+    let counters = find_unsafe(package.pack.root(), allow_partial_results);
 
     let unsafe_found = counters.has_unsafe();
     let colorize = |s: String| {
@@ -681,20 +693,27 @@ fn print_dependency<'a>(
 
     let rad = if unsafe_found { "☢" } else { "" };
 
-    let dep_name = colorize(format!("{}", format.display(
-        package.id,
-        package.pack.manifest().metadata())
+    let dep_name = colorize(format!(
+        "{}",
+        format.display(package.id, package.pack.manifest().metadata())
     ));
 
     if compact_output {
-        let compact_unsafe_info = format!("({}, {}, {}, {}, {})",
+        let compact_unsafe_info = format!(
+            "({}, {}, {}, {}, {})",
             counters.functions.unsafe_num,
             counters.exprs.unsafe_num,
             counters.itemimpls.unsafe_num,
             counters.itemtraits.unsafe_num,
             counters.methods.unsafe_num,
         );
-        println!("{}{} {} {}", treevines, dep_name, colorize(compact_unsafe_info), rad);
+        println!(
+            "{}{} {} {}",
+            treevines,
+            dep_name,
+            colorize(compact_unsafe_info),
+            rad
+        );
     } else {
         let unsafe_info = colorize(table_row(&counters));
         println!("{}  {: <1} {}{}", unsafe_info, rad, treevines, dep_name);
@@ -822,10 +841,23 @@ fn print_dependency_kind<'a>(
 }
 
 // TODO: use a table library, or factor the tableness out in a smarter way
-const UNSAFE_COUNTERS_HEADER : [&'static str; 6] = ["Functions ", "Expressions ", "Impls ", "Traits ", "Methods ", "Dependency"];
+const UNSAFE_COUNTERS_HEADER: [&'static str; 6] = [
+    "Functions ",
+    "Expressions ",
+    "Impls ",
+    "Traits ",
+    "Methods ",
+    "Dependency",
+];
 
 fn table_row_empty() -> String {
-    " ".repeat(UNSAFE_COUNTERS_HEADER.iter().take(5).map(|s| s.len()).sum::<usize>() + UNSAFE_COUNTERS_HEADER.len() + 1)
+    " ".repeat(
+        UNSAFE_COUNTERS_HEADER
+            .iter()
+            .take(5)
+            .map(|s| s.len())
+            .sum::<usize>() + UNSAFE_COUNTERS_HEADER.len() + 1,
+    )
 }
 
 fn table_row(count: &UnsafeCounter) -> String {

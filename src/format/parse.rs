@@ -1,5 +1,5 @@
-use std::str;
 use std::iter;
+use std::str;
 
 pub enum RawChunk<'a> {
     Text(&'a str),
