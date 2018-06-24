@@ -1,4 +1,5 @@
-# cargo-geiger ☢
+cargo-geiger ☢
+===============
 
 A program that list statistics related to usage of unsafe Rust code in a Rust
 crate and all its dependencies.
@@ -9,7 +10,8 @@ two other cargo plugin projects:
 <https://github.com/sfackler/cargo-tree>.
 
 
-# Usage
+Usage
+-----
 
 1. `cargo install cargo-geiger`
 2. Navigate to the same directory as the Cargo.toml you want to analyze.
@@ -17,11 +19,19 @@ two other cargo plugin projects:
 4. Please don't look at the `--help` flags, they are inherited from cargo-tree
    and may not work as intended. TODO: Review and update command line flags.
 
-# Output example:
-![Example output](cargo-geiger-example-output.png)
+
+Output examples
+---------------
+
+### Default output format:
+![Example output (default)](cargo-geiger-example-output-default.png)
+
+### With `--compact`:
+![Example output (using --compact)](cargo-geiger-example-output-compact.png)
 
 
-# Why even care about unsafe Rust usage?
+Why even care about unsafe Rust usage?
+--------------------------------------
 
 When and why to use unsafe Rust is out of scope for this project, it is simply
 a tool that provides information to aid auditing and hopefully to guide
@@ -33,7 +43,8 @@ This project is an attempt to create pressure against __unnecessary__ usage of
 unsafe Rust in public Rust libraries.
 
 
-# Why the name?
+Why the name?
+-------------
 
 <https://en.wikipedia.org/wiki/Geiger_counter>
 
@@ -41,7 +52,8 @@ Unsafe Rust and ionizing radiation have something in common, they are both
 inevitable in some situations and both should preferably be safely contained!
 
 
-# Known issues
+Known issues
+------------
 
 - Crates with nested crates can currently report inaccurate stats.
 - Both base projects, cargo-tree and cargo-osha could be depended on if
@@ -53,10 +65,27 @@ inevitable in some situations and both should preferably be safely contained!
 - Could probably benefit from parallelization. One `.rs` file per core should
   be parsed at all times.
 
-# Roadmap
 
-- An optional whitelist file at the root crate level to specify crates that are trusted to use unsafe (should only have an effect if placed in the root project).
+Roadmap
+-------
+
+- An optional whitelist file at the root crate level to specify crates that are
+  trusted to use unsafe (should only have an effect if placed in the root
+  project).
 - More and better ways to analyse unsafe usage
 - Improved output format?
 - Additional output formats?
 - Fixing known issues! :)
+
+Changelog
+---------
+
+### 0.2.0
+ - (alexmaco) Table based default output format. Old format still available by
+   `--compact`.
+
+### 0.1.x
+ - Initial experimental versions.
+ - Mostly README.md updates.
+
+
