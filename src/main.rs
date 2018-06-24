@@ -671,8 +671,7 @@ fn print_dependency<'a>(
         allow_partial_results);
 
     let unsafe_found = counters.has_unsafe();
-    // TODO: can this be a closure ?
-    fn colorize(unsafe_found: bool, s: String) -> ColoredString {
+    let colorize = |s: String| {
         if unsafe_found {
             s.red().bold()
         } else {
@@ -682,7 +681,7 @@ fn print_dependency<'a>(
 
     let rad = if unsafe_found { "☢" } else { "" };
 
-    let dep_name = colorize(unsafe_found, format!("{}", format.display(
+    let dep_name = colorize(format!("{}", format.display(
         package.id,
         package.pack.manifest().metadata())
     ));
@@ -695,9 +694,9 @@ fn print_dependency<'a>(
             counters.itemtraits.unsafe_num,
             counters.methods.unsafe_num,
         );
-        println!("{}{} {} {}", treevines, dep_name, colorize(unsafe_found, compact_unsafe_info), rad);
+        println!("{}{} {} {}", treevines, dep_name, colorize(compact_unsafe_info), rad);
     } else {
-        let unsafe_info = colorize(unsafe_found, table_row(&counters));
+        let unsafe_info = colorize(table_row(&counters));
         println!("{}  {: <1} {}{}", unsafe_info, rad, treevines, dep_name);
     }
 
