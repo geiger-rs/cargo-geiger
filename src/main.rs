@@ -47,6 +47,16 @@ pub struct UnsafeCounter {
     in_unsafe_block: bool,
 }
 
+impl UnsafeCounter {
+    fn has_unsafe(&self) -> bool {
+        self.functions.unsafe_num > 0
+        || self.exprs.unsafe_num > 0
+        || self.itemimpls.unsafe_num > 0
+        || self.itemtraits.unsafe_num > 0
+        || self.methods.unsafe_num > 0
+    }
+}
+
 impl<'ast> visit::Visit<'ast> for UnsafeCounter {
     fn visit_item_fn(&mut self, i: &ItemFn) {
         // fn definitions
@@ -263,6 +273,11 @@ struct Args {
     #[structopt(short = "Z", value_name = "FLAG")]
     /// Unstable (nightly-only) flags to Cargo
     unstable_flags: Vec<String>,
+
+    //TODO: some real args, keep these when refactoring
+    #[structopt(long = "compact")]
+    /// Display compact output instead of table
+    compact: bool,
 }
 
 enum Charset {
@@ -394,7 +409,11 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     };
 
     println!();
-    println!("{}", "Compact unsafe info: (functions, expressions, impls, traits, methods)".bold());
+    if args.compact {
+        println!("{}", "Compact unsafe info: (functions, expressions, impls, traits, methods)".bold());
+    } else {
+        println!("{}", UNSAFE_COUNTERS_HEADER.iter().map(|s| s.to_owned()).collect::<Vec<_>>().join(" ").bold());
+    }
     println!();
 
     if args.duplicates {
@@ -408,6 +427,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
                 symbols,
                 prefix,
                 args.all,
+                args.compact,
             );
             println!();
         }
@@ -420,6 +440,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
             symbols,
             prefix,
             args.all,
+            args.compact,
         );
     }
 
@@ -583,6 +604,7 @@ fn print_tree<'a>(
     symbols: &Symbols,
     prefix: Prefix,
     all: bool,
+    compact_output: bool,
 ) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
@@ -598,6 +620,7 @@ fn print_tree<'a>(
         &mut levels_continue,
         prefix,
         all,
+        compact_output,
     );
 }
 
@@ -613,17 +636,19 @@ fn print_dependency<'a>(
     levels_continue: &mut Vec<bool>,
     prefix: Prefix,
     all: bool,
+    compact_output: bool,
 ) {
     let new = all || visited_deps.insert(package.id);
     //let star = if new { "" } else { " (*)" };
 
-    match prefix {
-        Prefix::Depth => print!("{} ", levels_continue.len()),
+    let treevines = match prefix {
+        Prefix::Depth => format!("{} ", levels_continue.len()),
         Prefix::Indent => {
+            let mut buf = String::new();
             if let Some((&last_continues, rest)) = levels_continue.split_last() {
                 for &continues in rest {
                     let c = if continues { symbols.down } else { " " };
-                    print!("{}   ", c);
+                    buf.push_str(&format!("{}   ", c));
                 }
 
                 let c = if last_continues {
@@ -631,11 +656,12 @@ fn print_dependency<'a>(
                 } else {
                     symbols.ell
                 };
-                print!("{0}{1}{1} ", c, symbols.right);
+                buf.push_str(&format!("{0}{1}{1} ", c, symbols.right));
             }
+            buf
         },
-        Prefix::None => ()
-    }
+        Prefix::None => "".into(),
+    };
     
     // TODO: Add command line flag for this and make it default to false.
     let allow_partial_results = true;
@@ -643,29 +669,37 @@ fn print_dependency<'a>(
     let counters = find_unsafe(
         package.pack.root(),
         allow_partial_results);
-    let counts = [
-        counters.functions.unsafe_num,
-        counters.exprs.unsafe_num,
-        counters.itemimpls.unsafe_num,
-        counters.itemtraits.unsafe_num,
-        counters.methods.unsafe_num
-    ];
-    let unsafe_found = counts.iter().any(|c| *c > 0);
+
+    let unsafe_found = counters.has_unsafe();
+    let colorize = |s: String| {
+        if unsafe_found {
+            s.red().bold()
+        } else {
+            s.green()
+        }
+    };
+
     let rad = if unsafe_found { "☢" } else { "" };
-    let compact_unsafe_info = 
-        counts
-        .iter()
-        .map(|c| c.to_string())
-        .collect::<Vec<String>>()
-        .join(", ");
-    let line = format!(
-        "{} ({})",
-        format.display(
-            package.id,
-            package.pack.manifest().metadata()),
-        compact_unsafe_info);
-    let line = if unsafe_found { line.red().bold() } else { line.green() };
-    println!("{} {}", line, rad);
+
+    let dep_name = colorize(format!("{}", format.display(
+        package.id,
+        package.pack.manifest().metadata())
+    ));
+
+    if compact_output {
+        let compact_unsafe_info = format!("({}, {}, {}, {}, {})",
+            counters.functions.unsafe_num,
+            counters.exprs.unsafe_num,
+            counters.itemimpls.unsafe_num,
+            counters.itemtraits.unsafe_num,
+            counters.methods.unsafe_num,
+        );
+        println!("{}{} {} {}", treevines, dep_name, colorize(compact_unsafe_info), rad);
+    } else {
+        let unsafe_info = colorize(table_row(&counters));
+        println!("{}  {: <1} {}{}", unsafe_info, rad, treevines, dep_name);
+    }
+
     if !new {
         return;
     }
@@ -699,6 +733,7 @@ fn print_dependency<'a>(
         levels_continue,
         prefix,
         all,
+        compact_output,
     );
     print_dependency_kind(
         Kind::Build,
@@ -711,6 +746,7 @@ fn print_dependency<'a>(
         levels_continue,
         prefix,
         all,
+        compact_output,
     );
     print_dependency_kind(
         Kind::Development,
@@ -723,6 +759,7 @@ fn print_dependency<'a>(
         levels_continue,
         prefix,
         all,
+        compact_output,
     );
 }
 
@@ -737,6 +774,7 @@ fn print_dependency_kind<'a>(
     levels_continue: &mut Vec<bool>,
     prefix: Prefix,
     all: bool,
+    compact_output: bool,
 ) {
     if deps.is_empty() {
         return;
@@ -752,6 +790,9 @@ fn print_dependency_kind<'a>(
     };
     if let Prefix::Indent = prefix {
         if let Some(name) = name {
+            if !compact_output {
+                print!("{}", table_row_empty());
+            }
             for &continues in &**levels_continue {
                 let c = if continues { symbols.down } else { " " };
                 print!("{}   ", c);
@@ -774,7 +815,26 @@ fn print_dependency_kind<'a>(
             levels_continue,
             prefix,
             all,
+            compact_output,
         );
         levels_continue.pop();
     }
+}
+
+// TODO: use a table library, or factor the tableness out in a smarter way
+const UNSAFE_COUNTERS_HEADER : [&'static str; 6] = ["Functions ", "Expressions ", "Impls ", "Traits ", "Methods ", "Dependency"];
+
+fn table_row_empty() -> String {
+    " ".repeat(UNSAFE_COUNTERS_HEADER.iter().take(5).map(|s| s.len()).sum::<usize>() + UNSAFE_COUNTERS_HEADER.len() + 1)
+}
+
+fn table_row(count: &UnsafeCounter) -> String {
+    format!(
+        "{: <9}  {: <11}  {: <5}  {: <6}  {: <7}",
+        count.functions.unsafe_num,
+        count.exprs.unsafe_num,
+        count.itemimpls.unsafe_num,
+        count.itemtraits.unsafe_num,
+        count.methods.unsafe_num,
+    )
 }
