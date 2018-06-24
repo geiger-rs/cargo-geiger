@@ -26,24 +26,13 @@ impl Count {
     }
 }
 
-impl fmt::Display for Count {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}/{}", self.unsafe_num, self.num)
-    }
-}
-
 #[derive(Debug, Copy, Clone, Default)]
 pub struct UnsafeCounter {
     pub functions: Count,
-
     pub exprs: Count,
-
     pub itemimpls: Count,
-
     pub itemtraits: Count,
-
     pub methods: Count,
-
     in_unsafe_block: bool,
 }
 
@@ -101,16 +90,6 @@ impl<'ast> visit::Visit<'ast> for UnsafeCounter {
     }
 }
 
-impl fmt::Display for UnsafeCounter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "Unsafe functions: {}", self.functions)?;
-        writeln!(f, "Unsafe expressions: {}", self.exprs)?;
-        writeln!(f, "Unsafe traits: {}", self.itemtraits)?;
-        writeln!(f, "Unsafe methods: {}", self.methods)?;
-        write!(f, "Unsafe impls: {}", self.itemimpls)
-    }
-}
-
 pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
     let counters = &mut UnsafeCounter::default();
     let walker = WalkDir::new(p).into_iter();
@@ -156,8 +135,6 @@ pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
 // The code below is based on the source from cargo-tree.
 // There is a whole lot of code that could be deleted or moved to a library
 // used by both cargo-tree and this project.
-// TODO: Move this and the unsafe_finder code to two modules after a
-// hypothetical PR merge.
 
 extern crate cargo;
 extern crate colored;
@@ -553,6 +530,7 @@ struct Graph<'a> {
 
 /// Almost unmodified compared to the original in cargo-tree, should be fairly
 /// simple to move this and the dependency graph structure out to a library.
+/// TODO: Move this to a module to begin with.
 fn build_graph<'a>(
     resolve: &'a Resolve,
     packages: &'a PackageSet,
@@ -638,8 +616,6 @@ fn print_tree<'a>(
     );
 }
 
-/// Review please: Is this a sane way to do it for cargo-osha or should the
-/// output be a table perhaps? Or a simple list?
 fn print_dependency<'a>(
     package: &Node<'a>,
     graph: &Graph<'a>,
@@ -653,8 +629,6 @@ fn print_dependency<'a>(
     compact_output: bool,
 ) {
     let new = all || visited_deps.insert(package.id);
-    //let star = if new { "" } else { " (*)" };
-
     let treevines = match prefix {
         Prefix::Depth => format!("{} ", levels_continue.len()),
         Prefix::Indent => {
@@ -664,7 +638,6 @@ fn print_dependency<'a>(
                     let c = if continues { symbols.down } else { " " };
                     buf.push_str(&format!("{}   ", c));
                 }
-
                 let c = if last_continues {
                     symbols.tee
                 } else {
@@ -681,7 +654,6 @@ fn print_dependency<'a>(
     let allow_partial_results = true;
 
     let counters = find_unsafe(package.pack.root(), allow_partial_results);
-
     let unsafe_found = counters.has_unsafe();
     let colorize = |s: String| {
         if unsafe_found {
@@ -690,14 +662,11 @@ fn print_dependency<'a>(
             s.green()
         }
     };
-
     let rad = if unsafe_found { "☢" } else { "" };
-
     let dep_name = colorize(format!(
         "{}",
         format.display(package.id, package.pack.manifest().metadata())
     ));
-
     if compact_output {
         let compact_unsafe_info = format!(
             "({}, {}, {}, {}, {})",
@@ -718,11 +687,9 @@ fn print_dependency<'a>(
         let unsafe_info = colorize(table_row(&counters));
         println!("{}  {: <1} {}{}", unsafe_info, rad, treevines, dep_name);
     }
-
     if !new {
         return;
     }
-
     let mut normal = vec![];
     let mut build = vec![];
     let mut development = vec![];
@@ -740,7 +707,6 @@ fn print_dependency<'a>(
             Kind::Development => development.push(dep),
         }
     }
-
     print_dependency_kind(
         Kind::Normal,
         normal,
