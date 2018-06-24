@@ -4,7 +4,6 @@ extern crate syn;
 extern crate walkdir;
 
 use self::walkdir::WalkDir;
-use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
