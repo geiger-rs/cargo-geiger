@@ -4,6 +4,7 @@ extern crate syn;
 extern crate walkdir;
 
 use self::walkdir::WalkDir;
+use self::walkdir::DirEntry;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -89,17 +90,38 @@ impl<'ast> visit::Visit<'ast> for UnsafeCounter {
     }
 }
 
+fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
+    if !entry.file_type().is_file() {
+        return false;
+    }
+    let p = entry.path();
+    let ext = match p.extension() {
+        Some(e) => e,
+        None => return false,
+    };
+    // to_string_lossy is ok since we only want to match against an ASCII
+    // compatible extension and we do not keep the possibly lossy result
+    // around.
+    ext.to_string_lossy() == file_ext
+}
+
 pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
     let counters = &mut UnsafeCounter::default();
     let walker = WalkDir::new(p).into_iter();
     for entry in walker {
         let entry = entry.expect("walkdir error, TODO: Implement error handling");
+        if !is_file_with_ext(&entry, "rs") {
+            continue;
+        }
+        /*
         if !entry.file_type().is_file() {
             // TODO: Add --verbose flag and proper logging.
             // println!("Skipping non-file: {}", p.display());
             continue;
         }
+        */
         let p = entry.path();
+        /*
         let ext = match p.extension() {
             Some(e) => e,
             None => continue,
@@ -114,6 +136,7 @@ pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
         }
         // TODO: Add --verbose flag and proper logging.
         // println!("Processing file {}", p.display());
+        */
         let mut file = File::open(p).expect("Unable to open file");
         let mut src = String::new();
         file.read_to_string(&mut src).expect("Unable to read file");
@@ -151,9 +174,18 @@ use cargo::core::resolver::Method;
 use cargo::core::shell::Shell;
 use cargo::core::{Package, PackageId, Resolve, Workspace};
 
+use cargo::core::compiler::CompileMode;
+use cargo::core::compiler::Executor;
+use cargo::ops::CompileOptions;
+use cargo::ops::CleanOptions;
+
+use cargo::core::compiler::Unit;
+use cargo::core::Target;
 use cargo::ops;
+use cargo::util::ProcessBuilder;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::{CliResult, Config};
+
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;
@@ -161,8 +193,11 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::str::{self, FromStr};
+use std::sync::Arc;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
+
+use std::sync::Mutex;
 
 use format::Pattern;
 
@@ -190,68 +225,105 @@ struct Args {
     #[structopt(long = "package", short = "p", value_name = "SPEC")]
     /// Package to be used as the root of the tree
     package: Option<String>,
+
     #[structopt(long = "features", value_name = "FEATURES")]
     /// Space-separated list of features to activate
     features: Option<String>,
+
     #[structopt(long = "all-features")]
     /// Activate all available features
     all_features: bool,
+
     #[structopt(long = "no-default-features")]
     /// Do not activate the `default` feature
     no_default_features: bool,
+
     #[structopt(long = "target", value_name = "TARGET")]
     /// Set the target triple
     target: Option<String>,
+
     #[structopt(long = "all-targets")]
     /// Return dependencies for all targets. By default only the host target is matched.
     all_targets: bool,
-    #[structopt(long = "manifest-path", value_name = "PATH", parse(from_os_str))]
+
+    #[structopt(
+        long = "manifest-path",
+        value_name = "PATH",
+        parse(from_os_str)
+    )]
     /// Path to Cargo.toml
     manifest_path: Option<PathBuf>,
+
     #[structopt(long = "invert", short = "i")]
     /// Invert the tree direction
     invert: bool,
+
     #[structopt(long = "no-indent")]
     /// Display the dependencies as a list (rather than a tree)
     no_indent: bool,
+
     #[structopt(long = "prefix-depth")]
     /// Display the dependencies as a list (rather than a tree), but prefixed with the depth
     prefix_depth: bool,
+
     #[structopt(long = "all", short = "a")]
     /// Don't truncate dependencies that have already been displayed
     all: bool,
+
     #[structopt(long = "duplicate", short = "d")]
     /// Show only dependencies which come in multiple versions (implies -i)
     duplicates: bool,
-    #[structopt(long = "charset", value_name = "CHARSET", default_value = "utf8")]
+
+    #[structopt(
+        long = "charset",
+        value_name = "CHARSET",
+        default_value = "utf8"
+    )]
     /// Character set to use in output: utf8, ascii
     charset: Charset,
-    #[structopt(long = "format", short = "f", value_name = "FORMAT", default_value = "{p}")]
+
+    #[structopt(
+        long = "format",
+        short = "f",
+        value_name = "FORMAT",
+        default_value = "{p}"
+    )]
     /// Format string used for printing dependencies
     format: String,
+
     #[structopt(long = "verbose", short = "v", parse(from_occurrences))]
     /// Use verbose output (-vv very verbose/build.rs output)
     verbose: u32,
+
     #[structopt(long = "quiet", short = "q")]
     /// No output printed to stdout other than the tree
     quiet: Option<bool>,
+
     #[structopt(long = "color", value_name = "WHEN")]
     /// Coloring: auto, always, never
     color: Option<String>,
+
     #[structopt(long = "frozen")]
     /// Require Cargo.lock and cache are up to date
     frozen: bool,
+
     #[structopt(long = "locked")]
     /// Require Cargo.lock is up to date
     locked: bool,
+
     #[structopt(short = "Z", value_name = "FLAG")]
     /// Unstable (nightly-only) flags to Cargo
     unstable_flags: Vec<String>,
 
     //TODO: some real args, keep these when refactoring
+
     #[structopt(long = "compact")]
     /// Display compact output instead of table
     compact: bool,
+
+    #[structopt(long = "experimental")]
+    /// Enable experimental features (dev-mode).
+    experimental: bool,
 }
 
 enum Charset {
@@ -353,12 +425,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     let target = if args.all_targets {
         None
     } else {
-        Some(
-            args.target
-                .as_ref()
-                .unwrap_or(&config_host)
-                .as_str(),
-        )
+        Some(args.target.as_ref().unwrap_or(&config_host).as_str())
     };
 
     let format = Pattern::new(&args.format).map_err(|e| failure::err_msg(e.to_string()))?;
@@ -438,7 +505,169 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         );
     }
 
+    // This flag makes it easier to merge experimental features and
+    // improvements to the master branch.
+    if args.experimental {
+        // Need to run a cargo clean to identify all new .d deps files.
+        let clean_opt = CleanOptions {
+            config: &config,
+            spec: vec!(),
+            target: None,
+            release: false,
+            doc: false,
+        };
+        ops::clean(&workspace, &clean_opt)?;
+        let copt = CompileOptions::new(&config, CompileMode::Check { test: false })?;
+        let executor = Arc::new(CustomExecutor {
+            ..Default::default()
+        });
+        ops::compile_with_exec(&workspace, &copt, executor.clone())?;
+        let executor = Arc::try_unwrap(executor).unwrap();
+        let inner = executor.into_inner();
+        //inner
+        //    .rs_file_args
+        //    .iter()
+        //    .for_each(|p| println!("{}", p.display()));
+        //inner
+        //    .extra_filename_args
+        //    .iter()
+        //    .for_each(|s| println!("{}", s));
+        //inner
+        //    .out_dir_args
+        //    .iter()
+        //    .for_each(|p| println!("{}", p.display()));
+        for dir in inner.out_dir_args {
+            println!("outdir: {}", dir.display());
+            let walker = WalkDir::new(dir).into_iter();
+            for entry in walker {
+                let entry = entry.expect("walkdir error, TODO: Implement error handling");
+                if !is_file_with_ext(&entry, "d") {
+                    continue;
+                }
+                println!("{}", entry.path().display());
+            }
+        }
+        // TODO:
+        //   1. Run CompileMode::Clean.
+        //   2. Run build and store all out_dir_args.
+        //   3. Look for .d files under out_dir_args paths.
+        //   4. Add all .rs file paths from the .d files to rs_file_args.
+        //   5. Use rs_file_args as filter for the existing walkdir based scanning.
+        //   6. Print warnings for files in rs_file_args that are not found by the
+        //      walkdir scanner.
+    }
     Ok(())
+}
+
+#[derive(Debug, Default)]
+pub struct CustomExecutorInnerContext {
+    /// Stores all lib.rs, main.rs etc. passed to rustc during the build.
+    pub rs_file_args: HashSet<PathBuf>,
+
+    // The extra-filename arguments used by all rustc invocations. Can be
+    // used to find all .d dependency files related to this build, which is
+    // turn can be used to find all .rs files used. We need to push the build
+    // thgough rustc since cargo does not seem to know about the source file
+    // dependencies.
+    //pub extra_filename_args: HashSet<String>,
+
+    /// Investigate if this needs to be intercepted like this or if it can be
+    /// looked up in a nicer way.
+    pub out_dir_args: HashSet<PathBuf>,
+}
+
+/// A cargo Executor to intercept all build tasks and store all ".rs" file
+/// paths for later scanning.
+///
+/// TODO: This is the place to make rustc perform macro expansion to allow
+/// scanning of the the expanded code. (incl. code generated by build.rs).
+#[derive(Debug, Default)]
+pub struct CustomExecutor {
+    pub inner_ctx: Mutex<CustomExecutorInnerContext>,
+}
+
+impl CustomExecutor {
+    pub fn into_inner(self) -> CustomExecutorInnerContext {
+        self.inner_ctx.into_inner().unwrap()
+    }
+}
+
+impl Executor for CustomExecutor {
+    /// In case of an `Err`, Cargo will not continue with the build process for
+    /// this package.
+    fn exec(&self, cmd: ProcessBuilder, _id: &PackageId, _target: &Target) -> CargoResult<()> {
+        println!("{}", cmd);
+        // TODO: It seems like rustc must do its thing before we can get the
+        // source file list for each unit. Find and read the ".d" files should
+	// be used for that.
+        let args = cmd.get_args();
+	
+        // This is commented out instead of deleted if it needs to be added back.
+        // let extra_filename = args
+        //     .iter()
+        //     .find(|arg| {
+        //         let s = arg.to_str();
+        //         match s {
+        //             Some(s) => s.starts_with("extra-filename="),
+        //             None => false,
+        //         }
+        //     })
+        //     .unwrap()
+        //     .to_str()
+        //     .unwrap()
+        //     .split('=')
+        //     .nth(1)
+        //     .unwrap();
+        // if extra_filename == "" {
+        //     panic!("Did not expect empty string as extra-filename.");
+        // }
+
+        use std::ffi::OsString;
+        let out_dir_key = OsString::from("--out-dir");
+        let out_dir_key_idx = match args.iter().position(|s| *s == out_dir_key) {
+            Some(i) => i,
+            None => panic!("Expected to find --out-dir in: {}", cmd),
+        };
+        let out_dir = match args.iter().nth(out_dir_key_idx + 1) {
+            Some(s) => PathBuf::from(s),
+            None => panic!("Expected a path after --out-dir in: {}", cmd),
+        };
+        {
+            // Scope to drop and release the mutex before calling rustc.
+            let mut ctx = self.inner_ctx.lock().unwrap();
+            args.iter()
+                .map(|s| (s, s.to_string_lossy().to_lowercase()))
+                .filter(|t| t.1.ends_with(".rs"))
+                .for_each(|t| {
+                    ctx.rs_file_args.insert(t.0.into());
+                });
+            //ctx.extra_filename_args.insert(extra_filename.to_owned());
+            ctx.out_dir_args.insert(out_dir);
+        }
+        cmd.exec()?;
+        Ok(())
+    }
+
+    /// TODO: Investigate if this returns the information we need through
+    /// stdout or stderr.
+    fn exec_json(
+        &self,
+        _cmd: ProcessBuilder,
+        _id: &PackageId,
+        _target: &Target,
+        _handle_stdout: &mut FnMut(&str) -> CargoResult<()>,
+        _handle_stderr: &mut FnMut(&str) -> CargoResult<()>,
+    ) -> CargoResult<()> {
+        //cmd.exec_with_streaming(handle_stdout, handle_stderr, false)?;
+        //Ok(())
+        unimplemented!();
+    }
+
+    /// Queried when queuing each unit of work. If it returns true, then the
+    /// unit will always be rebuilt, independent of whether it needs to be.
+    fn force_rebuild(&self, _unit: &Unit) -> bool {
+        true // Overriding the default to force all units to be processed.
+    }
 }
 
 fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
@@ -462,7 +691,11 @@ fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
 /// TODO: Write proper documentation for this.
 /// This function seems to be looking up the active flags for conditional
 /// compilation (cargo::util::Cfg instances).
-fn get_cfgs(config: &Config, target: &Option<String>, ws: &Workspace) -> CargoResult<Option<Vec<Cfg>>> {
+fn get_cfgs(
+    config: &Config,
+    target: &Option<String>,
+    ws: &Workspace,
+) -> CargoResult<Option<Vec<Cfg>>> {
     let mut process = util::process(&config.rustc(Some(ws))?.path);
     process.arg("--print=cfg").env_remove("RUST_LOG");
     if let Some(ref s) = *target {
