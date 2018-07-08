@@ -150,6 +150,7 @@ use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::core::shell::Shell;
 use cargo::core::{Package, PackageId, Resolve, Workspace};
+
 use cargo::ops;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::{CliResult, Config};
@@ -324,6 +325,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         &args.color,
         args.frozen,
         args.locked,
+        &None, // TODO: add command line flag, new in cargo 0.27.
         &args.unstable_flags,
     )?;
 
@@ -345,20 +347,23 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         None => package.package_id(),
     };
 
+    // Moved to this scope to workaround borrowing confusion, review later.
+    let config_host = config.rustc(Some(&workspace))?.host;
+
     let target = if args.all_targets {
         None
     } else {
         Some(
             args.target
                 .as_ref()
-                .unwrap_or(&config.rustc()?.host)
+                .unwrap_or(&config_host)
                 .as_str(),
         )
     };
 
     let format = Pattern::new(&args.format).map_err(|e| failure::err_msg(e.to_string()))?;
 
-    let cfgs = get_cfgs(config, &args.target)?;
+    let cfgs = get_cfgs(config, &args.target, &workspace)?;
     let graph = build_graph(
         &resolve,
         &packages,
@@ -454,8 +459,11 @@ fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
     dup_ids
 }
 
-fn get_cfgs(config: &Config, target: &Option<String>) -> CargoResult<Option<Vec<Cfg>>> {
-    let mut process = util::process(&config.rustc()?.path);
+/// TODO: Write proper documentation for this.
+/// This function seems to be looking up the active flags for conditional
+/// compilation (cargo::util::Cfg instances).
+fn get_cfgs(config: &Config, target: &Option<String>, ws: &Workspace) -> CargoResult<Option<Vec<Cfg>>> {
+    let mut process = util::process(&config.rustc(Some(ws))?.path);
     process.arg("--print=cfg").env_remove("RUST_LOG");
     if let Some(ref s) = *target {
         process.arg("--target").arg(s);
