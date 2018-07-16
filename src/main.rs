@@ -216,8 +216,8 @@ use std::sync::Arc;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
-use std::sync::Mutex;
 use std::iter::FromIterator;
+use std::sync::Mutex;
 
 use format::Pattern;
 
@@ -751,16 +751,8 @@ fn resolve<'a, 'cfg>(
         uses_default_features: !no_default_features,
     };
 
-    let resolve = ops::resolve_with_previous(
-        registry,
-        ws,
-        method,
-        Some(&resolve),
-        None,
-        &[],
-        true,
-        true,
-    )?;
+    let resolve =
+        ops::resolve_with_previous(registry, ws, method, Some(&resolve), None, &[], true, true)?;
     Ok((packages, resolve))
 }
 
