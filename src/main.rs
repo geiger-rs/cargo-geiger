@@ -217,6 +217,7 @@ use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
 use std::sync::Mutex;
+use std::iter::FromIterator;
 
 use format::Pattern;
 
@@ -415,12 +416,12 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         &args.unstable_flags,
     )?;
 
-    let workspace = workspace(config, args.manifest_path)?;
-    let package = workspace.current()?;
+    let ws = workspace(config, args.manifest_path)?;
+    let package = ws.current()?;
     let mut registry = registry(config, &package)?;
     let (packages, resolve) = resolve(
         &mut registry,
-        &workspace,
+        &ws,
         args.features,
         args.all_features,
         args.no_default_features,
@@ -434,7 +435,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     };
 
     // Moved to this scope to workaround borrowing confusion, review later.
-    let config_host = config.rustc(Some(&workspace))?.host;
+    let config_host = config.rustc(Some(&ws))?.host;
 
     let target = if args.all_targets {
         None
@@ -444,7 +445,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
 
     let format = Pattern::new(&args.format).map_err(|e| failure::err_msg(e.to_string()))?;
 
-    let cfgs = get_cfgs(config, &args.target, &workspace)?;
+    let cfgs = get_cfgs(config, &args.target, &ws)?;
     let graph = build_graph(
         &resolve,
         &packages,
@@ -475,7 +476,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     // This flag makes it easier to merge experimental features and
     // improvements to the master branch.
     let rs_files_used = if args.experimental {
-        Some(resolve_rs_file_deps(&config, &workspace))
+        Some(HashSet::from_iter(resolve_rs_file_deps(&config, &ws)))
     } else {
         None
     };
@@ -522,7 +523,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
 }
 
 /// TODO: Implement error handling and return Result.
-fn resolve_rs_file_deps(config: &Config, ws: &Workspace) -> HashSet<PathBuf> {
+fn resolve_rs_file_deps(config: &Config, ws: &Workspace) -> impl Iterator<Item = PathBuf> {
     // Need to run a cargo clean to identify all new .d deps files.
     let clean_opt = CleanOptions {
         config: &config,
@@ -538,32 +539,21 @@ fn resolve_rs_file_deps(config: &Config, ws: &Workspace) -> HashSet<PathBuf> {
     });
     ops::compile_with_exec(ws, &copt, executor.clone()).unwrap();
     let executor = Arc::try_unwrap(executor).unwrap();
-    let (mut rs_files, out_dir_args) = {
+    let (rs_files, out_dir_args) = {
         let inner = executor.into_inner();
         (inner.rs_file_args, inner.out_dir_args)
     };
-    for dir in out_dir_args {
-        //println!("outdir: {}", dir.display());
-        let walker = WalkDir::new(dir).into_iter();
-        for entry in walker {
-            let entry = entry.expect("walkdir error, TODO: Implement error handling");
-            if !is_file_with_ext(&entry, "d") {
-                continue;
-            }
-            //println!("{}", entry.path().display());
-            let deps = parse_rustc_dep_info(entry.path()).unwrap();
-            for tuple in deps {
-                //println!("{}", tuple.0);
-                for dep in tuple.1 {
-                    rs_files.insert(dep.into());
-                }
-            }
-            // TODO: Look for ways to intercept the dep info using the
-            //       cargo API, extending it and making a PR if needed.
-        }
-    }
-    rs_files
+    out_dir_args
+        .into_iter()
+        .flat_map(|dir| WalkDir::new(dir).into_iter())
+        .map(|entry| entry.expect("walkdir error, TODO: Implement error handling"))
+        .filter(|entry| is_file_with_ext(&entry, "d"))
+        .flat_map(|entry| parse_rustc_dep_info(entry.path()).unwrap())
+        .flat_map(|tuple| tuple.1)
+        .map(|s| s.into())
+        .chain(rs_files)
 }
+
 /// Copy-pasted from the private module cargo::core::compiler::fingerprint.
 /// TODO: Make a PR to the cargo project to expose this function or to expose
 /// the dependency data in some other way.
@@ -745,14 +735,14 @@ fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageReg
 
 fn resolve<'a, 'cfg>(
     registry: &mut PackageRegistry<'cfg>,
-    workspace: &'a Workspace<'cfg>,
+    ws: &'a Workspace<'cfg>,
     features: Option<String>,
     all_features: bool,
     no_default_features: bool,
 ) -> CargoResult<(PackageSet<'a>, Resolve)> {
     let features = Method::split_features(&features.into_iter().collect::<Vec<_>>());
 
-    let (packages, resolve) = ops::resolve_ws(workspace)?;
+    let (packages, resolve) = ops::resolve_ws(ws)?;
 
     let method = Method::Required {
         dev_deps: true,
@@ -763,7 +753,7 @@ fn resolve<'a, 'cfg>(
 
     let resolve = ops::resolve_with_previous(
         registry,
-        workspace,
+        ws,
         method,
         Some(&resolve),
         None,
