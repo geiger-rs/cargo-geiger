@@ -1,15 +1,55 @@
 #![forbid(unsafe_code)]
 
+#[macro_use]
+extern crate structopt;
+extern crate cargo;
+extern crate colored;
+extern crate env_logger;
+extern crate failure;
+extern crate petgraph;
 extern crate syn;
 extern crate walkdir;
 
 use self::walkdir::DirEntry;
 use self::walkdir::WalkDir;
+use cargo::core::compiler::CompileMode;
+use cargo::core::compiler::Executor;
+use cargo::core::compiler::Unit;
+use cargo::core::dependency::Kind;
+use cargo::core::package::PackageSet;
+use cargo::core::registry::PackageRegistry;
+use cargo::core::resolver::Method;
+use cargo::core::shell::Shell;
+use cargo::core::Target;
+use cargo::core::{Package, PackageId, Resolve, Workspace};
+use cargo::ops;
+use cargo::ops::CleanOptions;
+use cargo::ops::CompileOptions;
+use cargo::util::paths;
+use cargo::util::ProcessBuilder;
+use cargo::util::{self, important_paths, CargoResult, Cfg};
+use cargo::{CliResult, Config};
+use colored::*;
+use format::Pattern;
+use petgraph::graph::NodeIndex;
+use petgraph::visit::EdgeRef;
+use petgraph::EdgeDirection;
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
+use std::ffi::OsString;
 use std::fs::File;
 use std::io::Read;
+use std::iter::FromIterator;
 use std::path::Path;
-
+use std::path::PathBuf;
+use std::str::{self, FromStr};
+use std::sync::Arc;
+use std::sync::Mutex;
+use structopt::clap::AppSettings;
+use structopt::StructOpt;
 use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemTrait};
+
+mod format;
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Count {
@@ -170,60 +210,6 @@ pub fn find_unsafe(
     }
     *counters
 }
-
-// The code below is based on the source from cargo-tree.
-// There is a whole lot of code that could be deleted or moved to a library
-// used by both cargo-tree and this project.
-
-extern crate cargo;
-extern crate colored;
-extern crate env_logger;
-extern crate failure;
-extern crate petgraph;
-
-#[macro_use]
-extern crate structopt;
-
-use cargo::core::dependency::Kind;
-use cargo::core::package::PackageSet;
-use cargo::core::registry::PackageRegistry;
-use cargo::core::resolver::Method;
-use cargo::core::shell::Shell;
-use cargo::core::{Package, PackageId, Resolve, Workspace};
-
-use cargo::core::compiler::CompileMode;
-use cargo::core::compiler::Executor;
-
-use cargo::ops::CleanOptions;
-use cargo::ops::CompileOptions;
-
-use cargo::core::compiler::Unit;
-use cargo::core::Target;
-use cargo::ops;
-use cargo::util::paths;
-use cargo::util::ProcessBuilder;
-use cargo::util::{self, important_paths, CargoResult, Cfg};
-use cargo::{CliResult, Config};
-
-use petgraph::graph::NodeIndex;
-use petgraph::visit::EdgeRef;
-use petgraph::EdgeDirection;
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
-use std::str::{self, FromStr};
-use std::sync::Arc;
-use structopt::clap::AppSettings;
-use structopt::StructOpt;
-
-use std::iter::FromIterator;
-use std::sync::Mutex;
-
-use format::Pattern;
-
-mod format;
-
-use colored::*;
 
 #[derive(StructOpt)]
 #[structopt(bin_name = "cargo")]
@@ -646,7 +632,6 @@ impl Executor for CustomExecutor {
         //     panic!("Did not expect empty string as extra-filename.");
         // }
 
-        use std::ffi::OsString;
         let out_dir_key = OsString::from("--out-dir");
         let out_dir_key_idx = match args.iter().position(|s| *s == out_dir_key) {
             Some(i) => i,
