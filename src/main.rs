@@ -272,10 +272,6 @@ struct Args {
     /// Don't truncate dependencies that have already been displayed
     all: bool,
 
-    #[structopt(long = "duplicate", short = "d")]
-    /// Show only dependencies which come in multiple versions (implies -i)
-    duplicates: bool,
-
     #[structopt(
         long = "charset",
         value_name = "CHARSET",
@@ -440,7 +436,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         cfgs.as_ref().map(|r| &**r),
     )?;
 
-    let direction = if args.invert || args.duplicates {
+    let direction = if args.invert {
         EdgeDirection::Incoming
     } else {
         EdgeDirection::Outgoing
@@ -478,33 +474,16 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     }
     println!();
 
-    if args.duplicates {
-        let dups = find_duplicates(&graph);
-        for dup in &dups {
-            print_tree(
-                dup,
-                &graph,
-                &format,
-                direction,
-                symbols,
-                prefix,
-                args.all,
-                args.compact,
-            );
-            println!();
-        }
-    } else {
-        print_tree(
-            root,
-            &graph,
-            &format,
-            direction,
-            symbols,
-            prefix,
-            args.all,
-            args.compact,
-        );
-    }
+    print_tree(
+        root,
+        &graph,
+        &format,
+        direction,
+        symbols,
+        prefix,
+        args.all,
+        args.compact,
+    );
 
     // This flag makes it easier to merge experimental features and
     // improvements to the master branch.
@@ -701,24 +680,6 @@ impl Executor for CustomExecutor {
     fn force_rebuild(&self, _unit: &Unit) -> bool {
         true // Overriding the default to force all units to be processed.
     }
-}
-
-fn find_duplicates<'a>(graph: &Graph<'a>) -> Vec<&'a PackageId> {
-    let mut counts = HashMap::new();
-
-    // Count by name only. Source and version are irrelevant here.
-    for package in graph.nodes.keys() {
-        *counts.entry(package.name()).or_insert(0) += 1;
-    }
-
-    // Theoretically inefficient, but in practice we're only listing duplicates and
-    // there won't be enough dependencies for it to matter.
-    let mut dup_ids = Vec::new();
-    for name in counts.drain().filter(|&(_, v)| v > 1).map(|(k, _)| k) {
-        dup_ids.extend(graph.nodes.keys().filter(|p| p.name() == name));
-    }
-    dup_ids.sort();
-    dup_ids
 }
 
 /// TODO: Write proper documentation for this.
