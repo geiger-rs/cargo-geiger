@@ -176,6 +176,7 @@ use cargo::core::{Package, PackageId, Resolve, Workspace};
 
 use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
+
 use cargo::ops::CompileOptions;
 use cargo::ops::CleanOptions;
 
@@ -183,6 +184,7 @@ use cargo::core::compiler::Unit;
 use cargo::core::Target;
 use cargo::ops;
 use cargo::util::ProcessBuilder;
+use cargo::util::paths;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::{CliResult, Config};
 
@@ -523,30 +525,34 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         });
         ops::compile_with_exec(&workspace, &copt, executor.clone())?;
         let executor = Arc::try_unwrap(executor).unwrap();
-        let inner = executor.into_inner();
-        //inner
-        //    .rs_file_args
-        //    .iter()
-        //    .for_each(|p| println!("{}", p.display()));
-        //inner
-        //    .extra_filename_args
-        //    .iter()
-        //    .for_each(|s| println!("{}", s));
-        //inner
-        //    .out_dir_args
-        //    .iter()
-        //    .for_each(|p| println!("{}", p.display()));
-        for dir in inner.out_dir_args {
-            println!("outdir: {}", dir.display());
+        let (mut rs_file_args, out_dir_args) = {
+            let inner = executor.into_inner();
+            (inner.rs_file_args, inner.out_dir_args)
+        };
+        for dir in out_dir_args {
+            //println!("outdir: {}", dir.display());
             let walker = WalkDir::new(dir).into_iter();
             for entry in walker {
                 let entry = entry.expect("walkdir error, TODO: Implement error handling");
                 if !is_file_with_ext(&entry, "d") {
                     continue;
                 }
-                println!("{}", entry.path().display());
+                //println!("{}", entry.path().display());
+                let deps = parse_rustc_dep_info(entry.path()).unwrap();
+                for tuple in deps {
+                    //println!("{}", tuple.0);
+                    for dep in tuple.1 {
+                        rs_file_args.insert(dep.into());
+                    }
+                }
+                // TODO: Use fingerprint::parse_rustc_dep_info or parse_dep_info?
+                //       ...looks like parse_rustc_dep_info match the .d file format.
+                // 
+                // TODO: Look for ways to intercept the dep info using the
+                //       cargo API, extending it and making a PR if needed. 
             }
         }
+
         // TODO:
         //   1. Run CompileMode::Clean.
         //   2. Run build and store all out_dir_args.
@@ -557,6 +563,35 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         //      walkdir scanner.
     }
     Ok(())
+}
+
+/// Copy-pasted from the private module cargo::core::compiler::fingerprint.
+/// TODO: Make a PR to the cargo project to expose this function or to expose
+/// the dependency data in some other way.
+pub fn parse_rustc_dep_info(rustc_dep_info: &Path) -> CargoResult<Vec<(String, Vec<String>)>> {
+    let contents = paths::read(rustc_dep_info)?;
+    contents
+        .lines()
+        .filter_map(|l| l.find(": ").map(|i| (l, i)))
+        .map(|(line, pos)| {
+            let target = &line[..pos];
+            let mut deps = line[pos + 2..].split_whitespace();
+            let mut ret = Vec::new();
+            while let Some(s) = deps.next() {
+                let mut file = s.to_string();
+                while file.ends_with('\\') {
+                    file.pop();
+                    file.push(' ');
+                    //file.push_str(deps.next().ok_or_else(|| {
+                        //internal("malformed dep-info format, trailing \\".to_string())
+                    //})?);
+                    file.push_str(deps.next().expect("malformed dep-info format, trailing \\"));
+                }
+                ret.push(file);
+            }
+            Ok((target.to_string(), ret))
+        })
+        .collect()
 }
 
 #[derive(Debug, Default)]
