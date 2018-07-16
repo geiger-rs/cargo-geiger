@@ -105,7 +105,11 @@ fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
     ext.to_string_lossy() == file_ext
 }
 
-pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
+pub fn find_unsafe(
+    p: &Path,
+    allow_partial_results: bool,
+    rs_files_used: &Option<HashSet<PathBuf>>,
+) -> UnsafeCounter {
     let counters = &mut UnsafeCounter::default();
     let walker = WalkDir::new(p).into_iter();
     for entry in walker {
@@ -121,6 +125,19 @@ pub fn find_unsafe(p: &Path, allow_partial_results: bool) -> UnsafeCounter {
         }
         */
         let p = entry.path();
+        match rs_files_used {
+            Some(used) => {
+                if used.contains(p) {
+                    // TODO: Add --verbose flag and proper logging.
+                    //println!("Used: {}", p.display());
+                } else {
+                    // TODO: Add --verbose flag and proper logging.
+                    //println!("Not used, skipping: {}", p.display());
+                    continue;
+                }
+            }
+            None => {}
+        }
         /*
         let ext = match p.extension() {
             Some(e) => e,
@@ -455,6 +472,23 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         Prefix::Indent
     };
 
+    // This flag makes it easier to merge experimental features and
+    // improvements to the master branch.
+    let rs_files_used = if args.experimental {
+        Some(resolve_rs_file_deps(&config, &workspace))
+    } else {
+        None
+    };
+
+    // TODO:
+    //   [o] 1. Run CompileMode::Clean.
+    //   [o] 2. Run build and store all out_dir_args.
+    //   [o] 3. Look for .d files under out_dir_args paths.
+    //   [o] 4. Add all .rs file paths from the .d files to rs_file_args.
+    //   [o] 5. Use rs_file_args as filter for the existing walkdir based scanning.
+    //   [ ] 6. Print warnings for files in rs_file_args that are not found by the
+    //      walkdir scanner.
+
     println!();
     if args.compact {
         println!(
@@ -473,7 +507,6 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         );
     }
     println!();
-
     print_tree(
         root,
         &graph,
@@ -483,66 +516,54 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         prefix,
         args.all,
         args.compact,
+        &rs_files_used,
     );
-
-    // This flag makes it easier to merge experimental features and
-    // improvements to the master branch.
-    if args.experimental {
-        // Need to run a cargo clean to identify all new .d deps files.
-        let clean_opt = CleanOptions {
-            config: &config,
-            spec: vec![],
-            target: None,
-            release: false,
-            doc: false,
-        };
-        ops::clean(&workspace, &clean_opt)?;
-        let copt = CompileOptions::new(&config, CompileMode::Check { test: false })?;
-        let executor = Arc::new(CustomExecutor {
-            ..Default::default()
-        });
-        ops::compile_with_exec(&workspace, &copt, executor.clone())?;
-        let executor = Arc::try_unwrap(executor).unwrap();
-        let (mut rs_file_args, out_dir_args) = {
-            let inner = executor.into_inner();
-            (inner.rs_file_args, inner.out_dir_args)
-        };
-        for dir in out_dir_args {
-            //println!("outdir: {}", dir.display());
-            let walker = WalkDir::new(dir).into_iter();
-            for entry in walker {
-                let entry = entry.expect("walkdir error, TODO: Implement error handling");
-                if !is_file_with_ext(&entry, "d") {
-                    continue;
-                }
-                //println!("{}", entry.path().display());
-                let deps = parse_rustc_dep_info(entry.path()).unwrap();
-                for tuple in deps {
-                    //println!("{}", tuple.0);
-                    for dep in tuple.1 {
-                        rs_file_args.insert(dep.into());
-                    }
-                }
-                // TODO: Use fingerprint::parse_rustc_dep_info or parse_dep_info?
-                //       ...looks like parse_rustc_dep_info match the .d file format.
-                //
-                // TODO: Look for ways to intercept the dep info using the
-                //       cargo API, extending it and making a PR if needed.
-            }
-        }
-
-        // TODO:
-        //   1. Run CompileMode::Clean.
-        //   2. Run build and store all out_dir_args.
-        //   3. Look for .d files under out_dir_args paths.
-        //   4. Add all .rs file paths from the .d files to rs_file_args.
-        //   5. Use rs_file_args as filter for the existing walkdir based scanning.
-        //   6. Print warnings for files in rs_file_args that are not found by the
-        //      walkdir scanner.
-    }
     Ok(())
 }
 
+/// TODO: Implement error handling and return Result.
+fn resolve_rs_file_deps(config: &Config, ws: &Workspace) -> HashSet<PathBuf> {
+    // Need to run a cargo clean to identify all new .d deps files.
+    let clean_opt = CleanOptions {
+        config: &config,
+        spec: vec![],
+        target: None,
+        release: false,
+        doc: false,
+    };
+    ops::clean(ws, &clean_opt).unwrap();
+    let copt = CompileOptions::new(&config, CompileMode::Check { test: false }).unwrap();
+    let executor = Arc::new(CustomExecutor {
+        ..Default::default()
+    });
+    ops::compile_with_exec(ws, &copt, executor.clone()).unwrap();
+    let executor = Arc::try_unwrap(executor).unwrap();
+    let (mut rs_files, out_dir_args) = {
+        let inner = executor.into_inner();
+        (inner.rs_file_args, inner.out_dir_args)
+    };
+    for dir in out_dir_args {
+        //println!("outdir: {}", dir.display());
+        let walker = WalkDir::new(dir).into_iter();
+        for entry in walker {
+            let entry = entry.expect("walkdir error, TODO: Implement error handling");
+            if !is_file_with_ext(&entry, "d") {
+                continue;
+            }
+            //println!("{}", entry.path().display());
+            let deps = parse_rustc_dep_info(entry.path()).unwrap();
+            for tuple in deps {
+                //println!("{}", tuple.0);
+                for dep in tuple.1 {
+                    rs_files.insert(dep.into());
+                }
+            }
+            // TODO: Look for ways to intercept the dep info using the
+            //       cargo API, extending it and making a PR if needed.
+        }
+    }
+    rs_files
+}
 /// Copy-pasted from the private module cargo::core::compiler::fingerprint.
 /// TODO: Make a PR to the cargo project to expose this function or to expose
 /// the dependency data in some other way.
@@ -608,7 +629,8 @@ impl Executor for CustomExecutor {
     /// In case of an `Err`, Cargo will not continue with the build process for
     /// this package.
     fn exec(&self, cmd: ProcessBuilder, _id: &PackageId, _target: &Target) -> CargoResult<()> {
-        println!("{}", cmd);
+        // TODO: Add --verbose flag and proper logging.
+        //println!("{}", cmd);
         // TODO: It seems like rustc must do its thing before we can get the
         // source file list for each unit. Find and read the ".d" files should
         // be used for that.
@@ -831,10 +853,10 @@ fn print_tree<'a>(
     prefix: Prefix,
     all: bool,
     compact_output: bool,
+    rs_files_used: &Option<HashSet<PathBuf>>,
 ) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
-
     let node = &graph.graph[graph.nodes[&package]];
     print_dependency(
         node,
@@ -847,6 +869,7 @@ fn print_tree<'a>(
         prefix,
         all,
         compact_output,
+        rs_files_used,
     );
 }
 
@@ -861,6 +884,7 @@ fn print_dependency<'a>(
     prefix: Prefix,
     all: bool,
     compact_output: bool,
+    rs_files_used: &Option<HashSet<PathBuf>>,
 ) {
     let new = all || visited_deps.insert(package.id);
     let treevines = match prefix {
@@ -887,7 +911,7 @@ fn print_dependency<'a>(
     // TODO: Add command line flag for this and make it default to false.
     let allow_partial_results = true;
 
-    let counters = find_unsafe(package.pack.root(), allow_partial_results);
+    let counters = find_unsafe(package.pack.root(), allow_partial_results, rs_files_used);
     let unsafe_found = counters.has_unsafe();
     let colorize = |s: String| {
         if unsafe_found {
@@ -953,6 +977,7 @@ fn print_dependency<'a>(
         prefix,
         all,
         compact_output,
+        rs_files_used,
     );
     print_dependency_kind(
         Kind::Build,
@@ -966,6 +991,7 @@ fn print_dependency<'a>(
         prefix,
         all,
         compact_output,
+        rs_files_used,
     );
     print_dependency_kind(
         Kind::Development,
@@ -979,6 +1005,7 @@ fn print_dependency<'a>(
         prefix,
         all,
         compact_output,
+        rs_files_used,
     );
 }
 
@@ -994,6 +1021,7 @@ fn print_dependency_kind<'a>(
     prefix: Prefix,
     all: bool,
     compact_output: bool,
+    rs_files_used: &Option<HashSet<PathBuf>>,
 ) {
     if deps.is_empty() {
         return;
@@ -1035,6 +1063,7 @@ fn print_dependency_kind<'a>(
             prefix,
             all,
             compact_output,
+            rs_files_used,
         );
         levels_continue.pop();
     }
