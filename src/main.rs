@@ -3,8 +3,8 @@
 extern crate syn;
 extern crate walkdir;
 
-use self::walkdir::WalkDir;
 use self::walkdir::DirEntry;
+use self::walkdir::WalkDir;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -177,14 +177,14 @@ use cargo::core::{Package, PackageId, Resolve, Workspace};
 use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
 
-use cargo::ops::CompileOptions;
 use cargo::ops::CleanOptions;
+use cargo::ops::CompileOptions;
 
 use cargo::core::compiler::Unit;
 use cargo::core::Target;
 use cargo::ops;
-use cargo::util::ProcessBuilder;
 use cargo::util::paths;
+use cargo::util::ProcessBuilder;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::{CliResult, Config};
 
@@ -318,7 +318,6 @@ struct Args {
     unstable_flags: Vec<String>,
 
     //TODO: some real args, keep these when refactoring
-
     #[structopt(long = "compact")]
     /// Display compact output instead of table
     compact: bool,
@@ -513,7 +512,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         // Need to run a cargo clean to identify all new .d deps files.
         let clean_opt = CleanOptions {
             config: &config,
-            spec: vec!(),
+            spec: vec![],
             target: None,
             release: false,
             doc: false,
@@ -547,9 +546,9 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
                 }
                 // TODO: Use fingerprint::parse_rustc_dep_info or parse_dep_info?
                 //       ...looks like parse_rustc_dep_info match the .d file format.
-                // 
+                //
                 // TODO: Look for ways to intercept the dep info using the
-                //       cargo API, extending it and making a PR if needed. 
+                //       cargo API, extending it and making a PR if needed.
             }
         }
 
@@ -583,7 +582,7 @@ pub fn parse_rustc_dep_info(rustc_dep_info: &Path) -> CargoResult<Vec<(String, V
                     file.pop();
                     file.push(' ');
                     //file.push_str(deps.next().ok_or_else(|| {
-                        //internal("malformed dep-info format, trailing \\".to_string())
+                    //internal("malformed dep-info format, trailing \\".to_string())
                     //})?);
                     file.push_str(deps.next().expect("malformed dep-info format, trailing \\"));
                 }
@@ -605,7 +604,6 @@ pub struct CustomExecutorInnerContext {
     // thgough rustc since cargo does not seem to know about the source file
     // dependencies.
     //pub extra_filename_args: HashSet<String>,
-
     /// Investigate if this needs to be intercepted like this or if it can be
     /// looked up in a nicer way.
     pub out_dir_args: HashSet<PathBuf>,
@@ -634,9 +632,9 @@ impl Executor for CustomExecutor {
         println!("{}", cmd);
         // TODO: It seems like rustc must do its thing before we can get the
         // source file list for each unit. Find and read the ".d" files should
-	// be used for that.
+        // be used for that.
         let args = cmd.get_args();
-	
+
         // This is commented out instead of deleted if it needs to be added back.
         // let extra_filename = args
         //     .iter()
@@ -1097,7 +1095,9 @@ fn table_row_empty() -> String {
             .iter()
             .take(5)
             .map(|s| s.len())
-            .sum::<usize>() + UNSAFE_COUNTERS_HEADER.len() + 1,
+            .sum::<usize>()
+            + UNSAFE_COUNTERS_HEADER.len()
+            + 1,
     )
 }
 
