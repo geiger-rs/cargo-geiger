@@ -148,7 +148,7 @@ pub fn find_unsafe(
     p: &Path,
     allow_partial_results: bool,
     rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
-    verbose: bool
+    verbose: bool,
 ) -> UnsafeCounter {
     let counters = &mut UnsafeCounter::default();
     let walker = WalkDir::new(p).into_iter();
@@ -462,7 +462,9 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
             .map(|used| used.keys().map(|k| k.to_owned()).collect::<Vec<PathBuf>>())
             .unwrap_or(Default::default());
         paths.sort();
-        paths.iter().for_each(|p| println!("Used (sorted): {}", p.display()));
+        paths
+            .iter()
+            .for_each(|p| println!("Used (sorted): {}", p.display()));
     }
     println!();
     if args.compact {
@@ -492,7 +494,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         args.all,
         args.compact,
         &mut rs_files_used,
-        verbose
+        verbose,
     );
     if let Some(rs_files_used) = rs_files_used {
         rs_files_used
@@ -795,7 +797,7 @@ fn print_tree<'a>(
     all: bool,
     compact_output: bool,
     rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
-    verbose: bool
+    verbose: bool,
 ) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
@@ -812,7 +814,7 @@ fn print_tree<'a>(
         all,
         compact_output,
         rs_files_used,
-        verbose
+        verbose,
     );
 }
 
@@ -828,7 +830,7 @@ fn print_dependency<'a>(
     all: bool,
     compact_output: bool,
     rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
-    verbose: bool
+    verbose: bool,
 ) {
     let new = all || visited_deps.insert(package.id);
     let treevines = match prefix {
@@ -857,7 +859,12 @@ fn print_dependency<'a>(
 
     // TODO: Find and collect unsafe stats as a separate pass over the deps
     // tree before printing.
-    let counters = find_unsafe(package.pack.root(), allow_partial_results, rs_files_used, verbose);
+    let counters = find_unsafe(
+        package.pack.root(),
+        allow_partial_results,
+        rs_files_used,
+        verbose,
+    );
     let unsafe_found = counters.has_unsafe();
     let colorize = |s: String| {
         if unsafe_found {
@@ -924,7 +931,7 @@ fn print_dependency<'a>(
         all,
         compact_output,
         rs_files_used,
-        verbose
+        verbose,
     );
     print_dependency_kind(
         Kind::Build,
@@ -939,7 +946,7 @@ fn print_dependency<'a>(
         all,
         compact_output,
         rs_files_used,
-        verbose
+        verbose,
     );
     print_dependency_kind(
         Kind::Development,
@@ -954,7 +961,7 @@ fn print_dependency<'a>(
         all,
         compact_output,
         rs_files_used,
-        verbose
+        verbose,
     );
 }
 
@@ -971,7 +978,7 @@ fn print_dependency_kind<'a>(
     all: bool,
     compact_output: bool,
     rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
-    verbose: bool
+    verbose: bool,
 ) {
     if deps.is_empty() {
         return;
@@ -1014,7 +1021,7 @@ fn print_dependency_kind<'a>(
             all,
             compact_output,
             rs_files_used,
-            verbose
+            verbose,
         );
         levels_continue.pop();
     }
