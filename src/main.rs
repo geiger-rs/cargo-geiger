@@ -308,9 +308,10 @@ struct Args {
     /// Display compact output instead of table
     compact: bool,
 
-    #[structopt(long = "experimental")]
-    /// Enable experimental features (dev-mode).
-    experimental: bool,
+    #[structopt(long = "include-all")]
+    /// Find all .rs files under each depedency root directory, regardless if
+    /// they are included in the build or not.
+    include_all_rs_files: bool,
 }
 
 enum Charset {
@@ -377,6 +378,19 @@ fn main() {
     }
 }
 
+enum ScanMode {
+    /// Resolve all .rs files needed to build by first intercepting all rustc
+    /// calls and then parsing the .d files produced by rustc. Only includes the
+    /// .rs files used by the build.
+    /// This is the new default scan mode from 0.3.0.
+    ExcludeUnusedRustFiles,
+
+    /// Find all .rs files under each dependency root directory but do no apply
+    /// any filtering, include all .rs files found.
+    /// This is the original behavior of cargo-geiger.
+    IncludeAllRustFiles,
+}
+
 fn real_main(args: Args, config: &mut Config) -> CliResult {
     config.configure(
         args.verbose,
@@ -387,6 +401,14 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         &None, // TODO: add command line flag, new in cargo 0.27.
         &args.unstable_flags,
     )?;
+    // TODO: Make ExcludeUnusedRustFiles print both included and ignored unsafe
+    // numbers. (10 / 10) => 10 of 10 unsafe items included in the build.
+    // TODO: Add a new default output format that adds all unsafe usage counts
+    // to a single number?
+    //     10 / 10     crate-one-0.1.0
+    //     5  / 123    some-other-crate-0.1.0
+    //     0  / 456    and-another-one-0.1.0
+    let scan_mode = if args.include_all_rs_files { ScanMode::IncludeAllRustFiles } else { ScanMode::ExcludeUnusedRustFiles };
     let verbose = args.verbose != 0;
     let ws = workspace(config, args.manifest_path)?;
     let package = ws.current()?;
@@ -443,16 +465,15 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         Prefix::Indent
     };
 
-    // This flag makes it easier to merge experimental features and
-    // improvements to the master branch.
-    let mut rs_files_used = if args.experimental {
-        let mut hm = HashMap::new();
-        for path in resolve_rs_file_deps(&config, &ws) {
-            hm.insert(path, 0);
-        }
-        Some(hm)
-    } else {
-        None
+    let mut rs_files_used = match scan_mode {
+        ScanMode::ExcludeUnusedRustFiles => {
+            let mut hm = HashMap::new();
+            for path in resolve_rs_file_deps(&config, &ws) {
+                hm.insert(path, 0);
+            }
+            Some(hm)
+        },
+        ScanMode::IncludeAllRustFiles => { None }
     };
 
     if verbose {
