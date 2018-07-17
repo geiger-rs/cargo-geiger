@@ -39,7 +39,6 @@ use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs::File;
 use std::io::Read;
-use std::iter::FromIterator;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::{self, FromStr};
@@ -148,7 +147,7 @@ fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
 pub fn find_unsafe(
     p: &Path,
     allow_partial_results: bool,
-    rs_files_used: &Option<HashSet<PathBuf>>,
+    rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
 ) -> UnsafeCounter {
     let counters = &mut UnsafeCounter::default();
     let walker = WalkDir::new(p).into_iter();
@@ -167,13 +166,18 @@ pub fn find_unsafe(
         let p = entry.path();
         match rs_files_used {
             Some(used) => {
-                if used.contains(p) {
-                    // TODO: Add --verbose flag and proper logging.
-                    //println!("Used: {}", p.display());
-                } else {
-                    // TODO: Add --verbose flag and proper logging.
-                    //println!("Not used, skipping: {}", p.display());
-                    continue;
+                let counter = used.get_mut(p);
+                match counter {
+                    Some(c) => {
+                        // TODO: Add --verbose flag and proper logging.
+                        //println!("Used: {}", p.display());
+                        *c += 1;
+                    }
+                    None => {
+                        // TODO: Add --verbose flag and proper logging.
+                        //println!("Not used, skipping: {}", p.display());
+                        continue;
+                    }
                 }
             }
             None => {}
@@ -461,11 +465,24 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
 
     // This flag makes it easier to merge experimental features and
     // improvements to the master branch.
-    let rs_files_used = if args.experimental {
-        Some(HashSet::from_iter(resolve_rs_file_deps(&config, &ws)))
+    let mut rs_files_used = if args.experimental {
+        let mut hm = HashMap::new();
+        for path in resolve_rs_file_deps(&config, &ws) {
+            hm.insert(path, 0);
+        }
+        Some(hm)
     } else {
         None
     };
+    //{
+    //    // Print some debug info
+    //    let mut paths = rs_files_used
+    //        .as_ref()
+    //        .map(|used| used.keys().map(|k| k.to_owned()).collect::<Vec<PathBuf>>())
+    //        .unwrap_or(Default::default());
+    //    paths.sort();
+    //    paths.iter().for_each(|p| println!("{}", p.display()));
+    //}
 
     // TODO:
     //   [o] 1. Run CompileMode::Clean.
@@ -503,8 +520,16 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         prefix,
         args.all,
         args.compact,
-        &rs_files_used,
+        &mut rs_files_used,
     );
+
+    if let Some(rs_files_used) = rs_files_used {
+        rs_files_used
+        .iter()
+        .filter(|(_k, v)| **v == 0)
+        .for_each(|(k, _v)| println!("WARNING: Dependency file was never scanned: {}", k.display()));
+    }
+    
     Ok(())
 }
 
@@ -536,7 +561,8 @@ fn resolve_rs_file_deps(config: &Config, ws: &Workspace) -> impl Iterator<Item =
         .filter(|entry| is_file_with_ext(&entry, "d"))
         .flat_map(|entry| parse_rustc_dep_info(entry.path()).unwrap())
         .flat_map(|tuple| tuple.1)
-        .map(|s| s.into())
+        .map(|s| PathBuf::from(s))
+        .map(|pb| pb.canonicalize().unwrap())
         .chain(rs_files)
 }
 
@@ -648,7 +674,7 @@ impl Executor for CustomExecutor {
                 .map(|s| (s, s.to_string_lossy().to_lowercase()))
                 .filter(|t| t.1.ends_with(".rs"))
                 .for_each(|t| {
-                    ctx.rs_file_args.insert(t.0.into());
+                    ctx.rs_file_args.insert(PathBuf::from(t.0).canonicalize().unwrap());
                 });
             //ctx.extra_filename_args.insert(extra_filename.to_owned());
             ctx.out_dir_args.insert(out_dir);
@@ -820,7 +846,7 @@ fn print_tree<'a>(
     prefix: Prefix,
     all: bool,
     compact_output: bool,
-    rs_files_used: &Option<HashSet<PathBuf>>,
+    rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
 ) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
@@ -851,7 +877,7 @@ fn print_dependency<'a>(
     prefix: Prefix,
     all: bool,
     compact_output: bool,
-    rs_files_used: &Option<HashSet<PathBuf>>,
+    rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
 ) {
     let new = all || visited_deps.insert(package.id);
     let treevines = match prefix {
@@ -877,7 +903,9 @@ fn print_dependency<'a>(
 
     // TODO: Add command line flag for this and make it default to false.
     let allow_partial_results = true;
-
+    
+    // TODO: Find and collect unsafe stats as a separate pass over the deps
+    // tree before printing.
     let counters = find_unsafe(package.pack.root(), allow_partial_results, rs_files_used);
     let unsafe_found = counters.has_unsafe();
     let colorize = |s: String| {
@@ -988,7 +1016,7 @@ fn print_dependency_kind<'a>(
     prefix: Prefix,
     all: bool,
     compact_output: bool,
-    rs_files_used: &Option<HashSet<PathBuf>>,
+    rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
 ) {
     if deps.is_empty() {
         return;
