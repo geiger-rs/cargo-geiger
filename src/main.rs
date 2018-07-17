@@ -525,11 +525,16 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
 
     if let Some(rs_files_used) = rs_files_used {
         rs_files_used
-        .iter()
-        .filter(|(_k, v)| **v == 0)
-        .for_each(|(k, _v)| println!("WARNING: Dependency file was never scanned: {}", k.display()));
+            .iter()
+            .filter(|(_k, v)| **v == 0)
+            .for_each(|(k, _v)| {
+                println!(
+                    "WARNING: Dependency file was never scanned: {}",
+                    k.display()
+                )
+            });
     }
-    
+
     Ok(())
 }
 
@@ -674,7 +679,8 @@ impl Executor for CustomExecutor {
                 .map(|s| (s, s.to_string_lossy().to_lowercase()))
                 .filter(|t| t.1.ends_with(".rs"))
                 .for_each(|t| {
-                    ctx.rs_file_args.insert(PathBuf::from(t.0).canonicalize().unwrap());
+                    ctx.rs_file_args
+                        .insert(PathBuf::from(t.0).canonicalize().unwrap());
                 });
             //ctx.extra_filename_args.insert(extra_filename.to_owned());
             ctx.out_dir_args.insert(out_dir);
@@ -903,7 +909,7 @@ fn print_dependency<'a>(
 
     // TODO: Add command line flag for this and make it default to false.
     let allow_partial_results = true;
-    
+
     // TODO: Find and collect unsafe stats as a separate pass over the deps
     // tree before printing.
     let counters = find_unsafe(package.pack.root(), allow_partial_results, rs_files_used);
