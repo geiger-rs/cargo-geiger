@@ -156,13 +156,6 @@ pub fn find_unsafe(
         if !is_file_with_ext(&entry, "rs") {
             continue;
         }
-        /*
-        if !entry.file_type().is_file() {
-            // TODO: Add --verbose flag and proper logging.
-            // println!("Skipping non-file: {}", p.display());
-            continue;
-        }
-        */
         let p = entry.path();
         match rs_files_used {
             Some(used) => {
@@ -182,22 +175,6 @@ pub fn find_unsafe(
             }
             None => {}
         }
-        /*
-        let ext = match p.extension() {
-            Some(e) => e,
-            None => continue,
-        };
-        // to_string_lossy is ok since we only want to match against an ASCII
-        // compatible extension and we do not keep the possibly lossy result
-        // around.
-        if ext.to_string_lossy() != "rs" {
-            // TODO: Add --verbose flag and proper logging.
-            // println!("Skipping non-rust: {}", p.display());
-            continue;
-        }
-        // TODO: Add --verbose flag and proper logging.
-        // println!("Processing file {}", p.display());
-        */
         let mut file = File::open(p).expect("Unable to open file");
         let mut src = String::new();
         file.read_to_string(&mut src).expect("Unable to read file");
@@ -227,7 +204,7 @@ enum Opts {
         )
     )]
     /// Display a tree visualization of a dependency graph
-    Tree(Args),
+    Geiger(Args),
 }
 
 #[derive(StructOpt)]
@@ -387,7 +364,7 @@ fn main() {
         }
     };
 
-    let Opts::Tree(args) = Opts::from_args();
+    let Opts::Geiger(args) = Opts::from_args();
 
     if let Err(e) = real_main(args, &mut config) {
         let mut shell = Shell::new();
@@ -424,9 +401,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         None => package.package_id(),
     };
 
-    // Moved to this scope to workaround borrowing confusion, review later.
     let config_host = config.rustc(Some(&ws))?.host;
-
     let target = if args.all_targets {
         None
     } else {
@@ -483,15 +458,6 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     //    paths.sort();
     //    paths.iter().for_each(|p| println!("{}", p.display()));
     //}
-
-    // TODO:
-    //   [o] 1. Run CompileMode::Clean.
-    //   [o] 2. Run build and store all out_dir_args.
-    //   [o] 3. Look for .d files under out_dir_args paths.
-    //   [o] 4. Add all .rs file paths from the .d files to rs_file_args.
-    //   [o] 5. Use rs_file_args as filter for the existing walkdir based scanning.
-    //   [ ] 6. Print warnings for files in rs_file_args that are not found by the
-    //      walkdir scanner.
 
     println!();
     if args.compact {
@@ -605,12 +571,6 @@ pub struct CustomExecutorInnerContext {
     /// Stores all lib.rs, main.rs etc. passed to rustc during the build.
     pub rs_file_args: HashSet<PathBuf>,
 
-    // The extra-filename arguments used by all rustc invocations. Can be
-    // used to find all .d dependency files related to this build, which is
-    // turn can be used to find all .rs files used. We need to push the build
-    // thgough rustc since cargo does not seem to know about the source file
-    // dependencies.
-    //pub extra_filename_args: HashSet<String>,
     /// Investigate if this needs to be intercepted like this or if it can be
     /// looked up in a nicer way.
     pub out_dir_args: HashSet<PathBuf>,
@@ -642,27 +602,6 @@ impl Executor for CustomExecutor {
         // source file list for each unit. Find and read the ".d" files should
         // be used for that.
         let args = cmd.get_args();
-
-        // This is commented out instead of deleted if it needs to be added back.
-        // let extra_filename = args
-        //     .iter()
-        //     .find(|arg| {
-        //         let s = arg.to_str();
-        //         match s {
-        //             Some(s) => s.starts_with("extra-filename="),
-        //             None => false,
-        //         }
-        //     })
-        //     .unwrap()
-        //     .to_str()
-        //     .unwrap()
-        //     .split('=')
-        //     .nth(1)
-        //     .unwrap();
-        // if extra_filename == "" {
-        //     panic!("Did not expect empty string as extra-filename.");
-        // }
-
         let out_dir_key = OsString::from("--out-dir");
         let out_dir_key_idx = match args.iter().position(|s| *s == out_dir_key) {
             Some(i) => i,
