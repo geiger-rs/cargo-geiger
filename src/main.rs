@@ -98,7 +98,7 @@ impl CounterBlock {
 
 #[derive(Debug, Copy, Clone, Default)]
 struct GeigerSynVisitor {
-    /// Unsafe usage metrics collected from .rs files not used by the build.
+    /// Metrics storage.
     pub counters: CounterBlock,
 
     /// Used by the Visit trait implementation to separate the metrics into
@@ -516,6 +516,10 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
             .for_each(|p| println!("Used by build (sorted): {}", p.display()));
     }
 
+    println!();
+    println!("Metric output format: x/y");
+    println!("x = unsafe code used by the build");
+    println!("y = total unsafe code found in the crate");
     println!();
     println!(
         "{}",
