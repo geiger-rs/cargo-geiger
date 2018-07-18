@@ -54,7 +54,7 @@ mod format;
 pub struct Count {
     /// Number of safe items, in .rs files not used by the build.
     pub safe_unused: u64,
-    
+
     /// Number of safe items, in .rs files used by the build.
     pub safe_used: u64,
 
@@ -101,7 +101,7 @@ struct GeigerSynVisitor {
     /// Unsafe usage metrics collected from .rs files not used by the build.
     pub counters: CounterBlock,
 
-    /// Used by the Visit trait implementation to separate the metrics into 
+    /// Used by the Visit trait implementation to separate the metrics into
     /// "used by build" and "not used by build" based on if the .rs file was used
     /// in the build or not.
     pub used_by_build: bool,
@@ -113,7 +113,9 @@ struct GeigerSynVisitor {
 impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
     fn visit_item_fn(&mut self, i: &ItemFn) {
         // fn definitions
-        self.counters.functions.count(i.unsafety.is_some(), self.used_by_build);
+        self.counters
+            .functions
+            .count(i.unsafety.is_some(), self.used_by_build);
         visit::visit_item_fn(self, i);
     }
 
@@ -130,7 +132,9 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
                 // expression, not three.
             }
             other => {
-                self.counters.exprs.count(self.in_unsafe_block, self.used_by_build);
+                self.counters
+                    .exprs
+                    .count(self.in_unsafe_block, self.used_by_build);
                 visit::visit_expr(self, other);
             }
         }
@@ -138,18 +142,24 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
 
     fn visit_item_impl(&mut self, i: &ItemImpl) {
         // unsafe trait impl's
-        self.counters.itemimpls.count(i.unsafety.is_some(), self.used_by_build);
+        self.counters
+            .itemimpls
+            .count(i.unsafety.is_some(), self.used_by_build);
         visit::visit_item_impl(self, i);
     }
 
     fn visit_item_trait(&mut self, i: &ItemTrait) {
         // Unsafe traits
-        self.counters.itemtraits.count(i.unsafety.is_some(), self.used_by_build);
+        self.counters
+            .itemtraits
+            .count(i.unsafety.is_some(), self.used_by_build);
         visit::visit_item_trait(self, i);
     }
 
     fn visit_impl_item_method(&mut self, i: &ImplItemMethod) {
-        self.counters.methods.count(i.sig.unsafety.is_some(), self.used_by_build);
+        self.counters
+            .methods
+            .count(i.sig.unsafety.is_some(), self.used_by_build);
         visit::visit_impl_item_method(self, i);
     }
 }
