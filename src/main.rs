@@ -1044,9 +1044,7 @@ fn table_row_empty() -> String {
             .iter()
             .take(5)
             .map(|s| s.len())
-            .sum::<usize>()
-            + UNSAFE_COUNTERS_HEADER.len()
-            + 1,
+            .sum::<usize>() + UNSAFE_COUNTERS_HEADER.len() + 1,
     )
 }
 
