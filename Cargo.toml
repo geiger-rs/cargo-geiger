@@ -1,7 +1,7 @@
 [package]
 name = "cargo-geiger"
 description = "Detects usage of unsafe Rust in your project and its dependencies."
-version = "0.2.0"
+version = "0.3.0"
 authors = ["anderejd <rajder@gmail.com>"]
 repository = "https://github.com/anderejd/cargo-geiger"
 readme = "README.md"
