@@ -22,7 +22,7 @@ Output examples
 ---------------
 
 ### Default output format:
-![Example output](cargo-geiger-example-output.png)
+![Example output](https://user-images.githubusercontent.com/3704611/42893683-54f16930-8ab5-11e8-87a5-785fe4a1d5d9.png)
 
 
 Why even care about unsafe Rust usage?
