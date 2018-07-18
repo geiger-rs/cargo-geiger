@@ -344,7 +344,6 @@ struct Args {
     #[structopt(short = "Z", value_name = "FLAG")]
     /// Unstable (nightly-only) flags to Cargo
     unstable_flags: Vec<String>,
-
     // TODO: Implement a new compact output mode where all metrics are
     // aggregated to a single used/unused ratio and output string.
     //#[structopt(long = "compact")]
