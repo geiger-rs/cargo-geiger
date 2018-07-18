@@ -1068,8 +1068,8 @@ fn table_row_empty() -> String {
 }
 
 fn table_row(cb: &CounterBlock) -> String {
-    let calc_total = |c:&Count| c.unsafe_used + c.unsafe_unused;
-    let fmt = |c:&Count| format!("{}/{}", c.unsafe_used, calc_total(c));
+    let calc_total = |c: &Count| c.unsafe_used + c.unsafe_unused;
+    let fmt = |c: &Count| format!("{}/{}", c.unsafe_used, calc_total(c));
     format!(
         "{: <10} {: <12} {: <6} {: <7} {: <7}",
         fmt(&cb.functions),
