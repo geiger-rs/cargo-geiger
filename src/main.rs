@@ -415,6 +415,19 @@ fn main() {
     }
 }
 
+struct PrintConfig<'a> {
+    /// Don't truncate dependencies that have already been displayed.
+    pub all: bool,
+
+    /// Verbose logging.
+    pub verbose: bool,
+
+    pub direction: EdgeDirection,
+    pub prefix: Prefix,
+    pub format: &'a Pattern,
+    pub symbols: &'a Symbols,
+}
+
 fn real_main(args: Args, config: &mut Config) -> CliResult {
     config.configure(
         args.verbose,
@@ -514,17 +527,15 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
             .bold()
     );
     println!();
-    print_tree(
-        root,
-        &graph,
-        &format,
-        direction,
-        symbols,
-        prefix,
-        args.all,
-        &mut rs_files_used,
+    let pc = PrintConfig {
+        all: args.all,
         verbose,
-    );
+        direction,
+        prefix,
+        format: &format,
+        symbols,
+    };
+    print_tree(root, &graph, &mut rs_files_used, &pc);
     rs_files_used
         .iter()
         .filter(|(_k, v)| **v == 0)
@@ -817,13 +828,8 @@ fn build_graph<'a>(
 fn print_tree<'a>(
     package: &'a PackageId,
     graph: &Graph<'a>,
-    format: &Pattern,
-    direction: EdgeDirection,
-    symbols: &Symbols,
-    prefix: Prefix,
-    all: bool,
     rs_files_used: &mut HashMap<PathBuf, u32>,
-    verbose: bool,
+    pc: &PrintConfig,
 ) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
@@ -831,47 +837,37 @@ fn print_tree<'a>(
     print_dependency(
         node,
         &graph,
-        format,
-        direction,
-        symbols,
         &mut visited_deps,
         &mut levels_continue,
-        prefix,
-        all,
         rs_files_used,
-        verbose,
+        pc,
     );
 }
 
 fn print_dependency<'a>(
     package: &Node<'a>,
     graph: &Graph<'a>,
-    format: &Pattern,
-    direction: EdgeDirection,
-    symbols: &Symbols,
     visited_deps: &mut HashSet<&'a PackageId>,
     levels_continue: &mut Vec<bool>,
-    prefix: Prefix,
-    all: bool,
     rs_files_used: &mut HashMap<PathBuf, u32>,
-    verbose: bool,
+    pc: &PrintConfig,
 ) {
-    let new = all || visited_deps.insert(package.id);
-    let treevines = match prefix {
+    let new = pc.all || visited_deps.insert(package.id);
+    let treevines = match pc.prefix {
         Prefix::Depth => format!("{} ", levels_continue.len()),
         Prefix::Indent => {
             let mut buf = String::new();
             if let Some((&last_continues, rest)) = levels_continue.split_last() {
                 for &continues in rest {
-                    let c = if continues { symbols.down } else { " " };
+                    let c = if continues { pc.symbols.down } else { " " };
                     buf.push_str(&format!("{}   ", c));
                 }
                 let c = if last_continues {
-                    symbols.tee
+                    pc.symbols.tee
                 } else {
-                    symbols.ell
+                    pc.symbols.ell
                 };
-                buf.push_str(&format!("{0}{1}{1} ", c, symbols.right));
+                buf.push_str(&format!("{0}{1}{1} ", c, pc.symbols.right));
             }
             buf
         }
@@ -887,7 +883,7 @@ fn print_dependency<'a>(
         package.pack.root(),
         allow_partial_results,
         rs_files_used,
-        verbose,
+        pc.verbose,
     );
     let unsafe_found = counters.has_unsafe();
     let colorize = |s: String| {
@@ -900,7 +896,8 @@ fn print_dependency<'a>(
     let rad = if unsafe_found { "☢" } else { "" };
     let dep_name = colorize(format!(
         "{}",
-        format.display(package.id, package.pack.manifest().metadata())
+        pc.format
+            .display(package.id, package.pack.manifest().metadata())
     ));
     // TODO: Split up table and tree printing and paint into a backbuffer
     // before writing to stdout?
@@ -914,9 +911,9 @@ fn print_dependency<'a>(
     let mut development = vec![];
     for edge in graph
         .graph
-        .edges_directed(graph.nodes[&package.id], direction)
+        .edges_directed(graph.nodes[&package.id], pc.direction)
     {
-        let dep = match direction {
+        let dep = match pc.direction {
             EdgeDirection::Incoming => &graph.graph[edge.source()],
             EdgeDirection::Outgoing => &graph.graph[edge.target()],
         };
@@ -930,43 +927,28 @@ fn print_dependency<'a>(
         Kind::Normal,
         normal,
         graph,
-        format,
-        direction,
-        symbols,
         visited_deps,
         levels_continue,
-        prefix,
-        all,
         rs_files_used,
-        verbose,
+        pc,
     );
     print_dependency_kind(
         Kind::Build,
         build,
         graph,
-        format,
-        direction,
-        symbols,
         visited_deps,
         levels_continue,
-        prefix,
-        all,
         rs_files_used,
-        verbose,
+        pc,
     );
     print_dependency_kind(
         Kind::Development,
         development,
         graph,
-        format,
-        direction,
-        symbols,
         visited_deps,
         levels_continue,
-        prefix,
-        all,
         rs_files_used,
-        verbose,
+        pc,
     );
 }
 
@@ -974,15 +956,10 @@ fn print_dependency_kind<'a>(
     kind: Kind,
     mut deps: Vec<&Node<'a>>,
     graph: &Graph<'a>,
-    format: &Pattern,
-    direction: EdgeDirection,
-    symbols: &Symbols,
     visited_deps: &mut HashSet<&'a PackageId>,
     levels_continue: &mut Vec<bool>,
-    prefix: Prefix,
-    all: bool,
     rs_files_used: &mut HashMap<PathBuf, u32>,
-    verbose: bool,
+    pc: &PrintConfig,
 ) {
     if deps.is_empty() {
         return;
@@ -996,11 +973,11 @@ fn print_dependency_kind<'a>(
         Kind::Build => Some("[build-dependencies]"),
         Kind::Development => Some("[dev-dependencies]"),
     };
-    if let Prefix::Indent = prefix {
+    if let Prefix::Indent = pc.prefix {
         if let Some(name) = name {
             print!("{}", table_row_empty());
             for &continues in &**levels_continue {
-                let c = if continues { symbols.down } else { " " };
+                let c = if continues { pc.symbols.down } else { " " };
                 print!("{}   ", c);
             }
 
@@ -1014,22 +991,17 @@ fn print_dependency_kind<'a>(
         print_dependency(
             dependency,
             graph,
-            format,
-            direction,
-            symbols,
             visited_deps,
             levels_continue,
-            prefix,
-            all,
             rs_files_used,
-            verbose,
+            pc,
         );
         levels_continue.pop();
     }
 }
 
 // TODO: use a table library, or factor the tableness out in a smarter way
-const UNSAFE_COUNTERS_HEADER: [&'static str; 6] = [
+const UNSAFE_COUNTERS_HEADER: [&str; 6] = [
     "Functions ",
     "Expressions ",
     "Impls ",
