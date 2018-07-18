@@ -15,7 +15,7 @@ pub struct Parser<'a> {
 impl<'a> Parser<'a> {
     pub fn new(s: &'a str) -> Parser<'a> {
         Parser {
-            s: s,
+            s,
             it: s.char_indices().peekable(),
         }
     }
