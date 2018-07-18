@@ -52,43 +52,68 @@ mod format;
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Count {
-    pub num: u64,
-    pub unsafe_num: u64,
+    /// Number of safe items, in .rs files not used by the build.
+    pub safe_unused: u64,
+    
+    /// Number of safe items, in .rs files used by the build.
+    pub safe_used: u64,
+
+    /// Number of unsafe items, in .rs files not used by the build.
+    pub unsafe_unused: u64,
+
+    /// Number of unsafe items, in .rs files used by the build.
+    pub unsafe_used: u64,
 }
 
 impl Count {
-    fn count(&mut self, is_unsafe: bool) {
-        self.num += 1;
-        if is_unsafe {
-            self.unsafe_num += 1
+    fn count(&mut self, is_unsafe: bool, used_by_build: bool) {
+        match (is_unsafe, used_by_build) {
+            (false, false) => self.safe_unused += 1,
+            (false, true) => self.safe_used += 1,
+            (true, false) => self.unsafe_unused += 1,
+            (true, true) => self.unsafe_used += 1,
         }
     }
 }
 
+/// Unsafe usage metrics collection.
 #[derive(Debug, Copy, Clone, Default)]
-pub struct UnsafeCounter {
+struct CounterBlock {
     pub functions: Count,
     pub exprs: Count,
     pub itemimpls: Count,
     pub itemtraits: Count,
     pub methods: Count,
-    in_unsafe_block: bool,
 }
 
-impl UnsafeCounter {
+impl CounterBlock {
     fn has_unsafe(&self) -> bool {
-        self.functions.unsafe_num > 0
-            || self.exprs.unsafe_num > 0
-            || self.itemimpls.unsafe_num > 0
-            || self.itemtraits.unsafe_num > 0
-            || self.methods.unsafe_num > 0
+        self.functions.unsafe_used > 0
+            || self.exprs.unsafe_used > 0
+            || self.itemimpls.unsafe_used > 0
+            || self.itemtraits.unsafe_used > 0
+            || self.methods.unsafe_used > 0
     }
 }
 
-impl<'ast> visit::Visit<'ast> for UnsafeCounter {
+#[derive(Debug, Copy, Clone, Default)]
+struct GeigerSynVisitor {
+    /// Unsafe usage metrics collected from .rs files not used by the build.
+    pub counters: CounterBlock,
+
+    /// Used by the Visit trait implementation to separate the metrics into 
+    /// "used by build" and "not used by build" based on if the .rs file was used
+    /// in the build or not.
+    pub used_by_build: bool,
+
+    /// Used by the Visit trait implementation to track the traversal state.
+    in_unsafe_block: bool,
+}
+
+impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
     fn visit_item_fn(&mut self, i: &ItemFn) {
         // fn definitions
-        self.functions.count(i.unsafety.is_some());
+        self.counters.functions.count(i.unsafety.is_some(), self.used_by_build);
         visit::visit_item_fn(self, i);
     }
 
@@ -105,7 +130,7 @@ impl<'ast> visit::Visit<'ast> for UnsafeCounter {
                 // expression, not three.
             }
             other => {
-                self.exprs.count(self.in_unsafe_block);
+                self.counters.exprs.count(self.in_unsafe_block, self.used_by_build);
                 visit::visit_expr(self, other);
             }
         }
@@ -113,18 +138,18 @@ impl<'ast> visit::Visit<'ast> for UnsafeCounter {
 
     fn visit_item_impl(&mut self, i: &ItemImpl) {
         // unsafe trait impl's
-        self.itemimpls.count(i.unsafety.is_some());
+        self.counters.itemimpls.count(i.unsafety.is_some(), self.used_by_build);
         visit::visit_item_impl(self, i);
     }
 
     fn visit_item_trait(&mut self, i: &ItemTrait) {
         // Unsafe traits
-        self.itemtraits.count(i.unsafety.is_some());
+        self.counters.itemtraits.count(i.unsafety.is_some(), self.used_by_build);
         visit::visit_item_trait(self, i);
     }
 
     fn visit_impl_item_method(&mut self, i: &ImplItemMethod) {
-        self.methods.count(i.sig.unsafety.is_some());
+        self.counters.methods.count(i.sig.unsafety.is_some(), self.used_by_build);
         visit::visit_impl_item_method(self, i);
     }
 }
@@ -144,13 +169,13 @@ fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
     ext.to_string_lossy() == file_ext
 }
 
-pub fn find_unsafe(
+fn find_unsafe(
     p: &Path,
     allow_partial_results: bool,
-    rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
+    rs_files_used: &mut HashMap<PathBuf, u32>,
     verbose: bool,
-) -> UnsafeCounter {
-    let counters = &mut UnsafeCounter::default();
+) -> CounterBlock {
+    let vis = &mut GeigerSynVisitor::default();
     let walker = WalkDir::new(p).into_iter();
     for entry in walker {
         let entry = entry.expect("walkdir error, TODO: Implement error handling");
@@ -158,28 +183,35 @@ pub fn find_unsafe(
             continue;
         }
         let p = entry.path();
-        match rs_files_used {
-            Some(used) => {
-                let counter = used.get_mut(p);
-                match counter {
-                    Some(c) => {
-                        // TODO: Add proper logging.
-                        if verbose {
-                            println!("Used: {}", p.display());
-                        }
-                        *c += 1;
-                    }
-                    None => {
-                        // TODO: Add proper logging.
-                        if verbose {
-                            println!("Not used, skipping: {}", p.display());
-                        }
-                        continue;
-                    }
+        let scan_counter = rs_files_used.get_mut(p);
+        // TODO: fix GeigerSynVisitor to handle "included" and "excluded" modes.
+        let in_build = match scan_counter {
+            Some(c) => {
+                // TODO: Add proper logging.
+                if verbose {
+                    println!("Used in build: {}", p.display());
                 }
+                // This .rs file path was found by intercepting rustc arguments
+                // or by parsing the .d files produced by rustc. Here we
+                // increase the counter for this path to mark that this file
+                // has been scanned. Warnings will be printed for .rs files in
+                // this collection with a count of 0 (has not been scanned). If
+                // this happens, it could indicate a logic error or some
+                // incorrect assumption in cargo-geiger.
+                *c += 1;
+                true
             }
-            None => {}
-        }
+            None => {
+                // This file was not used in the build triggered by
+                // cargo-geiger, but it should be scanned anyways to provide
+                // both "in build" and "not in build" stats.
+                // TODO: Add proper logging.
+                if verbose {
+                    println!("Not used in build: {}", p.display());
+                }
+                false
+            }
+        };
         let mut file = File::open(p).expect("Unable to open file");
         let mut src = String::new();
         file.read_to_string(&mut src).expect("Unable to read file");
@@ -192,9 +224,9 @@ pub fn find_unsafe(
             }
             (false, Err(e)) => panic!("Failed to parse file: {}, {:?} ", p.display(), e),
         };
-        syn::visit::visit_file(counters, &syntax);
+        syn::visit::visit_file(vis, &syntax);
     }
-    *counters
+    vis.counters
 }
 
 #[derive(StructOpt)]
@@ -303,15 +335,9 @@ struct Args {
     /// Unstable (nightly-only) flags to Cargo
     unstable_flags: Vec<String>,
 
-    //TODO: some real args, keep these when refactoring
     #[structopt(long = "compact")]
     /// Display compact output instead of table
     compact: bool,
-
-    #[structopt(long = "include-all")]
-    /// Find all .rs files under each depedency root directory, regardless if
-    /// they are included in the build or not.
-    include_all_rs_files: bool,
 }
 
 enum Charset {
@@ -378,19 +404,6 @@ fn main() {
     }
 }
 
-enum ScanMode {
-    /// Resolve all .rs files needed to build by first intercepting all rustc
-    /// calls and then parsing the .d files produced by rustc. Only includes the
-    /// .rs files used by the build.
-    /// This is the new default scan mode from 0.3.0.
-    ExcludeUnusedRustFiles,
-
-    /// Find all .rs files under each dependency root directory but do no apply
-    /// any filtering, include all .rs files found.
-    /// This is the original behavior of cargo-geiger.
-    IncludeAllRustFiles,
-}
-
 fn real_main(args: Args, config: &mut Config) -> CliResult {
     config.configure(
         args.verbose,
@@ -401,14 +414,11 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         &None, // TODO: add command line flag, new in cargo 0.27.
         &args.unstable_flags,
     )?;
-    // TODO: Make ExcludeUnusedRustFiles print both included and ignored unsafe
-    // numbers. (10 / 10) => 10 of 10 unsafe items included in the build.
     // TODO: Add a new default output format that adds all unsafe usage counts
     // to a single number?
     //     10 / 10     crate-one-0.1.0
     //     5  / 123    some-other-crate-0.1.0
     //     0  / 456    and-another-one-0.1.0
-    let scan_mode = if args.include_all_rs_files { ScanMode::IncludeAllRustFiles } else { ScanMode::ExcludeUnusedRustFiles };
     let verbose = args.verbose != 0;
     let ws = workspace(config, args.manifest_path)?;
     let package = ws.current()?;
@@ -465,28 +475,23 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         Prefix::Indent
     };
 
-    let mut rs_files_used = match scan_mode {
-        ScanMode::ExcludeUnusedRustFiles => {
-            let mut hm = HashMap::new();
-            for path in resolve_rs_file_deps(&config, &ws) {
-                hm.insert(path, 0);
-            }
-            Some(hm)
-        },
-        ScanMode::IncludeAllRustFiles => { None }
-    };
+    let mut rs_files_used = HashMap::new();
+    for path in resolve_rs_file_deps(&config, &ws) {
+        rs_files_used.insert(path, 0);
+    }
 
     if verbose {
         // Print all .rs files found through the .d files, in sorted order.
         let mut paths = rs_files_used
-            .as_ref()
-            .map(|used| used.keys().map(|k| k.to_owned()).collect::<Vec<PathBuf>>())
-            .unwrap_or(Default::default());
+            .keys()
+            .map(|k| k.to_owned())
+            .collect::<Vec<PathBuf>>();
         paths.sort();
         paths
             .iter()
-            .for_each(|p| println!("Used (sorted): {}", p.display()));
+            .for_each(|p| println!("Used by build (sorted): {}", p.display()));
     }
+
     println!();
     if args.compact {
         println!(
@@ -517,17 +522,15 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         &mut rs_files_used,
         verbose,
     );
-    if let Some(rs_files_used) = rs_files_used {
-        rs_files_used
-            .iter()
-            .filter(|(_k, v)| **v == 0)
-            .for_each(|(k, _v)| {
-                println!(
-                    "WARNING: Dependency file was never scanned: {}",
-                    k.display()
-                )
-            });
-    }
+    rs_files_used
+        .iter()
+        .filter(|(_k, v)| **v == 0)
+        .for_each(|(k, _v)| {
+            println!(
+                "WARNING: Dependency file was never scanned: {}",
+                k.display()
+            )
+        });
     Ok(())
 }
 
@@ -817,7 +820,7 @@ fn print_tree<'a>(
     prefix: Prefix,
     all: bool,
     compact_output: bool,
-    rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
+    rs_files_used: &mut HashMap<PathBuf, u32>,
     verbose: bool,
 ) {
     let mut visited_deps = HashSet::new();
@@ -850,7 +853,7 @@ fn print_dependency<'a>(
     prefix: Prefix,
     all: bool,
     compact_output: bool,
-    rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
+    rs_files_used: &mut HashMap<PathBuf, u32>,
     verbose: bool,
 ) {
     let new = all || visited_deps.insert(package.id);
@@ -899,26 +902,8 @@ fn print_dependency<'a>(
         "{}",
         format.display(package.id, package.pack.manifest().metadata())
     ));
-    if compact_output {
-        let compact_unsafe_info = format!(
-            "({}, {}, {}, {}, {})",
-            counters.functions.unsafe_num,
-            counters.exprs.unsafe_num,
-            counters.itemimpls.unsafe_num,
-            counters.itemtraits.unsafe_num,
-            counters.methods.unsafe_num,
-        );
-        println!(
-            "{}{} {} {}",
-            treevines,
-            dep_name,
-            colorize(compact_unsafe_info),
-            rad
-        );
-    } else {
-        let unsafe_info = colorize(table_row(&counters));
-        println!("{}  {: <1} {}{}", unsafe_info, rad, treevines, dep_name);
-    }
+    let unsafe_info = colorize(table_row(&counters));
+    println!("{}  {: <1} {}{}", unsafe_info, rad, treevines, dep_name);
     if !new {
         return;
     }
@@ -998,7 +983,7 @@ fn print_dependency_kind<'a>(
     prefix: Prefix,
     all: bool,
     compact_output: bool,
-    rs_files_used: &mut Option<HashMap<PathBuf, u32>>,
+    rs_files_used: &mut HashMap<PathBuf, u32>,
     verbose: bool,
 ) {
     if deps.is_empty() {
@@ -1070,13 +1055,13 @@ fn table_row_empty() -> String {
     )
 }
 
-fn table_row(count: &UnsafeCounter) -> String {
+fn table_row(cb: &CounterBlock) -> String {
     format!(
         "{: <9}  {: <11}  {: <5}  {: <6}  {: <7}",
-        count.functions.unsafe_num,
-        count.exprs.unsafe_num,
-        count.itemimpls.unsafe_num,
-        count.itemtraits.unsafe_num,
-        count.methods.unsafe_num,
+        cb.functions.unsafe_used,
+        cb.exprs.unsafe_used,
+        cb.itemimpls.unsafe_used,
+        cb.itemtraits.unsafe_used,
+        cb.methods.unsafe_used,
     )
 }
