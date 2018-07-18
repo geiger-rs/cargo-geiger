@@ -195,7 +195,7 @@ fn find_unsafe(
         let p = entry.path();
         let scan_counter = rs_files_used.get_mut(p);
         // TODO: fix GeigerSynVisitor to handle "included" and "excluded" modes.
-        let in_build = match scan_counter {
+        vis.used_by_build = match scan_counter {
             Some(c) => {
                 // TODO: Add proper logging.
                 if verbose {
@@ -912,6 +912,8 @@ fn print_dependency<'a>(
         "{}",
         format.display(package.id, package.pack.manifest().metadata())
     ));
+    // TODO: Split up table and tree printing and paint into a backbuffer
+    // before writing to stdout?
     let unsafe_info = colorize(table_row(&counters));
     println!("{}  {: <1} {}{}", unsafe_info, rad, treevines, dep_name);
     if !new {
@@ -1066,12 +1068,14 @@ fn table_row_empty() -> String {
 }
 
 fn table_row(cb: &CounterBlock) -> String {
+    let calc_total = |c:&Count| c.unsafe_used + c.unsafe_unused;
+    let fmt = |c:&Count| format!("{}/{}", c.unsafe_used, calc_total(c));
     format!(
-        "{: <9}  {: <11}  {: <5}  {: <6}  {: <7}",
-        cb.functions.unsafe_used,
-        cb.exprs.unsafe_used,
-        cb.itemimpls.unsafe_used,
-        cb.itemtraits.unsafe_used,
-        cb.methods.unsafe_used,
+        "{: <10} {: <12} {: <6} {: <7} {: <7}",
+        fmt(&cb.functions),
+        fmt(&cb.exprs),
+        fmt(&cb.itemimpls),
+        fmt(&cb.itemtraits),
+        fmt(&cb.methods),
     )
 }
