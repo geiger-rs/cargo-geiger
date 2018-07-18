@@ -411,7 +411,7 @@ fn main() {
 
     if let Err(e) = real_main(args, &mut config) {
         let mut shell = Shell::new();
-        cargo::exit_with_error(e.into(), &mut shell)
+        cargo::exit_with_error(e, &mut shell)
     }
 }
 
@@ -576,7 +576,7 @@ fn resolve_rs_file_deps(config: &Config, ws: &Workspace) -> impl Iterator<Item =
         .filter(|entry| is_file_with_ext(&entry, "d"))
         .flat_map(|entry| parse_rustc_dep_info(entry.path()).unwrap())
         .flat_map(|tuple| tuple.1)
-        .map(|s| PathBuf::from(s))
+        .map(PathBuf::from)
         .map(|pb| pb.canonicalize().unwrap())
         .chain(rs_files)
 }
@@ -651,7 +651,7 @@ impl Executor for CustomExecutor {
             Some(i) => i,
             None => panic!("Expected to find --out-dir in: {}", cmd),
         };
-        let out_dir = match args.iter().nth(out_dir_key_idx + 1) {
+        let out_dir = match args.get(out_dir_key_idx + 1) {
             Some(s) => PathBuf::from(s),
             None => panic!("Expected a path after --out-dir in: {}", cmd),
         };

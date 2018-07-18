@@ -44,8 +44,8 @@ impl Pattern {
     ) -> Display<'a> {
         Display {
             pattern: self,
-            package: package,
-            metadata: metadata,
+            package,
+            metadata,
         }
     }
 }
