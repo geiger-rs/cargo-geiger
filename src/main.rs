@@ -345,9 +345,11 @@ struct Args {
     /// Unstable (nightly-only) flags to Cargo
     unstable_flags: Vec<String>,
 
-    #[structopt(long = "compact")]
-    /// Display compact output instead of table
-    compact: bool,
+    // TODO: Implement a new compact output mode where all metrics are
+    // aggregated to a single used/unused ratio and output string.
+    //#[structopt(long = "compact")]
+    // Display compact output instead of table
+    //compact: bool,
 }
 
 enum Charset {
@@ -503,22 +505,15 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     }
 
     println!();
-    if args.compact {
-        println!(
-            "{}",
-            "Compact unsafe info: (functions, expressions, impls, traits, methods)".bold()
-        );
-    } else {
-        println!(
-            "{}",
-            UNSAFE_COUNTERS_HEADER
-                .iter()
-                .map(|s| s.to_owned())
-                .collect::<Vec<_>>()
-                .join(" ")
-                .bold()
-        );
-    }
+    println!(
+        "{}",
+        UNSAFE_COUNTERS_HEADER
+            .iter()
+            .map(|s| s.to_owned())
+            .collect::<Vec<_>>()
+            .join(" ")
+            .bold()
+    );
     println!();
     print_tree(
         root,
@@ -528,7 +523,6 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
         symbols,
         prefix,
         args.all,
-        args.compact,
         &mut rs_files_used,
         verbose,
     );
@@ -829,7 +823,6 @@ fn print_tree<'a>(
     symbols: &Symbols,
     prefix: Prefix,
     all: bool,
-    compact_output: bool,
     rs_files_used: &mut HashMap<PathBuf, u32>,
     verbose: bool,
 ) {
@@ -846,7 +839,6 @@ fn print_tree<'a>(
         &mut levels_continue,
         prefix,
         all,
-        compact_output,
         rs_files_used,
         verbose,
     );
@@ -862,7 +854,6 @@ fn print_dependency<'a>(
     levels_continue: &mut Vec<bool>,
     prefix: Prefix,
     all: bool,
-    compact_output: bool,
     rs_files_used: &mut HashMap<PathBuf, u32>,
     verbose: bool,
 ) {
@@ -947,7 +938,6 @@ fn print_dependency<'a>(
         levels_continue,
         prefix,
         all,
-        compact_output,
         rs_files_used,
         verbose,
     );
@@ -962,7 +952,6 @@ fn print_dependency<'a>(
         levels_continue,
         prefix,
         all,
-        compact_output,
         rs_files_used,
         verbose,
     );
@@ -977,7 +966,6 @@ fn print_dependency<'a>(
         levels_continue,
         prefix,
         all,
-        compact_output,
         rs_files_used,
         verbose,
     );
@@ -994,7 +982,6 @@ fn print_dependency_kind<'a>(
     levels_continue: &mut Vec<bool>,
     prefix: Prefix,
     all: bool,
-    compact_output: bool,
     rs_files_used: &mut HashMap<PathBuf, u32>,
     verbose: bool,
 ) {
@@ -1012,9 +999,7 @@ fn print_dependency_kind<'a>(
     };
     if let Prefix::Indent = prefix {
         if let Some(name) = name {
-            if !compact_output {
-                print!("{}", table_row_empty());
-            }
+            print!("{}", table_row_empty());
             for &continues in &**levels_continue {
                 let c = if continues { symbols.down } else { " " };
                 print!("{}   ", c);
@@ -1037,7 +1022,6 @@ fn print_dependency_kind<'a>(
             levels_continue,
             prefix,
             all,
-            compact_output,
             rs_files_used,
             verbose,
         );
