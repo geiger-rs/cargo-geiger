@@ -1,5 +1,8 @@
 #![forbid(unsafe_code)]
 
+// TODO: Investigate how cargo-clippy is implemented. Is it using syn?
+// Is is using rustc? Is it implementing a compiler plugin?
+
 #[macro_use]
 extern crate structopt;
 extern crate cargo;
@@ -38,6 +41,7 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs::File;
+use std::io;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
@@ -409,7 +413,7 @@ fn main() {
 
     let Opts::Geiger(args) = Opts::from_args();
 
-    if let Err(e) = real_main(args, &mut config) {
+    if let Err(e) = real_main(&args, &mut config) {
         let mut shell = Shell::new();
         cargo::exit_with_error(e, &mut shell)
     }
@@ -428,14 +432,15 @@ struct PrintConfig<'a> {
     pub symbols: &'a Symbols,
 }
 
-fn real_main(args: Args, config: &mut Config) -> CliResult {
+fn real_main(args: &Args, config: &mut Config) -> CliResult {
+    let target_dir = None; // Doesn't add any value for cargo-geiger.
     config.configure(
         args.verbose,
         args.quiet,
         &args.color,
         args.frozen,
         args.locked,
-        &None, // TODO: add command line flag, new in cargo 0.27.
+        &target_dir,
         &args.unstable_flags,
     )?;
     // TODO: Add a new default output format that adds all unsafe usage counts
@@ -500,8 +505,8 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     };
 
     let mut rs_files_used = HashMap::new();
-    for path in resolve_rs_file_deps(&args, &config, &ws) {
-        rs_files_used.insert(path, 0);
+    for path in resolve_rs_file_deps(&args, &ws) {
+        rs_files_used.insert(path.unwrap(), 0);
     }
 
     if verbose {
@@ -588,12 +593,26 @@ fn build_compile_options<'a>(args: &'a Args, config: &'a Config) -> CompileOptio
     opt
 }
 
+#[derive(Debug)]
+enum RsResolveError {
+    IoError(io::Error, PathBuf),
+}
+
+impl Error for RsResolveError {}
+
+impl fmt::Display for RsResolveError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
 /// TODO: Implement error handling and return Result.
 fn resolve_rs_file_deps(
     args: &Args,
-    config: &Config,
     ws: &Workspace,
-) -> impl Iterator<Item = PathBuf> {
+) -> impl Iterator<Item = Result<PathBuf, RsResolveError>> {
+    use RsResolveError::*;
+    let config = ws.config();
     // Need to run a cargo clean to identify all new .d deps files.
     let clean_opt = CleanOptions {
         config: &config,
@@ -603,27 +622,35 @@ fn resolve_rs_file_deps(
         doc: false,
     };
     ops::clean(ws, &clean_opt).unwrap();
-    //let copt = CompileOptions::new(&config, CompileMode::Check { test: false }).unwrap();
     let copt = build_compile_options(args, config);
     let executor = Arc::new(CustomExecutor {
+        cwd: config.cwd().to_path_buf(),
         ..Default::default()
     });
-    ops::compile_with_exec(ws, &copt, executor.clone()).unwrap();
-    let executor = Arc::try_unwrap(executor).unwrap();
+    ops::compile_with_exec(ws, &copt, executor.clone()).expect("compile_with_exec failed");
+    let executor = Arc::try_unwrap(executor).expect("try_unwrap failed");
     let (rs_files, out_dir_args) = {
-        let inner = executor.into_inner();
+        let inner = executor.into_inner().expect("into_inner failed");
         (inner.rs_file_args, inner.out_dir_args)
     };
+    let ws_root = ws.root().to_path_buf();
     out_dir_args
         .into_iter()
-        .flat_map(|dir| WalkDir::new(dir).into_iter())
-        .map(|entry| entry.expect("walkdir error, TODO: Implement error handling"))
-        .filter(|entry| is_file_with_ext(&entry, "d"))
-        .flat_map(|entry| parse_rustc_dep_info(entry.path()).unwrap())
-        .flat_map(|tuple| tuple.1)
-        .map(PathBuf::from)
-        .map(|pb| pb.canonicalize().unwrap())
-        .chain(rs_files)
+        .flat_map(move |out_dir| {
+            let ws_root = ws_root.clone();
+            WalkDir::new(&out_dir)
+                .into_iter()
+                .map(|ent| ent.expect("walkdir error, TODO: Implement error handling"))
+                .filter(|ent| is_file_with_ext(&ent, "d"))
+                .flat_map(|ent| {
+                    parse_rustc_dep_info(ent.path()).expect("parse_rustc_dep_info failed")
+                })
+                .flat_map(|t| t.1)
+                .map(PathBuf::from)
+                .map(move |pb| ws_root.join(&pb))
+                .map(|pb| pb.canonicalize().map_err(|e| IoError(e, pb)))
+        })
+        .chain(rs_files.into_iter().map(Ok)) // rs_files must already be canonicalized
 }
 
 /// Copy-pasted from the private module cargo::core::compiler::fingerprint.
@@ -656,7 +683,7 @@ pub fn parse_rustc_dep_info(rustc_dep_info: &Path) -> CargoResult<Vec<(String, V
 }
 
 #[derive(Debug, Default)]
-pub struct CustomExecutorInnerContext {
+struct CustomExecutorInnerContext {
     /// Stores all lib.rs, main.rs etc. passed to rustc during the build.
     pub rs_file_args: HashSet<PathBuf>,
 
@@ -665,21 +692,47 @@ pub struct CustomExecutorInnerContext {
     pub out_dir_args: HashSet<PathBuf>,
 }
 
+use std::sync::PoisonError;
+
 /// A cargo Executor to intercept all build tasks and store all ".rs" file
 /// paths for later scanning.
 ///
-/// TODO: This is the place to make rustc perform macro expansion to allow
+/// TODO: This is the place(?) to make rustc perform macro expansion to allow
 /// scanning of the the expanded code. (incl. code generated by build.rs).
 /// Seems to require nightly rust.
 #[derive(Debug, Default)]
-pub struct CustomExecutor {
+struct CustomExecutor {
+    /// MAJOR LIFETIME BOUNDS RAGE: Figure out how to use &Path here.
+    pub cwd: PathBuf,
+
     /// Needed since multiple rustc calls can be in flight at the same time.
     pub inner_ctx: Mutex<CustomExecutorInnerContext>,
 }
 
 impl CustomExecutor {
-    pub fn into_inner(self) -> CustomExecutorInnerContext {
-        self.inner_ctx.into_inner().unwrap()
+    pub fn into_inner(
+        self,
+    ) -> Result<CustomExecutorInnerContext, PoisonError<CustomExecutorInnerContext>> {
+        self.inner_ctx.into_inner()
+    }
+}
+
+use std::error::Error;
+use std::fmt;
+
+#[derive(Debug)]
+enum CustomExecutorError {
+    OutDirKeyMissing(String),
+    OutDirValueMissing(String),
+    InnerContextMutexError(String),
+    IoError(io::Error, PathBuf),
+}
+
+impl Error for CustomExecutorError {}
+
+impl fmt::Display for CustomExecutorError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
     }
 }
 
@@ -687,29 +740,41 @@ impl Executor for CustomExecutor {
     /// In case of an `Err`, Cargo will not continue with the build process for
     /// this package.
     fn exec(&self, cmd: ProcessBuilder, _id: &PackageId, _target: &Target) -> CargoResult<()> {
-        // TODO: It seems like rustc must do its thing before we can get the
-        // source file list for each unit. Find and read the ".d" files should
-        // be used for that.
+        use CustomExecutorError::*;
         let args = cmd.get_args();
         let out_dir_key = OsString::from("--out-dir");
-        let out_dir_key_idx = match args.iter().position(|s| *s == out_dir_key) {
-            Some(i) => i,
-            None => panic!("Expected to find --out-dir in: {}", cmd),
-        };
-        let out_dir = match args.get(out_dir_key_idx + 1) {
-            Some(s) => PathBuf::from(s),
-            None => panic!("Expected a path after --out-dir in: {}", cmd),
-        };
+        let out_dir_key_idx = args
+            .iter()
+            .position(|s| *s == out_dir_key)
+            .ok_or_else(|| OutDirKeyMissing(cmd.to_string()))?;
+        let out_dir = args
+            .get(out_dir_key_idx + 1)
+            .ok_or_else(|| OutDirValueMissing(cmd.to_string()))
+            .map(PathBuf::from)?;
+
+        // This can be different from the cwd used to launch the wrapping cargo
+        // plugin. Discovered while fixing
+        // https://github.com/anderejd/cargo-geiger/issues/19
+        let cwd = cmd
+            .get_cwd()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| self.cwd.to_owned());
+
         {
             // Scope to drop and release the mutex before calling rustc.
-            let mut ctx = self.inner_ctx.lock().unwrap();
-            args.iter()
+            let mut ctx = self
+                .inner_ctx
+                .lock()
+                .map_err(|e| InnerContextMutexError(e.to_string()))?;
+            for tuple in args
+                .iter()
                 .map(|s| (s, s.to_string_lossy().to_lowercase()))
                 .filter(|t| t.1.ends_with(".rs"))
-                .for_each(|t| {
-                    ctx.rs_file_args
-                        .insert(PathBuf::from(t.0).canonicalize().unwrap());
-                });
+            {
+                let raw_path = cwd.join(tuple.0);
+                let p = raw_path.canonicalize().map_err(|e| IoError(e, raw_path))?;
+                ctx.rs_file_args.insert(p);
+            }
             ctx.out_dir_args.insert(out_dir);
         }
         cmd.exec()?;
