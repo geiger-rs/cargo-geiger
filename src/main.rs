@@ -250,7 +250,7 @@ enum Opts {
             setting = "AppSettings::DontCollapseArgsInUsage"
         )
     )]
-    /// Display a tree visualization of a dependency graph
+    /// Detects usage of unsafe Rust in a Rust crate and its dependencies.
     Geiger(Args),
 }
 
