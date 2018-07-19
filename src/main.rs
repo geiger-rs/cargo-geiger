@@ -444,13 +444,13 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     //     5  / 123    some-other-crate-0.1.0
     //     0  / 456    and-another-one-0.1.0
     let verbose = args.verbose != 0;
-    let ws = workspace(config, args.manifest_path)?;
+    let ws = workspace(config, args.manifest_path.clone())?;
     let package = ws.current()?;
     let mut registry = registry(config, &package)?;
     let (packages, resolve) = resolve(
         &mut registry,
         &ws,
-        args.features,
+        args.features.clone(),
         args.all_features,
         args.no_default_features,
     )?;
@@ -500,7 +500,7 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     };
 
     let mut rs_files_used = HashMap::new();
-    for path in resolve_rs_file_deps(&config, &ws) {
+    for path in resolve_rs_file_deps(&args, &config, &ws) {
         rs_files_used.insert(path, 0);
     }
 
@@ -552,8 +552,48 @@ fn real_main(args: Args, config: &mut Config) -> CliResult {
     Ok(())
 }
 
+/// Based on code from cargo-bloat. It seems weird that CompileOptions can be
+/// constructed without providing all standard cargo options, TODO: Open an issue
+/// in cargo?
+fn build_compile_options<'a>(args: &'a Args, config: &'a Config) -> CompileOptions<'a> {
+    let features = Method::split_features(&args.features.clone().into_iter().collect::<Vec<_>>())
+        .into_iter()
+        .map(|s| s.to_string());
+    let mut opt = CompileOptions::new(&config, CompileMode::Check { test: false }).unwrap();
+    opt.features = features.collect::<_>();
+    opt.all_features = args.all_features;
+    opt.no_default_features = args.no_default_features;
+
+    // TODO: Investigate if this is relevant to cargo-geiger.
+    //let mut bins = Vec::new();
+    //let mut examples = Vec::new();
+    // opt.release = args.release;
+    // opt.target = args.target.clone();
+    // if let Some(ref name) = args.bin {
+    //     bins.push(name.clone());
+    // } else if let Some(ref name) = args.example {
+    //     examples.push(name.clone());
+    // }
+    // if args.bin.is_some() || args.example.is_some() {
+    //     opt.filter = ops::CompileFilter::new(
+    //         false,
+    //         bins.clone(), false,
+    //         Vec::new(), false,
+    //         examples.clone(), false,
+    //         Vec::new(), false,
+    //         false,
+    //     );
+    // }
+
+    opt
+}
+
 /// TODO: Implement error handling and return Result.
-fn resolve_rs_file_deps(config: &Config, ws: &Workspace) -> impl Iterator<Item = PathBuf> {
+fn resolve_rs_file_deps(
+    args: &Args,
+    config: &Config,
+    ws: &Workspace,
+) -> impl Iterator<Item = PathBuf> {
     // Need to run a cargo clean to identify all new .d deps files.
     let clean_opt = CleanOptions {
         config: &config,
@@ -563,7 +603,8 @@ fn resolve_rs_file_deps(config: &Config, ws: &Workspace) -> impl Iterator<Item =
         doc: false,
     };
     ops::clean(ws, &clean_opt).unwrap();
-    let copt = CompileOptions::new(&config, CompileMode::Check { test: false }).unwrap();
+    //let copt = CompileOptions::new(&config, CompileMode::Check { test: false }).unwrap();
+    let copt = build_compile_options(args, config);
     let executor = Arc::new(CustomExecutor {
         ..Default::default()
     });
