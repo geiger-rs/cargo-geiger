@@ -505,7 +505,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     };
 
     let mut rs_files_used = HashMap::new();
-    for path in resolve_rs_file_deps(&args, &ws) {
+    for path in resolve_rs_file_deps(&args, &ws).unwrap() {
         rs_files_used.insert(path.unwrap(), 0);
     }
 
@@ -595,7 +595,19 @@ fn build_compile_options<'a>(args: &'a Args, config: &'a Config) -> CompileOptio
 
 #[derive(Debug)]
 enum RsResolveError {
+    /// Like io::Error but together with the related path.
     IoError(io::Error, PathBuf),
+
+    /// Would like cargo::Error here, but it's private, why?
+    /// This is still way better than a panic though.
+    CargoError(String),
+
+    /// This should not happen unless incorrect assumptions have been made in
+    /// cargo-geiger about how the cargo API works.
+    ArcUnwrapError(),
+
+    /// Failed to get the inner context out of the mutex
+    InnerContextMutexError(String),
 }
 
 impl Error for RsResolveError {}
@@ -606,11 +618,17 @@ impl fmt::Display for RsResolveError {
     }
 }
 
+impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
+    fn from(e: PoisonError<CustomExecutorInnerContext>) -> Self {
+        RsResolveError::InnerContextMutexError(e.to_string())
+    }
+}
+
 /// TODO: Implement error handling and return Result.
 fn resolve_rs_file_deps(
     args: &Args,
     ws: &Workspace,
-) -> impl Iterator<Item = Result<PathBuf, RsResolveError>> {
+) -> Result<impl Iterator<Item = Result<PathBuf, RsResolveError>>, RsResolveError> {
     use RsResolveError::*;
     let config = ws.config();
     // Need to run a cargo clean to identify all new .d deps files.
@@ -621,36 +639,38 @@ fn resolve_rs_file_deps(
         release: false,
         doc: false,
     };
-    ops::clean(ws, &clean_opt).unwrap();
+    ops::clean(ws, &clean_opt).map_err(|e| CargoError(e.to_string()))?;
     let copt = build_compile_options(args, config);
     let executor = Arc::new(CustomExecutor {
         cwd: config.cwd().to_path_buf(),
         ..Default::default()
     });
-    ops::compile_with_exec(ws, &copt, executor.clone()).expect("compile_with_exec failed");
-    let executor = Arc::try_unwrap(executor).expect("try_unwrap failed");
+    ops::compile_with_exec(ws, &copt, executor.clone()).map_err(|e| CargoError(e.to_string()))?;
+    let executor = Arc::try_unwrap(executor).map_err(|_| ArcUnwrapError())?;
     let (rs_files, out_dir_args) = {
-        let inner = executor.into_inner().expect("into_inner failed");
+        let inner = executor.into_inner()?;
         (inner.rs_file_args, inner.out_dir_args)
     };
     let ws_root = ws.root().to_path_buf();
-    out_dir_args
-        .into_iter()
-        .flat_map(move |out_dir| {
-            let ws_root = ws_root.clone();
-            WalkDir::new(&out_dir)
-                .into_iter()
-                .map(|ent| ent.expect("walkdir error, TODO: Implement error handling"))
-                .filter(|ent| is_file_with_ext(&ent, "d"))
-                .flat_map(|ent| {
-                    parse_rustc_dep_info(ent.path()).expect("parse_rustc_dep_info failed")
-                })
-                .flat_map(|t| t.1)
-                .map(PathBuf::from)
-                .map(move |pb| ws_root.join(&pb))
-                .map(|pb| pb.canonicalize().map_err(|e| IoError(e, pb)))
-        })
-        .chain(rs_files.into_iter().map(Ok)) // rs_files must already be canonicalized
+    Ok(
+        out_dir_args
+            .into_iter()
+            .flat_map(move |out_dir| {
+                let ws_root = ws_root.clone();
+                WalkDir::new(&out_dir)
+                    .into_iter()
+                    .map(|ent| ent.expect("walkdir error, TODO: Implement error handling"))
+                    .filter(|ent| is_file_with_ext(&ent, "d"))
+                    .flat_map(|ent| {
+                        parse_rustc_dep_info(ent.path()).expect("parse_rustc_dep_info failed")
+                    })
+                    .flat_map(|t| t.1)
+                    .map(PathBuf::from)
+                    .map(move |pb| ws_root.join(&pb))
+                    .map(|pb| pb.canonicalize().map_err(|e| IoError(e, pb)))
+            })
+            .chain(rs_files.into_iter().map(Ok)), // rs_files must already be canonicalized
+    )
 }
 
 /// Copy-pasted from the private module cargo::core::compiler::fingerprint.
