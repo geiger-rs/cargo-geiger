@@ -504,10 +504,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         Prefix::Indent
     };
 
-    let mut rs_files_used = HashMap::new();
-    for path in resolve_rs_file_deps(&args, &ws).unwrap() {
-        rs_files_used.insert(path.unwrap(), 0);
-    }
+    let mut rs_files_used = resolve_rs_file_deps(&args, &ws).unwrap();
 
     if verbose {
         // Print all .rs files found through the .d files, in sorted order.
@@ -595,7 +592,9 @@ fn build_compile_options<'a>(args: &'a Args, config: &'a Config) -> CompileOptio
 
 #[derive(Debug)]
 enum RsResolveError {
-    /// Like io::Error but together with the related path.
+    WalkdirError(walkdir::Error),
+
+    /// Like io::Error but with the related path.
     IoError(io::Error, PathBuf),
 
     /// Would like cargo::Error here, but it's private, why?
@@ -606,8 +605,11 @@ enum RsResolveError {
     /// cargo-geiger about how the cargo API works.
     ArcUnwrapError(),
 
-    /// Failed to get the inner context out of the mutex
+    /// Failed to get the inner context out of the mutex.
     InnerContextMutexError(String),
+
+    /// TODO: Fix me later.
+    DepParseError(String),
 }
 
 impl Error for RsResolveError {}
@@ -628,7 +630,7 @@ impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
 fn resolve_rs_file_deps(
     args: &Args,
     ws: &Workspace,
-) -> Result<impl Iterator<Item = Result<PathBuf, RsResolveError>>, RsResolveError> {
+) -> Result<HashMap<PathBuf, u32>, RsResolveError> {
     use RsResolveError::*;
     let config = ws.config();
     // Need to run a cargo clean to identify all new .d deps files.
@@ -652,31 +654,37 @@ fn resolve_rs_file_deps(
         (inner.rs_file_args, inner.out_dir_args)
     };
     let ws_root = ws.root().to_path_buf();
-    Ok(
-        out_dir_args
-            .into_iter()
-            .flat_map(move |out_dir| {
-                let ws_root = ws_root.clone();
-                WalkDir::new(&out_dir)
-                    .into_iter()
-                    .map(|ent| ent.expect("walkdir error, TODO: Implement error handling"))
-                    .filter(|ent| is_file_with_ext(&ent, "d"))
-                    .flat_map(|ent| {
-                        parse_rustc_dep_info(ent.path()).expect("parse_rustc_dep_info failed")
-                    })
-                    .flat_map(|t| t.1)
-                    .map(PathBuf::from)
-                    .map(move |pb| ws_root.join(&pb))
-                    .map(|pb| pb.canonicalize().map_err(|e| IoError(e, pb)))
-            })
-            .chain(rs_files.into_iter().map(Ok)), // rs_files must already be canonicalized
-    )
+    let mut hm = HashMap::<PathBuf, u32>::new();
+    for out_dir in out_dir_args {
+        for ent in WalkDir::new(&out_dir).into_iter() {
+            let ent = ent.map_err(WalkdirError)?;
+            if !is_file_with_ext(&ent, "d") {
+                continue;
+            }
+            let deps = parse_rustc_dep_info(ent.path()).map_err(|e| DepParseError(e.to_string()))?;
+            let canon_paths = deps
+                .into_iter()
+                .flat_map(|t| t.1)
+                .map(PathBuf::from)
+                .map(|pb| ws_root.join(pb))
+                .map(|pb| pb.canonicalize().map_err(|e| IoError(e, pb)));
+            for p in canon_paths {
+                hm.insert(p?, 0);
+            }
+        }
+    }
+    for pb in rs_files.into_iter() {
+        // rs_files must already be canonicalized
+        hm.insert(pb, 0);
+    }
+    Ok(hm)
 }
 
-/// Copy-pasted from the private module cargo::core::compiler::fingerprint.
+/// Copy-pasted (almost) from the private module cargo::core::compiler::fingerprint.
+///
 /// TODO: Make a PR to the cargo project to expose this function or to expose
 /// the dependency data in some other way.
-pub fn parse_rustc_dep_info(rustc_dep_info: &Path) -> CargoResult<Vec<(String, Vec<String>)>> {
+fn parse_rustc_dep_info(rustc_dep_info: &Path) -> CargoResult<Vec<(String, Vec<String>)>> {
     let contents = paths::read(rustc_dep_info)?;
     contents
         .lines()
