@@ -102,6 +102,9 @@ impl CounterBlock {
 
 #[derive(Debug, Copy, Clone, Default)]
 struct GeigerSynVisitor {
+    /// Verbose logging.
+    pub verbose: bool,
+
     /// Metrics storage.
     pub counters: CounterBlock,
 
@@ -114,9 +117,22 @@ struct GeigerSynVisitor {
     in_unsafe_block: bool,
 }
 
+fn is_test_fn(i: &ItemFn) -> bool {
+    use syn::Meta;
+    i.attrs.iter()
+        .flat_map(|a| a.interpret_meta())
+        .any(|m| match m {
+                Meta::Word(ident) => ident == "test",
+                _ => false,
+        })
+}
+
 impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
+    /// Free-standing functions
     fn visit_item_fn(&mut self, i: &ItemFn) {
-        // fn definitions
+        if is_test_fn(i) {
+            return;
+        }
         self.counters
             .functions
             .count(i.unsafety.is_some(), self.used_by_build);
@@ -136,6 +152,9 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
                 // expression, not three.
             }
             other => {
+                if self.verbose && self.in_unsafe_block {
+                    println!("{:#?}", other);
+                }
                 self.counters
                     .exprs
                     .count(self.in_unsafe_block, self.used_by_build);
@@ -185,11 +204,11 @@ fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
 
 fn find_unsafe(
     p: &Path,
-    allow_partial_results: bool,
     rs_files_used: &mut HashMap<PathBuf, u32>,
+    allow_partial_results: bool,
     verbose: bool,
 ) -> CounterBlock {
-    let vis = &mut GeigerSynVisitor::default();
+    let vis = &mut GeigerSynVisitor { verbose, ..Default::default() };
     let walker = WalkDir::new(p).into_iter();
     for entry in walker {
         let entry = entry.expect("walkdir error, TODO: Implement error handling");
@@ -348,6 +367,7 @@ struct Args {
     #[structopt(short = "Z", value_name = "FLAG")]
     /// Unstable (nightly-only) flags to Cargo
     unstable_flags: Vec<String>,
+
     // TODO: Implement a new compact output mode where all metrics are
     // aggregated to a single used/unused ratio and output string.
     //#[structopt(long = "compact")]
@@ -430,6 +450,7 @@ struct PrintConfig<'a> {
     pub prefix: Prefix,
     pub format: &'a Pattern,
     pub symbols: &'a Symbols,
+    pub allow_partial_results: bool,
 }
 
 fn real_main(args: &Args, config: &mut Config) -> CliResult {
@@ -533,6 +554,10 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
             .bold()
     );
     println!();
+
+    // TODO: Add command line flag for this and make it default to false?
+    let allow_partial_results = true;
+
     let pc = PrintConfig {
         all: args.all,
         verbose,
@@ -540,6 +565,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         prefix,
         format: &format,
         symbols,
+        allow_partial_results,
     };
     print_tree(root, &graph, &mut rs_files_used, &pc);
     rs_files_used
@@ -1012,15 +1038,12 @@ fn print_dependency<'a>(
         Prefix::None => "".into(),
     };
 
-    // TODO: Add command line flag for this and make it default to false.
-    let allow_partial_results = true;
-
     // TODO: Find and collect unsafe stats as a separate pass over the deps
     // tree before printing.
     let counters = find_unsafe(
         package.pack.root(),
-        allow_partial_results,
         rs_files_used,
+        pc.allow_partial_results,
         pc.verbose,
     );
     let unsafe_found = counters.has_unsafe();
