@@ -57,7 +57,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
-use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemTrait};
+use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemMod, ItemTrait};
 
 mod format;
 
@@ -144,14 +144,63 @@ impl GeigerSynVisitor {
     }
 }
 
-fn is_test_fn(i: &ItemFn) -> bool {
+/// Will return true for #[cfg(test)] mod ...
+///
+/// This function is a total hack and will miss more advanded cfg expressions.
+/// A better way to do this would be to let rustc emit every single source file
+/// path and span within each source file and use that as a general filter for
+/// included code.
+/// TODO: Investigate if the needed information can be emitted by rustc today.
+fn is_test_mod(i: &ItemMod) -> bool {
     use syn::Meta;
-    i.attrs.iter()
+    i.attrs
+        .iter()
         .flat_map(|a| a.interpret_meta())
         .any(|m| match m {
-                Meta::Word(ident) => ident == "test",
-                _ => false,
+            Meta::List(ml) => meta_list_is_cfg_test(ml),
+            _ => false,
         })
+}
+
+// MetaList {
+//     ident: Ident(
+//         cfg
+//     ),
+//     paren_token: Paren,
+//     nested: [
+//         Meta(
+//             Word(
+//                 Ident(
+//                     test
+//                 )
+//             )
+//         )
+//     ]
+// }
+fn meta_list_is_cfg_test(ml: syn::MetaList) -> bool {
+    use syn::NestedMeta;
+    if ml.ident != "cfg" {
+        return false;
+    }
+    ml.nested.iter().any(|n| match n {
+        NestedMeta::Meta(meta) => meta_is_word_test(meta),
+        _ => false,
+    })
+}
+
+fn meta_is_word_test(m: &syn::Meta) -> bool {
+    use syn::Meta;
+    match m {
+        Meta::Word(ident) => ident == "test",
+        _ => false,
+    }
+}
+
+fn is_test_fn(i: &ItemFn) -> bool {
+    i.attrs
+        .iter()
+        .flat_map(|a| a.interpret_meta())
+        .any(|m| meta_is_word_test(&m))
 }
 
 impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
@@ -188,6 +237,13 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
                 visit::visit_expr(self, other);
             }
         }
+    }
+
+    fn visit_item_mod(&mut self, i: &ItemMod) {
+        if IncludeTests::No == self.include_tests && is_test_mod(i) {
+            return;
+        }
+        visit::visit_item_mod(self, i);
     }
 
     fn visit_item_impl(&mut self, i: &ItemImpl) {
@@ -401,7 +457,6 @@ struct Args {
     //#[structopt(long = "compact")]
     // Display compact output instead of table
     //compact: bool,
-
     #[structopt(long = "include-tests")]
     /// Count unsafe usage in tests.
     include_tests: bool,
