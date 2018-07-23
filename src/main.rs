@@ -124,8 +124,8 @@ struct GeigerSynVisitor {
     pub counters: CounterBlock,
 
     /// Used by the Visit trait implementation to separate the metrics into
-    /// "used by build" and "not used by build" based on if the .rs file was used
-    /// in the build or not.
+    /// "used by build" and "not used by build" based on if the .rs file was
+    /// used in the build or not.
     pub used_by_build: bool,
 
     /// Used by the Visit trait implementation to track the traversal state.
@@ -144,12 +144,12 @@ impl GeigerSynVisitor {
     }
 }
 
-/// Will return true for #[cfg(test)] mod ...
+/// Will return true for #[cfg(test)] decodated modules.
 ///
-/// This function is a total hack and will miss more advanded cfg expressions.
-/// A better way to do this would be to let rustc emit every single source file
-/// path and span within each source file and use that as a general filter for
-/// included code.
+/// This function is a somewhat of a hack and will probably missinterpret more
+/// advanded cfg expressions. A better way to do this would be to let rustc emit
+/// every single source file path and span within each source file and use that
+/// as a general filter for included code.
 /// TODO: Investigate if the needed information can be emitted by rustc today.
 fn is_test_mod(i: &ItemMod) -> bool {
     use syn::Meta;
@@ -157,7 +157,7 @@ fn is_test_mod(i: &ItemMod) -> bool {
         .iter()
         .flat_map(|a| a.interpret_meta())
         .any(|m| match m {
-            Meta::List(ml) => meta_list_is_cfg_test(ml),
+            Meta::List(ml) => meta_list_is_cfg_test(&ml),
             _ => false,
         })
 }
@@ -177,7 +177,7 @@ fn is_test_mod(i: &ItemMod) -> bool {
 //         )
 //     ]
 // }
-fn meta_list_is_cfg_test(ml: syn::MetaList) -> bool {
+fn meta_list_is_cfg_test(ml: &syn::MetaList) -> bool {
     use syn::NestedMeta;
     if ml.ident != "cfg" {
         return false;
@@ -228,9 +228,11 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
                 // expression, not three.
             }
             other => {
-                if self.verbosity == Verbosity::Verbose && self.in_unsafe_block {
-                    println!("{:#?}", other);
-                }
+                // TODO: Print something pretty here or gather the data for later
+                // printing.
+                // if self.verbosity == Verbosity::Verbose && self.in_unsafe_block {
+                //     println!("{:#?}", other);
+                // }
                 self.counters
                     .exprs
                     .count(self.in_unsafe_block, self.used_by_build);
@@ -550,9 +552,10 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         &target_dir,
         &args.unstable_flags,
     )?;
-    let verbosity = match args.verbose == 0 {
-        true => Verbosity::Normal,
-        false => Verbosity::Verbose,
+    let verbosity = if args.verbose == 0 {
+        Verbosity::Normal
+    } else {
+        Verbosity::Verbose
     };
     let ws = workspace(config, args.manifest_path.clone())?;
     let package = ws.current()?;
@@ -642,9 +645,10 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     // TODO: Add command line flag for this and make it default to false?
     let allow_partial_results = true;
 
-    let include_tests = match args.include_tests {
-        true => IncludeTests::Yes,
-        false => IncludeTests::No,
+    let include_tests = if args.include_tests {
+        IncludeTests::Yes
+    } else {
+        IncludeTests::No
     };
     let pc = PrintConfig {
         all: args.all,
@@ -654,7 +658,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         format: &format,
         symbols,
         allow_partial_results,
-        include_tests: include_tests,
+        include_tests,
     };
     print_tree(root, &graph, &mut rs_files_used, &pc);
     rs_files_used
@@ -707,24 +711,24 @@ fn build_compile_options<'a>(args: &'a Args, config: &'a Config) -> CompileOptio
 
 #[derive(Debug)]
 enum RsResolveError {
-    WalkdirError(walkdir::Error),
+    Walkdir(walkdir::Error),
 
     /// Like io::Error but with the related path.
-    IoError(io::Error, PathBuf),
+    Io(io::Error, PathBuf),
 
     /// Would like cargo::Error here, but it's private, why?
     /// This is still way better than a panic though.
-    CargoError(String),
+    Cargo(String),
 
     /// This should not happen unless incorrect assumptions have been made in
     /// cargo-geiger about how the cargo API works.
-    ArcUnwrapError(),
+    ArcUnwrap(),
 
     /// Failed to get the inner context out of the mutex.
-    InnerContextMutexError(String),
+    InnerContextMutex(String),
 
     /// TODO: Fix me later.
-    DepParseError(String),
+    DepParse(String),
 }
 
 impl Error for RsResolveError {}
@@ -737,7 +741,7 @@ impl fmt::Display for RsResolveError {
 
 impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
     fn from(e: PoisonError<CustomExecutorInnerContext>) -> Self {
-        RsResolveError::InnerContextMutexError(e.to_string())
+        RsResolveError::InnerContextMutex(e.to_string())
     }
 }
 
@@ -746,7 +750,6 @@ fn resolve_rs_file_deps(
     args: &Args,
     ws: &Workspace,
 ) -> Result<HashMap<PathBuf, u32>, RsResolveError> {
-    use RsResolveError::*;
     let config = ws.config();
     // Need to run a cargo clean to identify all new .d deps files.
     let clean_opt = CleanOptions {
@@ -756,14 +759,15 @@ fn resolve_rs_file_deps(
         release: false,
         doc: false,
     };
-    ops::clean(ws, &clean_opt).map_err(|e| CargoError(e.to_string()))?;
+    ops::clean(ws, &clean_opt).map_err(|e| RsResolveError::Cargo(e.to_string()))?;
     let copt = build_compile_options(args, config);
     let executor = Arc::new(CustomExecutor {
         cwd: config.cwd().to_path_buf(),
         ..Default::default()
     });
-    ops::compile_with_exec(ws, &copt, executor.clone()).map_err(|e| CargoError(e.to_string()))?;
-    let executor = Arc::try_unwrap(executor).map_err(|_| ArcUnwrapError())?;
+    ops::compile_with_exec(ws, &copt, executor.clone())
+        .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
+    let executor = Arc::try_unwrap(executor).map_err(|_| RsResolveError::ArcUnwrap())?;
     let (rs_files, out_dir_args) = {
         let inner = executor.into_inner()?;
         (inner.rs_file_args, inner.out_dir_args)
@@ -771,24 +775,25 @@ fn resolve_rs_file_deps(
     let ws_root = ws.root().to_path_buf();
     let mut hm = HashMap::<PathBuf, u32>::new();
     for out_dir in out_dir_args {
-        for ent in WalkDir::new(&out_dir).into_iter() {
-            let ent = ent.map_err(WalkdirError)?;
+        for ent in WalkDir::new(&out_dir) {
+            let ent = ent.map_err(RsResolveError::Walkdir)?;
             if !is_file_with_ext(&ent, "d") {
                 continue;
             }
-            let deps = parse_rustc_dep_info(ent.path()).map_err(|e| DepParseError(e.to_string()))?;
+            let deps = parse_rustc_dep_info(ent.path())
+                .map_err(|e| RsResolveError::DepParse(e.to_string()))?;
             let canon_paths = deps
                 .into_iter()
                 .flat_map(|t| t.1)
                 .map(PathBuf::from)
                 .map(|pb| ws_root.join(pb))
-                .map(|pb| pb.canonicalize().map_err(|e| IoError(e, pb)));
+                .map(|pb| pb.canonicalize().map_err(|e| RsResolveError::Io(e, pb)));
             for p in canon_paths {
                 hm.insert(p?, 0);
             }
         }
     }
-    for pb in rs_files.into_iter() {
+    for pb in rs_files {
         // rs_files must already be canonicalized
         hm.insert(pb, 0);
     }
@@ -867,8 +872,8 @@ use std::fmt;
 enum CustomExecutorError {
     OutDirKeyMissing(String),
     OutDirValueMissing(String),
-    InnerContextMutexError(String),
-    IoError(io::Error, PathBuf),
+    InnerContextMutex(String),
+    Io(io::Error, PathBuf),
 }
 
 impl Error for CustomExecutorError {}
@@ -883,16 +888,15 @@ impl Executor for CustomExecutor {
     /// In case of an `Err`, Cargo will not continue with the build process for
     /// this package.
     fn exec(&self, cmd: ProcessBuilder, _id: &PackageId, _target: &Target) -> CargoResult<()> {
-        use CustomExecutorError::*;
         let args = cmd.get_args();
         let out_dir_key = OsString::from("--out-dir");
         let out_dir_key_idx = args
             .iter()
             .position(|s| *s == out_dir_key)
-            .ok_or_else(|| OutDirKeyMissing(cmd.to_string()))?;
+            .ok_or_else(|| CustomExecutorError::OutDirKeyMissing(cmd.to_string()))?;
         let out_dir = args
             .get(out_dir_key_idx + 1)
-            .ok_or_else(|| OutDirValueMissing(cmd.to_string()))
+            .ok_or_else(|| CustomExecutorError::OutDirValueMissing(cmd.to_string()))
             .map(PathBuf::from)?;
 
         // This can be different from the cwd used to launch the wrapping cargo
@@ -908,14 +912,16 @@ impl Executor for CustomExecutor {
             let mut ctx = self
                 .inner_ctx
                 .lock()
-                .map_err(|e| InnerContextMutexError(e.to_string()))?;
+                .map_err(|e| CustomExecutorError::InnerContextMutex(e.to_string()))?;
             for tuple in args
                 .iter()
                 .map(|s| (s, s.to_string_lossy().to_lowercase()))
                 .filter(|t| t.1.ends_with(".rs"))
             {
                 let raw_path = cwd.join(tuple.0);
-                let p = raw_path.canonicalize().map_err(|e| IoError(e, raw_path))?;
+                let p = raw_path
+                    .canonicalize()
+                    .map_err(|e| CustomExecutorError::Io(e, raw_path))?;
                 ctx.rs_file_args.insert(p);
             }
             ctx.out_dir_args.insert(out_dir);

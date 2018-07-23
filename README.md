@@ -65,6 +65,7 @@ Known issues
 Roadmap
 -------
 
+- There should be no false negatives. All unsafe code should be identified.
 - Refactoring and general cleanup.
 - Proper error handling using Result.
 - An optional whitelist file at the root crate level to specify crates that are
@@ -75,6 +76,11 @@ Roadmap
 
 Changelog
 ---------
+
+### 0.4.0
+ - Filters out tests by default. Tests can be included by using
+   `--include-tests`. The test code is filted out by looking for the attribute
+   `#[test]` on functions and `#[cfg(test)]` on modules.
 
 ### 0.3.1
  - Some bugfixes related to cargo workspace path handling.
