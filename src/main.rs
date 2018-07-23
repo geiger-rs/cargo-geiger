@@ -3,6 +3,12 @@
 // TODO: Investigate how cargo-clippy is implemented. Is it using syn?
 // Is is using rustc? Is it implementing a compiler plugin?
 
+// TODO: Add a new output format that adds all unsafe usage counts to a single
+// number?
+//     10 / 10     crate-one-0.1.0
+//     5  / 123    some-other-crate-0.1.0
+//     0  / 456    and-another-one-0.1.0
+
 #[macro_use]
 extern crate structopt;
 extern crate cargo;
@@ -23,6 +29,7 @@ use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::core::shell::Shell;
+use cargo::core::shell::Verbosity;
 use cargo::core::Target;
 use cargo::core::{Package, PackageId, Resolve, Workspace};
 use cargo::ops;
@@ -54,7 +61,7 @@ use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemTrait};
 
 mod format;
 
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Count {
     /// Number of safe items, in .rs files not used by the build.
     pub safe_unused: u64,
@@ -81,7 +88,7 @@ impl Count {
 }
 
 /// Unsafe usage metrics collection.
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Default)]
 struct CounterBlock {
     pub functions: Count,
     pub exprs: Count,
@@ -100,10 +107,18 @@ impl CounterBlock {
     }
 }
 
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum IncludeTests {
+    Yes,
+    No,
+}
+
 struct GeigerSynVisitor {
+    /// Count unsafe usage inside tests
+    pub include_tests: IncludeTests,
+
     /// Verbose logging.
-    pub verbose: bool,
+    pub verbosity: Verbosity,
 
     /// Metrics storage.
     pub counters: CounterBlock,
@@ -115,6 +130,18 @@ struct GeigerSynVisitor {
 
     /// Used by the Visit trait implementation to track the traversal state.
     in_unsafe_block: bool,
+}
+
+impl GeigerSynVisitor {
+    pub fn new(include_tests: IncludeTests, verbosity: Verbosity) -> Self {
+        GeigerSynVisitor {
+            include_tests,
+            verbosity,
+            counters: Default::default(),
+            used_by_build: false,
+            in_unsafe_block: false,
+        }
+    }
 }
 
 fn is_test_fn(i: &ItemFn) -> bool {
@@ -130,7 +157,7 @@ fn is_test_fn(i: &ItemFn) -> bool {
 impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
     /// Free-standing functions
     fn visit_item_fn(&mut self, i: &ItemFn) {
-        if is_test_fn(i) {
+        if IncludeTests::No == self.include_tests && is_test_fn(i) {
             return;
         }
         self.counters
@@ -152,7 +179,7 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
                 // expression, not three.
             }
             other => {
-                if self.verbose && self.in_unsafe_block {
+                if self.verbosity == Verbosity::Verbose && self.in_unsafe_block {
                     println!("{:#?}", other);
                 }
                 self.counters
@@ -206,9 +233,10 @@ fn find_unsafe(
     p: &Path,
     rs_files_used: &mut HashMap<PathBuf, u32>,
     allow_partial_results: bool,
-    verbose: bool,
+    include_tests: IncludeTests,
+    verbosity: Verbosity,
 ) -> CounterBlock {
-    let vis = &mut GeigerSynVisitor { verbose, ..Default::default() };
+    let mut vis = GeigerSynVisitor::new(include_tests, verbosity);
     let walker = WalkDir::new(p).into_iter();
     for entry in walker {
         let entry = entry.expect("walkdir error, TODO: Implement error handling");
@@ -221,7 +249,7 @@ fn find_unsafe(
         vis.used_by_build = match scan_counter {
             Some(c) => {
                 // TODO: Add proper logging.
-                if verbose {
+                if verbosity == Verbosity::Verbose {
                     println!("Used in build: {}", p.display());
                 }
                 // This .rs file path was found by intercepting rustc arguments
@@ -239,7 +267,7 @@ fn find_unsafe(
                 // cargo-geiger, but it should be scanned anyways to provide
                 // both "in build" and "not in build" stats.
                 // TODO: Add proper logging.
-                if verbose {
+                if verbosity == Verbosity::Verbose {
                     println!("Not used in build: {}", p.display());
                 }
                 false
@@ -257,7 +285,7 @@ fn find_unsafe(
             }
             (false, Err(e)) => panic!("Failed to parse file: {}, {:?} ", p.display(), e),
         };
-        syn::visit::visit_file(vis, &syntax);
+        syn::visit::visit_file(&mut vis, &syntax);
     }
     vis.counters
 }
@@ -373,6 +401,10 @@ struct Args {
     //#[structopt(long = "compact")]
     // Display compact output instead of table
     //compact: bool,
+
+    #[structopt(long = "include-tests")]
+    /// Count unsafe usage in tests.
+    include_tests: bool,
 }
 
 enum Charset {
@@ -443,14 +475,13 @@ struct PrintConfig<'a> {
     /// Don't truncate dependencies that have already been displayed.
     pub all: bool,
 
-    /// Verbose logging.
-    pub verbose: bool,
-
+    pub verbosity: Verbosity,
     pub direction: EdgeDirection,
     pub prefix: Prefix,
     pub format: &'a Pattern,
     pub symbols: &'a Symbols,
     pub allow_partial_results: bool,
+    pub include_tests: IncludeTests,
 }
 
 fn real_main(args: &Args, config: &mut Config) -> CliResult {
@@ -464,12 +495,10 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         &target_dir,
         &args.unstable_flags,
     )?;
-    // TODO: Add a new default output format that adds all unsafe usage counts
-    // to a single number?
-    //     10 / 10     crate-one-0.1.0
-    //     5  / 123    some-other-crate-0.1.0
-    //     0  / 456    and-another-one-0.1.0
-    let verbose = args.verbose != 0;
+    let verbosity = match args.verbose == 0 {
+        true => Verbosity::Normal,
+        false => Verbosity::Verbose,
+    };
     let ws = workspace(config, args.manifest_path.clone())?;
     let package = ws.current()?;
     let mut registry = registry(config, &package)?;
@@ -527,7 +556,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 
     let mut rs_files_used = resolve_rs_file_deps(&args, &ws).unwrap();
 
-    if verbose {
+    if verbosity == Verbosity::Verbose {
         // Print all .rs files found through the .d files, in sorted order.
         let mut paths = rs_files_used
             .keys()
@@ -558,14 +587,19 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     // TODO: Add command line flag for this and make it default to false?
     let allow_partial_results = true;
 
+    let include_tests = match args.include_tests {
+        true => IncludeTests::Yes,
+        false => IncludeTests::No,
+    };
     let pc = PrintConfig {
         all: args.all,
-        verbose,
+        verbosity,
         direction,
         prefix,
         format: &format,
         symbols,
         allow_partial_results,
+        include_tests: include_tests,
     };
     print_tree(root, &graph, &mut rs_files_used, &pc);
     rs_files_used
@@ -1044,7 +1078,8 @@ fn print_dependency<'a>(
         package.pack.root(),
         rs_files_used,
         pc.allow_partial_results,
-        pc.verbose,
+        pc.include_tests,
+        pc.verbosity,
     );
     let unsafe_found = counters.has_unsafe();
     let colorize = |s: String| {
