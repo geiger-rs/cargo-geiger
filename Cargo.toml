@@ -16,7 +16,7 @@ maintenance = { status = "experimental" }
 syn = { version = "0.14.5", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
 clap = "2.32.0"
 cargo = "0.28.0"
-env_logger = "0.5.10"
+env_logger = "0.5.11"
 failure = "0.1.1"
 petgraph = "0.4.12"
 structopt = "0.2.10"
