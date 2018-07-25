@@ -727,7 +727,7 @@ enum RsResolveError {
     /// Failed to get the inner context out of the mutex.
     InnerContextMutex(String),
 
-    /// TODO: Fix me later.
+    /// TODO: Add file path involved in parse error.
     DepParse(String),
 }
 
@@ -745,7 +745,6 @@ impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
     }
 }
 
-/// TODO: Implement error handling and return Result.
 fn resolve_rs_file_deps(
     args: &Args,
     ws: &Workspace,
