@@ -303,7 +303,6 @@ fn find_unsafe(
         }
         let p = entry.path();
         let scan_counter = rs_files_used.get_mut(p);
-        // TODO: fix GeigerSynVisitor to handle "included" and "excluded" modes.
         vis.used_by_build = match scan_counter {
             Some(c) => {
                 // TODO: Add proper logging.
