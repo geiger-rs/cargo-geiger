@@ -62,7 +62,7 @@ Roadmap
   trusted to use unsafe (should only have an effect if placed in the root
   project).
 - Refactoring and general cleanup.
-- Raplace all remaining panics with Result based errors handling.
+- Replace all remaining panics with Result based errors handling.
 - Additional output formats.
 
 
