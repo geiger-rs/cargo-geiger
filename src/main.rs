@@ -297,7 +297,8 @@ fn find_unsafe(
     let mut vis = GeigerSynVisitor::new(include_tests, verbosity);
     let walker = WalkDir::new(p).into_iter();
     for entry in walker {
-        let entry = entry.expect("walkdir error, TODO: Implement error handling");
+        let entry =
+            entry.expect("walkdir error, TODO: Implement error handling");
         if !is_file_with_ext(&entry, "rs") {
             continue;
         }
@@ -340,7 +341,9 @@ fn find_unsafe(
                 println!("Failed to parse file: {}, {:?}", p.display(), e);
                 continue;
             }
-            (false, Err(e)) => panic!("Failed to parse file: {}, {:?} ", p.display(), e),
+            (false, Err(e)) => {
+                panic!("Failed to parse file: {}, {:?} ", p.display(), e)
+            }
         };
         syn::visit::visit_file(&mut vis, &syntax);
     }
@@ -581,7 +584,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         Some(args.target.as_ref().unwrap_or(&config_host).as_str())
     };
 
-    let format = Pattern::new(&args.format).map_err(|e| failure::err_msg(e.to_string()))?;
+    let format = Pattern::new(&args.format)
+        .map_err(|e| failure::err_msg(e.to_string()))?;
 
     let cfgs = get_cfgs(config, &args.target, &ws)?;
     let graph = build_graph(
@@ -675,11 +679,17 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 /// Based on code from cargo-bloat. It seems weird that CompileOptions can be
 /// constructed without providing all standard cargo options, TODO: Open an issue
 /// in cargo?
-fn build_compile_options<'a>(args: &'a Args, config: &'a Config) -> CompileOptions<'a> {
-    let features = Method::split_features(&args.features.clone().into_iter().collect::<Vec<_>>())
-        .into_iter()
-        .map(|s| s.to_string());
-    let mut opt = CompileOptions::new(&config, CompileMode::Check { test: false }).unwrap();
+fn build_compile_options<'a>(
+    args: &'a Args,
+    config: &'a Config,
+) -> CompileOptions<'a> {
+    let features = Method::split_features(
+        &args.features.clone().into_iter().collect::<Vec<_>>(),
+    ).into_iter()
+    .map(|s| s.to_string());
+    let mut opt =
+        CompileOptions::new(&config, CompileMode::Check { test: false })
+            .unwrap();
     opt.features = features.collect::<_>();
     opt.all_features = args.all_features;
     opt.no_default_features = args.no_default_features;
@@ -757,7 +767,8 @@ fn resolve_rs_file_deps(
         release: false,
         doc: false,
     };
-    ops::clean(ws, &clean_opt).map_err(|e| RsResolveError::Cargo(e.to_string()))?;
+    ops::clean(ws, &clean_opt)
+        .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
     let copt = build_compile_options(args, config);
     let executor = Arc::new(CustomExecutor {
         cwd: config.cwd().to_path_buf(),
@@ -765,7 +776,8 @@ fn resolve_rs_file_deps(
     });
     ops::compile_with_exec(ws, &copt, executor.clone())
         .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
-    let executor = Arc::try_unwrap(executor).map_err(|_| RsResolveError::ArcUnwrap())?;
+    let executor =
+        Arc::try_unwrap(executor).map_err(|_| RsResolveError::ArcUnwrap())?;
     let (rs_files, out_dir_args) = {
         let inner = executor.into_inner()?;
         (inner.rs_file_args, inner.out_dir_args)
@@ -785,7 +797,9 @@ fn resolve_rs_file_deps(
                 .flat_map(|t| t.1)
                 .map(PathBuf::from)
                 .map(|pb| ws_root.join(pb))
-                .map(|pb| pb.canonicalize().map_err(|e| RsResolveError::Io(e, pb)));
+                .map(|pb| {
+                    pb.canonicalize().map_err(|e| RsResolveError::Io(e, pb))
+                });
             for p in canon_paths {
                 hm.insert(p?, 0);
             }
@@ -802,7 +816,9 @@ fn resolve_rs_file_deps(
 ///
 /// TODO: Make a PR to the cargo project to expose this function or to expose
 /// the dependency data in some other way.
-fn parse_rustc_dep_info(rustc_dep_info: &Path) -> CargoResult<Vec<(String, Vec<String>)>> {
+fn parse_rustc_dep_info(
+    rustc_dep_info: &Path,
+) -> CargoResult<Vec<(String, Vec<String>)>> {
     let contents = paths::read(rustc_dep_info)?;
     contents
         .lines()
@@ -858,7 +874,10 @@ struct CustomExecutor {
 impl CustomExecutor {
     pub fn into_inner(
         self,
-    ) -> Result<CustomExecutorInnerContext, PoisonError<CustomExecutorInnerContext>> {
+    ) -> Result<
+        CustomExecutorInnerContext,
+        PoisonError<CustomExecutorInnerContext>,
+    > {
         self.inner_ctx.into_inner()
     }
 }
@@ -885,17 +904,23 @@ impl fmt::Display for CustomExecutorError {
 impl Executor for CustomExecutor {
     /// In case of an `Err`, Cargo will not continue with the build process for
     /// this package.
-    fn exec(&self, cmd: ProcessBuilder, _id: &PackageId, _target: &Target) -> CargoResult<()> {
+    fn exec(
+        &self,
+        cmd: ProcessBuilder,
+        _id: &PackageId,
+        _target: &Target,
+    ) -> CargoResult<()> {
         let args = cmd.get_args();
         let out_dir_key = OsString::from("--out-dir");
-        let out_dir_key_idx = args
-            .iter()
-            .position(|s| *s == out_dir_key)
-            .ok_or_else(|| CustomExecutorError::OutDirKeyMissing(cmd.to_string()))?;
+        let out_dir_key_idx =
+            args.iter().position(|s| *s == out_dir_key).ok_or_else(|| {
+                CustomExecutorError::OutDirKeyMissing(cmd.to_string())
+            })?;
         let out_dir = args
             .get(out_dir_key_idx + 1)
-            .ok_or_else(|| CustomExecutorError::OutDirValueMissing(cmd.to_string()))
-            .map(PathBuf::from)?;
+            .ok_or_else(|| {
+                CustomExecutorError::OutDirValueMissing(cmd.to_string())
+            }).map(PathBuf::from)?;
 
         // This can be different from the cwd used to launch the wrapping cargo
         // plugin. Discovered while fixing
@@ -907,10 +932,9 @@ impl Executor for CustomExecutor {
 
         {
             // Scope to drop and release the mutex before calling rustc.
-            let mut ctx = self
-                .inner_ctx
-                .lock()
-                .map_err(|e| CustomExecutorError::InnerContextMutex(e.to_string()))?;
+            let mut ctx = self.inner_ctx.lock().map_err(|e| {
+                CustomExecutorError::InnerContextMutex(e.to_string())
+            })?;
             for tuple in args
                 .iter()
                 .map(|s| (s, s.to_string_lossy().to_lowercase()))
@@ -975,7 +999,10 @@ fn get_cfgs(
     ))
 }
 
-fn workspace(config: &Config, manifest_path: Option<PathBuf>) -> CargoResult<Workspace> {
+fn workspace(
+    config: &Config,
+    manifest_path: Option<PathBuf>,
+) -> CargoResult<Workspace> {
     let root = match manifest_path {
         Some(path) => path,
         None => important_paths::find_root_manifest_for_wd(config.cwd())?,
@@ -983,7 +1010,10 @@ fn workspace(config: &Config, manifest_path: Option<PathBuf>) -> CargoResult<Wor
     Workspace::new(&root, config)
 }
 
-fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageRegistry<'a>> {
+fn registry<'a>(
+    config: &'a Config,
+    package: &Package,
+) -> CargoResult<PackageRegistry<'a>> {
     let mut registry = PackageRegistry::new(config)?;
     registry.add_sources(&[package.package_id().source_id().clone()])?;
     Ok(registry)
@@ -996,7 +1026,8 @@ fn resolve<'a, 'cfg>(
     all_features: bool,
     no_default_features: bool,
 ) -> CargoResult<(PackageSet<'a>, Resolve)> {
-    let features = Method::split_features(&features.into_iter().collect::<Vec<_>>());
+    let features =
+        Method::split_features(&features.into_iter().collect::<Vec<_>>());
 
     let (packages, resolve) = ops::resolve_ws(ws)?;
 
@@ -1007,8 +1038,16 @@ fn resolve<'a, 'cfg>(
         uses_default_features: !no_default_features,
     };
 
-    let resolve =
-        ops::resolve_with_previous(registry, ws, method, Some(&resolve), None, &[], true, true)?;
+    let resolve = ops::resolve_with_previous(
+        registry,
+        ws,
+        method,
+        Some(&resolve),
+        None,
+        &[],
+        true,
+        true,
+    )?;
     Ok((packages, resolve))
 }
 
@@ -1114,7 +1153,8 @@ fn print_dependency<'a>(
         Prefix::Depth => format!("{} ", levels_continue.len()),
         Prefix::Indent => {
             let mut buf = String::new();
-            if let Some((&last_continues, rest)) = levels_continue.split_last() {
+            if let Some((&last_continues, rest)) = levels_continue.split_last()
+            {
                 for &continues in rest {
                     let c = if continues { pc.symbols.down } else { " " };
                     buf.push_str(&format!("{}   ", c));
@@ -1271,7 +1311,9 @@ fn table_row_empty() -> String {
             .iter()
             .take(5)
             .map(|s| s.len())
-            .sum::<usize>() + UNSAFE_COUNTERS_HEADER.len() + 1,
+            .sum::<usize>()
+            + UNSAFE_COUNTERS_HEADER.len()
+            + 1,
     )
 }
 
