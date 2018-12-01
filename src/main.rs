@@ -332,9 +332,9 @@ fn find_unsafe(
             }
         };
         let mut file = File::open(p).expect("Unable to open file");
-        let mut src = String::new();
-        file.read_to_string(&mut src).expect("Unable to read file");
-        let syntax = match (allow_partial_results, syn::parse_file(&src)) {
+        let mut src = vec![];
+        file.read_to_end(&mut src).expect("Unable to read file");
+        let syntax = match (allow_partial_results, syn::parse_file(&String::from_utf8_lossy(&src))) {
             (_, Ok(s)) => s,
             (true, Err(e)) => {
                 // TODO: Do proper error logging.
