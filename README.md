@@ -69,6 +69,13 @@ Roadmap
 Changelog
 ---------
 
+### 0.4.1
+ - Merge pull request #28 from alexmaco/deps_upgrade. fix build on rust 1.30:
+   upgrade petgraph to 0.4.13
+
+ - Merge pull request #29 from alexmaco/invalid_utf8_source. fix handling
+   source files with invalid utf8: lossy conversion to string
+
 ### 0.4.0
  - Filters out tests by default. Tests can still be included by using
    `--include-tests`. The test code is filted out by looking for the attribute
@@ -95,5 +102,6 @@ Changelog
 ### 0.1.x
  - Initial experimental versions.
  - Mostly README.md updates.
+
 
 
