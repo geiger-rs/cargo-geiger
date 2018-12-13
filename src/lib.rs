@@ -3,12 +3,6 @@
 // TODO: Investigate how cargo-clippy is implemented. Is it using syn?
 // Is is using rustc? Is it implementing a compiler plugin?
 
-// TODO: Add a new output format that adds all unsafe usage counts to a single
-// number?
-//     10 / 10     crate-one-0.1.0
-//     5  / 123    some-other-crate-0.1.0
-//     0  / 456    and-another-one-0.1.0
-
 extern crate cargo;
 extern crate colored;
 extern crate env_logger;
@@ -53,127 +47,9 @@ use std::path::PathBuf;
 use std::str::{self, FromStr};
 use std::sync::Arc;
 use std::sync::Mutex;
-use structopt::clap::AppSettings;
-use structopt::StructOpt;
 use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemMod, ItemTrait};
 
 pub mod format;
-
-#[derive(StructOpt)]
-#[structopt(bin_name = "cargo")]
-pub enum Opts {
-    #[structopt(
-        name = "geiger",
-        raw(
-            setting = "AppSettings::UnifiedHelpMessage",
-            setting = "AppSettings::DeriveDisplayOrder",
-            setting = "AppSettings::DontCollapseArgsInUsage"
-        )
-    )]
-    /// Detects usage of unsafe Rust in a Rust crate and its dependencies.
-    Geiger(Args),
-}
-
-#[derive(StructOpt)]
-pub struct Args {
-    #[structopt(long = "package", short = "p", value_name = "SPEC")]
-    /// Package to be used as the root of the tree
-    pub package: Option<String>,
-
-    #[structopt(long = "features", value_name = "FEATURES")]
-    /// Space-separated list of features to activate
-    pub features: Option<String>,
-
-    #[structopt(long = "all-features")]
-    /// Activate all available features
-    pub all_features: bool,
-
-    #[structopt(long = "no-default-features")]
-    /// Do not activate the `default` feature
-    pub no_default_features: bool,
-
-    #[structopt(long = "target", value_name = "TARGET")]
-    /// Set the target triple
-    pub target: Option<String>,
-
-    #[structopt(long = "all-targets")]
-    /// Return dependencies for all targets. By default only the host target is matched.
-    pub all_targets: bool,
-
-    #[structopt(
-        long = "manifest-path",
-        value_name = "PATH",
-        parse(from_os_str)
-    )]
-    /// Path to Cargo.toml
-    pub manifest_path: Option<PathBuf>,
-
-    #[structopt(long = "invert", short = "i")]
-    /// Invert the tree direction
-    pub invert: bool,
-
-    #[structopt(long = "no-indent")]
-    /// Display the dependencies as a list (rather than a tree)
-    pub no_indent: bool,
-
-    #[structopt(long = "prefix-depth")]
-    /// Display the dependencies as a list (rather than a tree), but prefixed with the depth
-    pub prefix_depth: bool,
-
-    #[structopt(long = "all", short = "a")]
-    /// Don't truncate dependencies that have already been displayed
-    pub all: bool,
-
-    #[structopt(
-        long = "charset",
-        value_name = "CHARSET",
-        default_value = "utf8"
-    )]
-    /// Character set to use in output: utf8, ascii
-    pub charset: Charset,
-
-    #[structopt(
-        long = "format",
-        short = "f",
-        value_name = "FORMAT",
-        default_value = "{p}"
-    )]
-    /// Format string used for printing dependencies
-    pub format: String,
-
-    #[structopt(long = "verbose", short = "v", parse(from_occurrences))]
-    /// Use verbose output (-vv very verbose/build.rs output)
-    pub verbose: u32,
-
-    #[structopt(long = "quiet", short = "q")]
-    /// No output printed to stdout other than the tree
-    pub quiet: Option<bool>,
-
-    #[structopt(long = "color", value_name = "WHEN")]
-    /// Coloring: auto, always, never
-    pub color: Option<String>,
-
-    #[structopt(long = "frozen")]
-    /// Require Cargo.lock and cache are up to date
-    pub frozen: bool,
-
-    #[structopt(long = "locked")]
-    /// Require Cargo.lock is up to date
-    pub locked: bool,
-
-    #[structopt(short = "Z", value_name = "FLAG")]
-    /// Unstable (nightly-only) flags to Cargo
-    pub unstable_flags: Vec<String>,
-
-    // TODO: Implement a new compact output mode where all metrics are
-    // aggregated to a single used/unused ratio and output string.
-    //#[structopt(long = "compact")]
-    // Display compact output instead of table
-    //compact: bool,
-    #[structopt(long = "include-tests")]
-    /// Count unsafe usage in tests.
-    pub include_tests: bool,
-}
 
 #[derive(Debug, Default)]
 pub struct Count {
@@ -525,49 +401,6 @@ pub struct PrintConfig<'a> {
     pub include_tests: IncludeTests,
 }
 
-/// Based on code from cargo-bloat. It seems weird that CompileOptions can be
-/// constructed without providing all standard cargo options, TODO: Open an issue
-/// in cargo?
-pub fn build_compile_options<'a>(
-    args: &'a Args,
-    config: &'a Config,
-) -> CompileOptions<'a> {
-    let features = Method::split_features(
-        &args.features.clone().into_iter().collect::<Vec<_>>(),
-    )
-    .into_iter()
-    .map(|s| s.to_string());
-    let mut opt =
-        CompileOptions::new(&config, CompileMode::Check { test: false })
-            .unwrap();
-    opt.features = features.collect::<_>();
-    opt.all_features = args.all_features;
-    opt.no_default_features = args.no_default_features;
-
-    // TODO: Investigate if this is relevant to cargo-geiger.
-    //let mut bins = Vec::new();
-    //let mut examples = Vec::new();
-    // opt.release = args.release;
-    // opt.target = args.target.clone();
-    // if let Some(ref name) = args.bin {
-    //     bins.push(name.clone());
-    // } else if let Some(ref name) = args.example {
-    //     examples.push(name.clone());
-    // }
-    // if args.bin.is_some() || args.example.is_some() {
-    //     opt.filter = ops::CompileFilter::new(
-    //         false,
-    //         bins.clone(), false,
-    //         Vec::new(), false,
-    //         examples.clone(), false,
-    //         Vec::new(), false,
-    //         false,
-    //     );
-    // }
-
-    opt
-}
-
 #[derive(Debug)]
 pub enum RsResolveError {
     Walkdir(walkdir::Error),
@@ -605,7 +438,7 @@ impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
 }
 
 pub fn resolve_rs_file_deps(
-    args: &Args,
+    copt: &CompileOptions,
     ws: &Workspace,
 ) -> Result<HashMap<PathBuf, u32>, RsResolveError> {
     let config = ws.config();
@@ -619,7 +452,6 @@ pub fn resolve_rs_file_deps(
     };
     ops::clean(ws, &clean_opt)
         .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
-    let copt = build_compile_options(args, config);
     let executor = Arc::new(CustomExecutor {
         cwd: config.cwd().to_path_buf(),
         ..Default::default()
