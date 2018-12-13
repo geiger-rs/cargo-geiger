@@ -4,19 +4,19 @@ extern crate colored;
 extern crate petgraph;
 extern crate structopt;
 
-use cargo::core::resolver::Method;
-use cargo::ops::CompileOptions;
 use cargo::core::compiler::CompileMode;
+use cargo::core::resolver::Method;
 use cargo::core::shell::Shell;
 use cargo::core::shell::Verbosity;
+use cargo::ops::CompileOptions;
 use cargo::{CliResult, Config};
-use cargo_geiger::*;
 use cargo_geiger::format::Pattern;
+use cargo_geiger::*;
 use colored::*;
 use petgraph::EdgeDirection;
 use std::path::PathBuf;
-use structopt::StructOpt;
 use structopt::clap::AppSettings;
+use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(bin_name = "cargo")]
