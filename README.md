@@ -69,6 +69,13 @@ Roadmap
 Changelog
 ---------
 
+### 0.4.2
+ - Merge pull request #38 from anderejd/updated-deps. Updated deps and fixed
+   build errors.
+
+ - __BUGFIX__: Merge pull request #33 from ajpaverd/windows_filepaths.
+   Canonicalize file paths from walker.
+
 ### 0.4.1
  - Merge pull request #28 from alexmaco/deps_upgrade. fix build on rust 1.30:
    upgrade petgraph to 0.4.13
