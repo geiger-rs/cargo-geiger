@@ -14,7 +14,6 @@ extern crate walkdir;
 
 use self::walkdir::DirEntry;
 use self::walkdir::WalkDir;
-use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
 use cargo::core::compiler::Unit;
 use cargo::core::dependency::Kind;
