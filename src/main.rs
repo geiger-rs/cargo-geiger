@@ -204,7 +204,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         args.no_default_features,
     )?;
     let ids = packages.package_ids().cloned().collect::<Vec<_>>();
-    let packages = registry.get(&ids);
+    let packages = registry.get(&ids)?;
 
     let root = match args.package {
         Some(ref pkg) => resolve.query(pkg)?,
