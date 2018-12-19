@@ -218,7 +218,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         Some(args.target.as_ref().unwrap_or(&config_host).as_str())
     };
 
-    let format = Pattern::new(&args.format)
+    let format = Pattern::try_build(&args.format)
         .map_err(|e| failure::err_msg(e.to_string()))?;
 
     let cfgs = get_cfgs(config, &args.target, &ws)?;

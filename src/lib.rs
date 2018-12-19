@@ -292,7 +292,10 @@ pub fn find_unsafe(
         if !is_file_with_ext(&entry, "rs") {
             continue;
         }
-        let pb = entry.path().canonicalize().expect("Error converting to canonical path");
+        let pb = entry
+            .path()
+            .canonicalize()
+            .expect("Error converting to canonical path");
         let p = pb.as_path();
         let scan_counter = rs_files_used.get_mut(p);
         vis.used_by_build = match scan_counter {
@@ -457,22 +460,15 @@ pub fn resolve_rs_file_deps(
     {
         let cust_exec = CustomExecutor {
             cwd: config.cwd().to_path_buf(),
-            inner_ctx: inner_arc.clone()
+            inner_ctx: inner_arc.clone(),
         };
         let exec: Arc<Executor> = Arc::new(cust_exec);
         ops::compile_with_exec(ws, &copt, &exec)
             .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
     }
-    /*
-    let exec =
-        Arc::try_unwrap(exec).map_err(|_| RsResolveError::ArcUnwrap())?;
-    let (rs_files, out_dir_args) = {
-        let inner = exec.into_inner()?;
-        (inner.rs_file_args, inner.out_dir_args)
-    };
-    */
     let ws_root = ws.root().to_path_buf();
-    let inner_mutex = Arc::try_unwrap(inner_arc).map_err(|_| RsResolveError::ArcUnwrap())?;
+    let inner_mutex =
+        Arc::try_unwrap(inner_arc).map_err(|_| RsResolveError::ArcUnwrap())?;
     let (rs_files, out_dir_args) = {
         let ctx = inner_mutex.into_inner()?;
         (ctx.rs_file_args, ctx.out_dir_args)
@@ -561,25 +557,12 @@ use std::sync::PoisonError;
 /// Seems to require nightly rust.
 #[derive(Debug)]
 pub struct CustomExecutor {
-    /// MAJOR LIFETIME BOUNDS RAGE: Figure out how to use &Path here.
+    /// Current work dir
     pub cwd: PathBuf,
 
     /// Needed since multiple rustc calls can be in flight at the same time.
     pub inner_ctx: Arc<Mutex<CustomExecutorInnerContext>>,
 }
-
-/*
-impl CustomExecutor {
-    pub fn into_inner(
-        self,
-    ) -> Result<
-        CustomExecutorInnerContext,
-        PoisonError<CustomExecutorInnerContext>,
-    > {
-        self.inner_ctx.into_inner()
-    }
-}
-*/
 
 use std::error::Error;
 use std::fmt;
@@ -608,7 +591,7 @@ impl Executor for CustomExecutor {
         cmd: ProcessBuilder,
         _id: &PackageId,
         _target: &Target,
-        _mode: CompileMode
+        _mode: CompileMode,
     ) -> CargoResult<()> {
         let args = cmd.get_args();
         let out_dir_key = OsString::from("--out-dir");

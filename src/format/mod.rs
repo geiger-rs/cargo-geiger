@@ -17,7 +17,7 @@ enum Chunk {
 pub struct Pattern(Vec<Chunk>);
 
 impl Pattern {
-    pub fn new(format: &str) -> Result<Pattern, Box<Error>> {
+    pub fn try_build(format: &str) -> Result<Pattern, Box<Error>> {
         let mut chunks = vec![];
 
         for raw in Parser::new(format) {
