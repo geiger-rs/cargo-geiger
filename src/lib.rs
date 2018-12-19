@@ -292,7 +292,8 @@ pub fn find_unsafe(
         if !is_file_with_ext(&entry, "rs") {
             continue;
         }
-        let p = entry.path();
+        let pb = entry.path().canonicalize().expect("Error converting to canonical path");
+        let p = pb.as_path();
         let scan_counter = rs_files_used.get_mut(p);
         vis.used_by_build = match scan_counter {
             Some(c) => {
