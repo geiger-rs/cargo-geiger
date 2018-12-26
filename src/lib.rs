@@ -12,6 +12,7 @@ extern crate structopt;
 extern crate syn;
 extern crate walkdir;
 
+use self::format::Pattern;
 use self::walkdir::DirEntry;
 use self::walkdir::WalkDir;
 use cargo::core::compiler::CompileMode;
@@ -32,7 +33,6 @@ use cargo::util::ProcessBuilder;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::Config;
 use colored::*;
-use format::Pattern;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;
