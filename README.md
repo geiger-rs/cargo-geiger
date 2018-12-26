@@ -69,6 +69,9 @@ Roadmap
 Changelog
 ---------
 
+### Unreleased
+ - Merge pull request #40 from jiminhsieh/rust-2018. Use Rust 2018 edition.
+
 ### 0.4.2
  - Merge pull request #38 from anderejd/updated-deps. Updated deps and fixed
    build errors.
