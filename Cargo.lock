@@ -134,7 +134,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-geiger"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "cargo 0.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
