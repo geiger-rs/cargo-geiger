@@ -908,38 +908,27 @@ pub fn print_dependency<'a>(
             Kind::Development => development.push(dep),
         }
     }
-    print_dependency_kind(
-        Kind::Normal,
-        normal,
-        graph,
-        visited_deps,
-        levels_continue,
-        rs_files_used,
-        pc,
-    );
-    print_dependency_kind(
-        Kind::Build,
-        build,
-        graph,
-        visited_deps,
-        levels_continue,
-        rs_files_used,
-        pc,
-    );
-    print_dependency_kind(
-        Kind::Development,
-        development,
-        graph,
-        visited_deps,
-        levels_continue,
-        rs_files_used,
-        pc,
-    );
+    let mut kinds = [
+        (Kind::Normal, normal),
+        (Kind::Build, build),
+        (Kind::Development, development),
+    ];
+    for (kind, kind_deps) in kinds.iter_mut() {
+        print_dependency_kind(
+            *kind,
+            kind_deps,
+            graph,
+            visited_deps,
+            levels_continue,
+            rs_files_used,
+            pc,
+        );
+    }
 }
 
 pub fn print_dependency_kind<'a>(
     kind: Kind,
-    mut deps: Vec<&Node<'a>>,
+    deps: &mut Vec<&Node<'a>>,
     graph: &Graph<'a>,
     visited_deps: &mut HashSet<&'a PackageId>,
     levels_continue: &mut Vec<bool>,
