@@ -260,6 +260,11 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
             .count(i.sig.unsafety.is_some(), self.used_by_build);
         visit::visit_impl_item_method(self, i);
     }
+
+    // TODO: Visit macros.
+    //
+    // TODO: Figure out if there are other visit methods that should be
+    // implemented here.
 }
 
 pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
