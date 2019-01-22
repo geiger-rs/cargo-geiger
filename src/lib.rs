@@ -819,7 +819,7 @@ pub fn build_graph<'a>(
     Ok(graph)
 }
 
-pub fn find_unsafe_recursive(
+pub fn find_unsafe_in_packages(
     packs: &PackageSet,
     mut rs_files_used: HashMap<PathBuf, u32>,
     allow_partial_results: bool,

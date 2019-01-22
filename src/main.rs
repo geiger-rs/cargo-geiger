@@ -12,7 +12,7 @@ use cargo::ops::CompileOptions;
 use cargo::CliResult;
 use cargo::Config;
 use cargo_geiger::build_graph;
-use cargo_geiger::find_unsafe_recursive;
+use cargo_geiger::find_unsafe_in_packages;
 use cargo_geiger::format::Pattern;
 use cargo_geiger::get_cfgs;
 use cargo_geiger::print_tree;
@@ -299,7 +299,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     };
 
     eprintln!("Scanning...");
-    let geiger_ctx = find_unsafe_recursive(
+    let geiger_ctx = find_unsafe_in_packages(
         &packages,
         rs_files_used,
         pc.allow_partial_results,
