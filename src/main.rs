@@ -9,10 +9,25 @@ use cargo::core::resolver::Method;
 use cargo::core::shell::Shell;
 use cargo::core::shell::Verbosity;
 use cargo::ops::CompileOptions;
-use cargo::{CliResult, Config};
+use cargo::CliResult;
+use cargo::Config;
+use cargo_geiger::build_graph;
+use cargo_geiger::find_unsafe_in_packages;
 use cargo_geiger::format::Pattern;
-use cargo_geiger::*;
-use colored::*;
+use cargo_geiger::get_cfgs;
+use cargo_geiger::print_tree;
+use cargo_geiger::registry;
+use cargo_geiger::resolve;
+use cargo_geiger::resolve_rs_file_deps;
+use cargo_geiger::workspace;
+use cargo_geiger::Charset;
+use cargo_geiger::IncludeTests;
+use cargo_geiger::Prefix;
+use cargo_geiger::PrintConfig;
+use cargo_geiger::ASCII_SYMBOLS;
+use cargo_geiger::UNSAFE_COUNTERS_HEADER;
+use cargo_geiger::UTF8_SYMBOLS;
+use colored::Colorize;
 use petgraph::EdgeDirection;
 use std::path::PathBuf;
 use structopt::clap::AppSettings;
@@ -206,7 +221,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let ids = packages.package_ids().cloned().collect::<Vec<_>>();
     let packages = registry.get(&ids)?;
 
-    let root = match args.package {
+    let root_pack_id = match args.package {
         Some(ref pkg) => resolve.query(pkg)?,
         None => package.package_id(),
     };
@@ -250,7 +265,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     };
 
     let copt = build_compile_options(args, config);
-    let mut rs_files_used = resolve_rs_file_deps(&copt, &ws).unwrap();
+    let rs_files_used = resolve_rs_file_deps(&copt, &ws).unwrap();
 
     if verbosity == Verbosity::Verbose {
         // Print all .rs files found through the .d files, in sorted order.
@@ -263,22 +278,6 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
             .iter()
             .for_each(|p| println!("Used by build (sorted): {}", p.display()));
     }
-
-    println!();
-    println!("Metric output format: x/y");
-    println!("x = unsafe code used by the build");
-    println!("y = total unsafe code found in the crate");
-    println!();
-    println!(
-        "{}",
-        UNSAFE_COUNTERS_HEADER
-            .iter()
-            .map(|s| s.to_owned())
-            .collect::<Vec<_>>()
-            .join(" ")
-            .bold()
-    );
-    println!();
 
     // TODO: Add command line flag for this and make it default to false?
     let allow_partial_results = true;
@@ -298,16 +297,47 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         allow_partial_results,
         include_tests,
     };
-    print_tree(root, &graph, &mut rs_files_used, &pc);
-    rs_files_used
+
+    eprintln!("Scanning...");
+    let geiger_ctx = find_unsafe_in_packages(
+        &packages,
+        rs_files_used,
+        pc.allow_partial_results,
+        pc.include_tests,
+        pc.verbosity,
+    );
+    eprintln!("Scanning...Done.");
+
+    println!();
+    println!("Metric output format: x/y");
+    println!("x = unsafe code used by the build");
+    println!("y = total unsafe code found in the crate");
+    println!();
+    println!(
+        "{}",
+        UNSAFE_COUNTERS_HEADER
+            .iter()
+            .map(|s| s.to_owned())
+            .collect::<Vec<_>>()
+            .join(" ")
+            .bold()
+    );
+    println!();
+    print_tree(root_pack_id, &graph, &geiger_ctx, &pc);
+
+    geiger_ctx
+        .rs_files_used
         .iter()
         .filter(|(_k, v)| **v == 0)
         .for_each(|(k, _v)| {
-            println!(
+            // This is likely a bug in cargo-geiger if it happens. Fail hard and
+            // exit instead?
+            eprintln!(
                 "WARNING: Dependency file was never scanned: {}",
                 k.display()
             )
         });
+
     Ok(())
 }
 

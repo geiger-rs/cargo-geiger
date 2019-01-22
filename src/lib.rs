@@ -32,7 +32,7 @@ use cargo::util::paths;
 use cargo::util::ProcessBuilder;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::Config;
-use colored::*;
+use colored::Colorize;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;
@@ -260,6 +260,11 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
             .count(i.sig.unsafety.is_some(), self.used_by_build);
         visit::visit_impl_item_method(self, i);
     }
+
+    // TODO: Visit macros.
+    //
+    // TODO: Figure out if there are other visit methods that should be
+    // implemented here.
 }
 
 pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
@@ -277,26 +282,33 @@ pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
     ext.to_string_lossy() == file_ext
 }
 
-pub fn find_unsafe(
-    p: &Path,
+fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
+    let walker = WalkDir::new(dir).into_iter();
+    walker.filter_map(|entry| {
+        let entry = entry.expect("walkdir error."); // TODO: Return result.
+        if !is_file_with_ext(&entry, "rs") {
+            return None;
+        }
+        Some(
+            entry
+                .path()
+                .canonicalize()
+                .expect("Error converting to canonical path"),
+        ) // TODO: Return result.
+    })
+}
+
+fn find_unsafe(
+    dir: &Path,
     rs_files_used: &mut HashMap<PathBuf, u32>,
     allow_partial_results: bool,
     include_tests: IncludeTests,
     verbosity: Verbosity,
 ) -> CounterBlock {
     let mut vis = GeigerSynVisitor::new(include_tests, verbosity);
-    let walker = WalkDir::new(p).into_iter();
-    for entry in walker {
-        let entry =
-            entry.expect("walkdir error, TODO: Implement error handling");
-        if !is_file_with_ext(&entry, "rs") {
-            continue;
-        }
-        let pb = entry
-            .path()
-            .canonicalize()
-            .expect("Error converting to canonical path");
-        let p = pb.as_path();
+    let file_paths = find_rs_files_in_dir(dir);
+    for p in file_paths {
+        let p = p.as_path();
         let scan_counter = rs_files_used.get_mut(p);
         vis.used_by_build = match scan_counter {
             Some(c) => {
@@ -441,12 +453,16 @@ impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
     }
 }
 
+/// Trigger a `cargo clean` + `cargo check` and listen to the cargo/rustc
+/// communication to figure out which source files were used by the build.
 pub fn resolve_rs_file_deps(
     copt: &CompileOptions,
     ws: &Workspace,
 ) -> Result<HashMap<PathBuf, u32>, RsResolveError> {
     let config = ws.config();
     // Need to run a cargo clean to identify all new .d deps files.
+    // TODO: Figure out how this can be avoided to improve performance, clean
+    // Rust builds are __slow__.
     let clean_opt = CleanOptions {
         config: &config,
         spec: vec![],
@@ -713,16 +729,13 @@ pub fn resolve<'a, 'cfg>(
 ) -> CargoResult<(PackageSet<'a>, Resolve)> {
     let features =
         Method::split_features(&features.into_iter().collect::<Vec<_>>());
-
     let (packages, resolve) = ops::resolve_ws(ws)?;
-
     let method = Method::Required {
         dev_deps: true,
         features: &features,
         all_features,
         uses_default_features: !no_default_features,
     };
-
     let resolve = ops::resolve_with_previous(
         registry,
         ws,
@@ -806,21 +819,53 @@ pub fn build_graph<'a>(
     Ok(graph)
 }
 
+pub fn find_unsafe_in_packages(
+    packs: &PackageSet,
+    mut rs_files_used: HashMap<PathBuf, u32>,
+    allow_partial_results: bool,
+    include_tests: IncludeTests,
+    verbosity: Verbosity,
+) -> GeigerContext {
+    let mut pack_id_to_counters = HashMap::new();
+    let pack_ids = packs.package_ids().cloned().collect::<Vec<_>>();
+    for id in pack_ids {
+        let pack = packs.get_one(&id).unwrap(); // FIXME
+        let counters = find_unsafe(
+            pack.root(),
+            &mut rs_files_used,
+            allow_partial_results,
+            include_tests,
+            verbosity,
+        );
+        pack_id_to_counters.insert(id, counters);
+    }
+    GeigerContext {
+        pack_id_to_counters,
+        rs_files_used,
+    }
+}
+
+/// TODO: Write documentation.
+pub struct GeigerContext {
+    pub pack_id_to_counters: HashMap<PackageId, CounterBlock>,
+    pub rs_files_used: HashMap<PathBuf, u32>,
+}
+
 pub fn print_tree<'a>(
-    package: &'a PackageId,
+    root_pack_id: &'a PackageId,
     graph: &Graph<'a>,
-    rs_files_used: &mut HashMap<PathBuf, u32>,
+    geiger_ctx: &GeigerContext,
     pc: &PrintConfig,
 ) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
-    let node = &graph.graph[graph.nodes[&package]];
+    let node = &graph.graph[graph.nodes[&root_pack_id]];
     print_dependency(
         node,
         &graph,
         &mut visited_deps,
         &mut levels_continue,
-        rs_files_used,
+        geiger_ctx,
         pc,
     );
 }
@@ -830,7 +875,7 @@ pub fn print_dependency<'a>(
     graph: &Graph<'a>,
     visited_deps: &mut HashSet<&'a PackageId>,
     levels_continue: &mut Vec<bool>,
-    rs_files_used: &mut HashMap<PathBuf, u32>,
+    geiger_ctx: &GeigerContext,
     pc: &PrintConfig,
 ) {
     let new = pc.all || visited_deps.insert(package.id);
@@ -856,15 +901,7 @@ pub fn print_dependency<'a>(
         Prefix::None => "".into(),
     };
 
-    // TODO: Find and collect unsafe stats as a separate pass over the deps
-    // tree before printing.
-    let counters = find_unsafe(
-        package.pack.root(),
-        rs_files_used,
-        pc.allow_partial_results,
-        pc.include_tests,
-        pc.verbosity,
-    );
+    let counters = geiger_ctx.pack_id_to_counters.get(package.id).unwrap(); // TODO: Proper error handling.
     let unsafe_found = counters.has_unsafe();
     let colorize = |s: String| {
         if unsafe_found {
@@ -903,42 +940,31 @@ pub fn print_dependency<'a>(
             Kind::Development => development.push(dep),
         }
     }
-    print_dependency_kind(
-        Kind::Normal,
-        normal,
-        graph,
-        visited_deps,
-        levels_continue,
-        rs_files_used,
-        pc,
-    );
-    print_dependency_kind(
-        Kind::Build,
-        build,
-        graph,
-        visited_deps,
-        levels_continue,
-        rs_files_used,
-        pc,
-    );
-    print_dependency_kind(
-        Kind::Development,
-        development,
-        graph,
-        visited_deps,
-        levels_continue,
-        rs_files_used,
-        pc,
-    );
+    let mut kinds = [
+        (Kind::Normal, normal),
+        (Kind::Build, build),
+        (Kind::Development, development),
+    ];
+    for (kind, kind_deps) in kinds.iter_mut() {
+        print_dependency_kind(
+            *kind,
+            kind_deps,
+            graph,
+            visited_deps,
+            levels_continue,
+            geiger_ctx,
+            pc,
+        );
+    }
 }
 
 pub fn print_dependency_kind<'a>(
     kind: Kind,
-    mut deps: Vec<&Node<'a>>,
+    deps: &mut Vec<&Node<'a>>,
     graph: &Graph<'a>,
     visited_deps: &mut HashSet<&'a PackageId>,
     levels_continue: &mut Vec<bool>,
-    rs_files_used: &mut HashMap<PathBuf, u32>,
+    geiger_ctx: &GeigerContext,
     pc: &PrintConfig,
 ) {
     if deps.is_empty() {
@@ -973,7 +999,7 @@ pub fn print_dependency_kind<'a>(
             graph,
             visited_deps,
             levels_continue,
-            rs_files_used,
+            geiger_ctx,
             pc,
         );
         levels_continue.pop();
