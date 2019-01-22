@@ -70,6 +70,7 @@ Changelog
 ---------
 
 ### Unreleased
+ - Can be used as a library now (?)
  - Merge pull request #40 from jiminhsieh/rust-2018. Use Rust 2018 edition.
 
 ### 0.4.2
