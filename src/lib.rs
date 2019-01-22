@@ -282,18 +282,19 @@ pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
     ext.to_string_lossy() == file_ext
 }
 
-fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item=PathBuf> {
+fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     let walker = WalkDir::new(dir).into_iter();
     walker.filter_map(|entry| {
-        let entry =
-            entry.expect("walkdir error."); // TODO: Return result.
+        let entry = entry.expect("walkdir error."); // TODO: Return result.
         if !is_file_with_ext(&entry, "rs") {
             return None;
         }
-        Some(entry
-            .path()
-            .canonicalize()
-            .expect("Error converting to canonical path")) // TODO: Return result.
+        Some(
+            entry
+                .path()
+                .canonicalize()
+                .expect("Error converting to canonical path"),
+        ) // TODO: Return result.
     })
 }
 
@@ -823,8 +824,8 @@ pub fn find_unsafe_recursive(
     mut rs_files_used: HashMap<PathBuf, u32>,
     allow_partial_results: bool,
     include_tests: IncludeTests,
-    verbosity: Verbosity)
--> GeigerContext {
+    verbosity: Verbosity,
+) -> GeigerContext {
     let mut pack_id_to_counters = HashMap::new();
     let pack_ids = packs.package_ids().cloned().collect::<Vec<_>>();
     for id in pack_ids {
@@ -838,7 +839,10 @@ pub fn find_unsafe_recursive(
         );
         pack_id_to_counters.insert(id, counters);
     }
-    GeigerContext { pack_id_to_counters, rs_files_used }
+    GeigerContext {
+        pack_id_to_counters,
+        rs_files_used,
+    }
 }
 
 /// TODO: Write documentation.

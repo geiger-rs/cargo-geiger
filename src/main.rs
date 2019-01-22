@@ -12,10 +12,10 @@ use cargo::ops::CompileOptions;
 use cargo::CliResult;
 use cargo::Config;
 use cargo_geiger::build_graph;
+use cargo_geiger::find_unsafe_recursive;
 use cargo_geiger::format::Pattern;
 use cargo_geiger::get_cfgs;
 use cargo_geiger::print_tree;
-use cargo_geiger::find_unsafe_recursive;
 use cargo_geiger::registry;
 use cargo_geiger::resolve;
 use cargo_geiger::resolve_rs_file_deps;
@@ -300,11 +300,12 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 
     eprintln!("Scanning...");
     let geiger_ctx = find_unsafe_recursive(
-            &packages,
-            rs_files_used,
-            pc.allow_partial_results,
-            pc.include_tests,
-            pc.verbosity);
+        &packages,
+        rs_files_used,
+        pc.allow_partial_results,
+        pc.include_tests,
+        pc.verbosity,
+    );
     eprintln!("Scanning...Done.");
 
     println!();
@@ -324,7 +325,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     println!();
     print_tree(root_pack_id, &graph, &geiger_ctx, &pc);
 
-    geiger_ctx.rs_files_used
+    geiger_ctx
+        .rs_files_used
         .iter()
         .filter(|(_k, v)| **v == 0)
         .for_each(|(k, _v)| {
