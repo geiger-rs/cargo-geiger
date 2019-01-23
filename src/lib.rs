@@ -363,7 +363,7 @@ pub fn find_unsafe_in_file(
     Some(vis.counters)
 }
 
-fn find_unsafe_in_dir(
+pub fn find_unsafe_in_dir(
     dir: &Path,
     rs_files_used: &mut HashMap<PathBuf, u32>,
     allow_partial_results: bool,
