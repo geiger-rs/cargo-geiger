@@ -52,7 +52,7 @@ use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemMod, ItemTrait};
 
 pub mod format;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Count {
     /// Number of safe items, in .rs files not used by the build.
     pub safe_unused: u64,
@@ -92,7 +92,7 @@ impl Add for Count {
 }
 
 /// Unsafe usage metrics collection.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct CounterBlock {
     pub functions: Count,
     pub exprs: Count,
@@ -363,17 +363,35 @@ pub fn find_unsafe_in_file(
     Some(vis.counters)
 }
 
-pub fn find_unsafe_in_dir(
-    dir: &Path,
-    rs_files_used: &mut HashMap<PathBuf, u32>,
+pub fn find_rs_files_in_package<'a>(
+    pack: &'a Package,
+) -> impl Iterator<Item = PathBuf> + 'a {
+    Some(pack)
+        .into_iter()
+        .flat_map(|p| find_rs_files_in_dir(p.root()))
+}
+
+pub fn find_rs_files_in_packages<'a, 'b>(
+    packs: &'a PackageSet<'b>,
+) -> impl Iterator<Item = (&'a PackageId, PathBuf)> + 'a {
+    let packs = packs.get_many(packs.package_ids()).unwrap();
+    packs.into_iter().flat_map(|pack| {
+        find_rs_files_in_package(pack)
+            .map(move |path| (pack.package_id(), path))
+    })
+}
+
+pub fn find_unsafe_in_packages<'a, 'b>(
+    packs: &'a PackageSet<'b>,
+    mut rs_files_used: HashMap<PathBuf, u32>,
     allow_partial_results: bool,
     include_tests: IncludeTests,
     verbosity: Verbosity,
-) -> CounterBlock {
-    let file_paths = find_rs_files_in_dir(dir);
-    let mut dir_counters = CounterBlock::default();
-    for p in file_paths {
-        let p = p.as_path();
+) -> GeigerContext {
+    let mut pack_id_to_counters = HashMap::new();
+    let rs_file_iterator = find_rs_files_in_packages(packs);
+    for (pack_id, path) in rs_file_iterator {
+        let p = &path;
         let scan_counter = rs_files_used.get_mut(p);
         let used_by_build = match scan_counter {
             Some(c) => {
@@ -409,31 +427,11 @@ pub fn find_unsafe_in_dir(
             used_by_build,
             allow_partial_results,
         ) {
-            dir_counters = dir_counters + file_counters;
+            let pack_counters = pack_id_to_counters
+                .entry(pack_id.clone())
+                .or_insert(CounterBlock::default());
+            *pack_counters = pack_counters.clone() + file_counters;
         }
-    }
-    dir_counters
-}
-
-pub fn find_unsafe_in_packages(
-    packs: &PackageSet,
-    mut rs_files_used: HashMap<PathBuf, u32>,
-    allow_partial_results: bool,
-    include_tests: IncludeTests,
-    verbosity: Verbosity,
-) -> GeigerContext {
-    let mut pack_id_to_counters = HashMap::new();
-    let pack_ids = packs.package_ids().cloned().collect::<Vec<_>>();
-    for id in pack_ids {
-        let pack = packs.get_one(&id).unwrap(); // FIXME
-        let counters = find_unsafe_in_dir(
-            pack.root(),
-            &mut rs_files_used,
-            allow_partial_results,
-            include_tests,
-            verbosity,
-        );
-        pack_id_to_counters.insert(id, counters);
     }
     GeigerContext {
         pack_id_to_counters,
@@ -956,8 +954,14 @@ pub fn print_dependency<'a>(
         }
         Prefix::None => "".into(),
     };
-
-    let counters = geiger_ctx.pack_id_to_counters.get(package.id).unwrap(); // TODO: Proper error handling.
+    let counters =
+        geiger_ctx
+            .pack_id_to_counters
+            .get(package.id)
+            .expect(&format!(
+                "Failed to get unsafe counters for package: {}",
+                package.id
+            )); // TODO: Try to be panic free and use Result everywhere.
     let unsafe_found = counters.has_unsafe();
     let colorize = |s: String| {
         if unsafe_found {
