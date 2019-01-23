@@ -130,7 +130,7 @@ pub enum IncludeTests {
     No,
 }
 
-pub struct GeigerSynVisitor {
+struct GeigerSynVisitor {
     /// Count unsafe usage inside tests
     pub include_tests: IncludeTests,
 
@@ -908,7 +908,7 @@ pub fn print_tree<'a>(
     );
 }
 
-pub fn print_dependency<'a>(
+fn print_dependency<'a>(
     package: &Node<'a>,
     graph: &Graph<'a>,
     visited_deps: &mut HashSet<&'a PackageId>,
@@ -1002,7 +1002,7 @@ pub fn print_dependency<'a>(
     }
 }
 
-pub fn print_dependency_kind<'a>(
+fn print_dependency_kind<'a>(
     kind: Kind,
     deps: &mut Vec<&Node<'a>>,
     graph: &Graph<'a>,
@@ -1060,7 +1060,7 @@ pub const UNSAFE_COUNTERS_HEADER: [&str; 6] = [
     "Dependency",
 ];
 
-pub fn table_row_empty() -> String {
+fn table_row_empty() -> String {
     " ".repeat(
         UNSAFE_COUNTERS_HEADER
             .iter()
@@ -1072,7 +1072,7 @@ pub fn table_row_empty() -> String {
     )
 }
 
-pub fn table_row(pc: &PackageCounters) -> String {
+fn table_row(pc: &PackageCounters) -> String {
     let fmt = |used: &Count, not_used: &Count| {
         format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
     };
