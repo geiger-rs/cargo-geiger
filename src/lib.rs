@@ -54,26 +54,18 @@ pub mod format;
 
 #[derive(Debug, Default, Clone)]
 pub struct Count {
-    /// Number of safe items, in .rs files not used by the build.
-    pub safe_unused: u64,
-
     /// Number of safe items, in .rs files used by the build.
-    pub safe_used: u64,
-
-    /// Number of unsafe items, in .rs files not used by the build.
-    pub unsafe_unused: u64,
+    pub safe: u64,
 
     /// Number of unsafe items, in .rs files used by the build.
-    pub unsafe_used: u64,
+    pub unsafe_: u64,
 }
 
 impl Count {
-    fn count(&mut self, is_unsafe: bool, used_by_build: bool) {
-        match (is_unsafe, used_by_build) {
-            (false, false) => self.safe_unused += 1,
-            (false, true) => self.safe_used += 1,
-            (true, false) => self.unsafe_unused += 1,
-            (true, true) => self.unsafe_used += 1,
+    fn count(&mut self, is_unsafe: bool) {
+        match is_unsafe {
+            true => self.unsafe_ += 1,
+            false => self.safe += 1,
         }
     }
 }
@@ -83,10 +75,8 @@ impl Add for Count {
 
     fn add(self, other: Count) -> Count {
         Count {
-            safe_unused: self.safe_unused + other.safe_unused,
-            safe_used: self.safe_used + other.safe_used,
-            unsafe_unused: self.unsafe_unused + other.unsafe_unused,
-            unsafe_used: self.unsafe_used + other.unsafe_used,
+            safe: self.safe + other.safe,
+            unsafe_: self.unsafe_ + other.unsafe_,
         }
     }
 }
@@ -103,11 +93,11 @@ pub struct CounterBlock {
 
 impl CounterBlock {
     fn has_unsafe(&self) -> bool {
-        self.functions.unsafe_used > 0
-            || self.exprs.unsafe_used > 0
-            || self.item_impls.unsafe_used > 0
-            || self.item_traits.unsafe_used > 0
-            || self.methods.unsafe_used > 0
+        self.functions.unsafe_ > 0
+            || self.exprs.unsafe_ > 0
+            || self.item_impls.unsafe_ > 0
+            || self.item_traits.unsafe_ > 0
+            || self.methods.unsafe_ > 0
     }
 }
 
@@ -123,6 +113,15 @@ impl Add for CounterBlock {
             methods: self.methods + other.methods,
         }
     }
+}
+
+#[derive(Debug, Default)]
+pub struct PackageCounters {
+    /// Unsafe usage included by the build.
+    pub used: CounterBlock,
+
+    /// Unsafe usage not included by the build.
+    pub not_used: CounterBlock,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -141,11 +140,6 @@ pub struct GeigerSynVisitor {
     /// Metrics storage.
     pub counters: CounterBlock,
 
-    /// Used by the Visit trait implementation to separate the metrics into
-    /// "used by build" and "not used by build" based on if the .rs file was
-    /// used in the build or not.
-    pub used_by_build: bool,
-
     /// Used by the Visit trait implementation to track the traversal state.
     in_unsafe_block: bool,
 }
@@ -156,10 +150,15 @@ impl GeigerSynVisitor {
             include_tests,
             verbosity,
             counters: Default::default(),
-            used_by_build: false,
             in_unsafe_block: false,
         }
     }
+}
+
+/// TODO: Write documentation.
+pub struct GeigerContext {
+    pub pack_id_to_counters: HashMap<PackageId, PackageCounters>,
+    pub rs_files_used: HashMap<PathBuf, u32>,
 }
 
 /// Will return true for #[cfg(test)] decodated modules.
@@ -227,9 +226,7 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
         if IncludeTests::No == self.include_tests && is_test_fn(i) {
             return;
         }
-        self.counters
-            .functions
-            .count(i.unsafety.is_some(), self.used_by_build);
+        self.counters.functions.count(i.unsafety.is_some());
         visit::visit_item_fn(self, i);
     }
 
@@ -251,9 +248,7 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
                 // if self.verbosity == Verbosity::Verbose && self.in_unsafe_block {
                 //     println!("{:#?}", other);
                 // }
-                self.counters
-                    .exprs
-                    .count(self.in_unsafe_block, self.used_by_build);
+                self.counters.exprs.count(self.in_unsafe_block);
                 visit::visit_expr(self, other);
             }
         }
@@ -268,24 +263,18 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
 
     fn visit_item_impl(&mut self, i: &ItemImpl) {
         // unsafe trait impl's
-        self.counters
-            .item_impls
-            .count(i.unsafety.is_some(), self.used_by_build);
+        self.counters.item_impls.count(i.unsafety.is_some());
         visit::visit_item_impl(self, i);
     }
 
     fn visit_item_trait(&mut self, i: &ItemTrait) {
         // Unsafe traits
-        self.counters
-            .item_traits
-            .count(i.unsafety.is_some(), self.used_by_build);
+        self.counters.item_traits.count(i.unsafety.is_some());
         visit::visit_item_trait(self, i);
     }
 
     fn visit_impl_item_method(&mut self, i: &ImplItemMethod) {
-        self.counters
-            .methods
-            .count(i.sig.unsafety.is_some(), self.used_by_build);
+        self.counters.methods.count(i.sig.unsafety.is_some());
         visit::visit_impl_item_method(self, i);
     }
 
@@ -330,11 +319,9 @@ pub fn find_unsafe_in_file(
     p: &Path,
     include_tests: IncludeTests,
     verbosity: Verbosity,
-    used_by_build: bool, // TODO: Move this concern up the call stack.
     allow_partial_results: bool, // TODO: Move this concern up the call stack.
 ) -> Option<CounterBlock> {
     let mut vis = GeigerSynVisitor::new(include_tests, verbosity);
-    vis.used_by_build = used_by_build;
 
     // TODO: Return Result!
     let mut file = File::open(p).expect("Unable to open file");
@@ -424,13 +411,16 @@ pub fn find_unsafe_in_packages<'a, 'b>(
             p,
             include_tests,
             verbosity,
-            used_by_build,
             allow_partial_results,
         ) {
             let pack_counters = pack_id_to_counters
                 .entry(pack_id.clone())
-                .or_insert(CounterBlock::default());
-            *pack_counters = pack_counters.clone() + file_counters;
+                .or_insert(PackageCounters::default());
+            let target = match used_by_build {
+                true => &mut pack_counters.used,
+                false => &mut pack_counters.not_used,
+            };
+            *target = target.clone() + file_counters;
         }
     }
     GeigerContext {
@@ -899,12 +889,6 @@ pub fn build_graph<'a>(
     Ok(graph)
 }
 
-/// TODO: Write documentation.
-pub struct GeigerContext {
-    pub pack_id_to_counters: HashMap<PackageId, CounterBlock>,
-    pub rs_files_used: HashMap<PathBuf, u32>,
-}
-
 pub fn print_tree<'a>(
     root_pack_id: &'a PackageId,
     graph: &Graph<'a>,
@@ -954,7 +938,7 @@ pub fn print_dependency<'a>(
         }
         Prefix::None => "".into(),
     };
-    let counters =
+    let pack_counters =
         geiger_ctx
             .pack_id_to_counters
             .get(package.id)
@@ -962,7 +946,7 @@ pub fn print_dependency<'a>(
                 "Failed to get unsafe counters for package: {}",
                 package.id
             )); // TODO: Try to be panic free and use Result everywhere.
-    let unsafe_found = counters.has_unsafe();
+    let unsafe_found = pack_counters.used.has_unsafe();
     let colorize = |s: String| {
         if unsafe_found {
             s.red().bold()
@@ -978,7 +962,7 @@ pub fn print_dependency<'a>(
     ));
     // TODO: Split up table and tree printing and paint into a backbuffer
     // before writing to stdout?
-    let unsafe_info = colorize(table_row(&counters));
+    let unsafe_info = colorize(table_row(&pack_counters));
     println!("{}  {: <1} {}{}", unsafe_info, rad, treevines, dep_name);
     if !new {
         return;
@@ -1088,15 +1072,16 @@ pub fn table_row_empty() -> String {
     )
 }
 
-pub fn table_row(cb: &CounterBlock) -> String {
-    let calc_total = |c: &Count| c.unsafe_used + c.unsafe_unused;
-    let fmt = |c: &Count| format!("{}/{}", c.unsafe_used, calc_total(c));
+pub fn table_row(pc: &PackageCounters) -> String {
+    let fmt = |used: &Count, not_used: &Count| {
+        format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
+    };
     format!(
         "{: <10} {: <12} {: <6} {: <7} {: <7}",
-        fmt(&cb.functions),
-        fmt(&cb.exprs),
-        fmt(&cb.item_impls),
-        fmt(&cb.item_traits),
-        fmt(&cb.methods),
+        fmt(&pc.used.functions, &pc.not_used.functions),
+        fmt(&pc.used.exprs, &pc.not_used.exprs),
+        fmt(&pc.used.item_impls, &pc.not_used.item_impls),
+        fmt(&pc.used.item_traits, &pc.not_used.item_traits),
+        fmt(&pc.used.methods, &pc.not_used.methods),
     )
 }
