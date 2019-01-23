@@ -42,6 +42,7 @@ use std::ffi::OsString;
 use std::fs::File;
 use std::io;
 use std::io::Read;
+use std::ops::Add;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::{self, FromStr};
@@ -77,13 +78,26 @@ impl Count {
     }
 }
 
+impl Add for Count {
+    type Output = Count;
+
+    fn add(self, other: Count) -> Count {
+        Count {
+            safe_unused: self.safe_unused + other.safe_unused,
+            safe_used: self.safe_used + other.safe_used,
+            unsafe_unused: self.unsafe_unused + other.unsafe_unused,
+            unsafe_used: self.unsafe_used + other.unsafe_used,
+        }
+    }
+}
+
 /// Unsafe usage metrics collection.
 #[derive(Debug, Default)]
 pub struct CounterBlock {
     pub functions: Count,
     pub exprs: Count,
-    pub itemimpls: Count,
-    pub itemtraits: Count,
+    pub item_impls: Count,
+    pub item_traits: Count,
     pub methods: Count,
 }
 
@@ -91,9 +105,23 @@ impl CounterBlock {
     fn has_unsafe(&self) -> bool {
         self.functions.unsafe_used > 0
             || self.exprs.unsafe_used > 0
-            || self.itemimpls.unsafe_used > 0
-            || self.itemtraits.unsafe_used > 0
+            || self.item_impls.unsafe_used > 0
+            || self.item_traits.unsafe_used > 0
             || self.methods.unsafe_used > 0
+    }
+}
+
+impl Add for CounterBlock {
+    type Output = CounterBlock;
+
+    fn add(self, other: CounterBlock) -> CounterBlock {
+        CounterBlock {
+            functions: self.functions + other.functions,
+            exprs: self.exprs + other.exprs,
+            item_impls: self.item_impls + other.item_impls,
+            item_traits: self.item_traits + other.item_traits,
+            methods: self.methods + other.methods,
+        }
     }
 }
 
@@ -241,7 +269,7 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
     fn visit_item_impl(&mut self, i: &ItemImpl) {
         // unsafe trait impl's
         self.counters
-            .itemimpls
+            .item_impls
             .count(i.unsafety.is_some(), self.used_by_build);
         visit::visit_item_impl(self, i);
     }
@@ -249,7 +277,7 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
     fn visit_item_trait(&mut self, i: &ItemTrait) {
         // Unsafe traits
         self.counters
-            .itemtraits
+            .item_traits
             .count(i.unsafety.is_some(), self.used_by_build);
         visit::visit_item_trait(self, i);
     }
@@ -298,19 +326,56 @@ fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     })
 }
 
-fn find_unsafe(
+pub fn find_unsafe_in_file(
+    p: &Path,
+    include_tests: IncludeTests,
+    verbosity: Verbosity,
+    used_by_build: bool, // TODO: Move this concern up the call stack.
+    allow_partial_results: bool, // TODO: Move this concern up the call stack.
+) -> Option<CounterBlock> {
+    let mut vis = GeigerSynVisitor::new(include_tests, verbosity);
+    vis.used_by_build = used_by_build;
+
+    // TODO: Return Result!
+    let mut file = File::open(p).expect("Unable to open file");
+
+    let mut src = vec![];
+
+    // TODO: Return Result!
+    file.read_to_end(&mut src).expect("Unable to read file");
+
+    let syntax = match (
+        allow_partial_results,
+        syn::parse_file(&String::from_utf8_lossy(&src)),
+    ) {
+        (_, Ok(s)) => s,
+        (true, Err(e)) => {
+            // TODO: Return Result!
+            eprintln!("Failed to parse file: {}, {:?}", p.display(), e);
+            return None;
+        }
+        (false, Err(e)) => {
+            // TODO: Return Result!
+            panic!("Failed to parse file: {}, {:?} ", p.display(), e)
+        }
+    };
+    syn::visit::visit_file(&mut vis, &syntax);
+    Some(vis.counters)
+}
+
+fn find_unsafe_in_dir(
     dir: &Path,
     rs_files_used: &mut HashMap<PathBuf, u32>,
     allow_partial_results: bool,
     include_tests: IncludeTests,
     verbosity: Verbosity,
 ) -> CounterBlock {
-    let mut vis = GeigerSynVisitor::new(include_tests, verbosity);
     let file_paths = find_rs_files_in_dir(dir);
+    let mut dir_counters = CounterBlock::default();
     for p in file_paths {
         let p = p.as_path();
         let scan_counter = rs_files_used.get_mut(p);
-        vis.used_by_build = match scan_counter {
+        let used_by_build = match scan_counter {
             Some(c) => {
                 // TODO: Add proper logging.
                 if verbosity == Verbosity::Verbose {
@@ -337,26 +402,43 @@ fn find_unsafe(
                 false
             }
         };
-        let mut file = File::open(p).expect("Unable to open file");
-        let mut src = vec![];
-        file.read_to_end(&mut src).expect("Unable to read file");
-        let syntax = match (
+        if let Some(file_counters) = find_unsafe_in_file(
+            p,
+            include_tests,
+            verbosity,
+            used_by_build,
             allow_partial_results,
-            syn::parse_file(&String::from_utf8_lossy(&src)),
         ) {
-            (_, Ok(s)) => s,
-            (true, Err(e)) => {
-                // TODO: Do proper error logging.
-                println!("Failed to parse file: {}, {:?}", p.display(), e);
-                continue;
-            }
-            (false, Err(e)) => {
-                panic!("Failed to parse file: {}, {:?} ", p.display(), e)
-            }
-        };
-        syn::visit::visit_file(&mut vis, &syntax);
+            dir_counters = dir_counters + file_counters;
+        }
     }
-    vis.counters
+    dir_counters
+}
+
+pub fn find_unsafe_in_packages(
+    packs: &PackageSet,
+    mut rs_files_used: HashMap<PathBuf, u32>,
+    allow_partial_results: bool,
+    include_tests: IncludeTests,
+    verbosity: Verbosity,
+) -> GeigerContext {
+    let mut pack_id_to_counters = HashMap::new();
+    let pack_ids = packs.package_ids().cloned().collect::<Vec<_>>();
+    for id in pack_ids {
+        let pack = packs.get_one(&id).unwrap(); // FIXME
+        let counters = find_unsafe_in_dir(
+            pack.root(),
+            &mut rs_files_used,
+            allow_partial_results,
+            include_tests,
+            verbosity,
+        );
+        pack_id_to_counters.insert(id, counters);
+    }
+    GeigerContext {
+        pack_id_to_counters,
+        rs_files_used,
+    }
 }
 
 pub enum Charset {
@@ -819,32 +901,6 @@ pub fn build_graph<'a>(
     Ok(graph)
 }
 
-pub fn find_unsafe_in_packages(
-    packs: &PackageSet,
-    mut rs_files_used: HashMap<PathBuf, u32>,
-    allow_partial_results: bool,
-    include_tests: IncludeTests,
-    verbosity: Verbosity,
-) -> GeigerContext {
-    let mut pack_id_to_counters = HashMap::new();
-    let pack_ids = packs.package_ids().cloned().collect::<Vec<_>>();
-    for id in pack_ids {
-        let pack = packs.get_one(&id).unwrap(); // FIXME
-        let counters = find_unsafe(
-            pack.root(),
-            &mut rs_files_used,
-            allow_partial_results,
-            include_tests,
-            verbosity,
-        );
-        pack_id_to_counters.insert(id, counters);
-    }
-    GeigerContext {
-        pack_id_to_counters,
-        rs_files_used,
-    }
-}
-
 /// TODO: Write documentation.
 pub struct GeigerContext {
     pub pack_id_to_counters: HashMap<PackageId, CounterBlock>,
@@ -1035,8 +1091,8 @@ pub fn table_row(cb: &CounterBlock) -> String {
         "{: <10} {: <12} {: <6} {: <7} {: <7}",
         fmt(&cb.functions),
         fmt(&cb.exprs),
-        fmt(&cb.itemimpls),
-        fmt(&cb.itemtraits),
+        fmt(&cb.item_impls),
+        fmt(&cb.item_traits),
         fmt(&cb.methods),
     )
 }
