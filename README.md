@@ -70,6 +70,7 @@ Changelog
 ---------
 
 ### Unreleased
+ - Merge pull request #46 from alexmaco/dependency_kind_control. add options to filter dependencies by kind; defaults to Kind::Normal.
  - Can be used as a library now (?)
  - Merge pull request #40 from jiminhsieh/rust-2018. Use Rust 2018 edition.
 
