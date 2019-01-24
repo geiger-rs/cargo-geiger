@@ -147,6 +147,18 @@ pub struct Args {
     #[structopt(long = "include-tests")]
     /// Count unsafe usage in tests.
     pub include_tests: bool,
+
+    #[structopt(long = "build-dependencies", alias = "build-deps")]
+    /// Also analyze build dependencies
+    pub build_deps: bool,
+
+    #[structopt(long = "dev-dependencies", alias = "dev-deps")]
+    /// Also analyze dev dependencies
+    pub dev_deps: bool,
+
+    #[structopt(long = "all-dependencies", alias = "all-deps")]
+    /// Analyze all dependencies, including build and dev
+    pub all_deps: bool,
 }
 
 /// Based on code from cargo-bloat. It seems weird that CompileOptions can be
@@ -236,6 +248,16 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let format = Pattern::try_build(&args.format)
         .map_err(|e| failure::err_msg(e.to_string()))?;
 
+    let extra_deps = if args.all_deps {
+        ExtraDeps::All
+    } else if args.build_deps {
+        ExtraDeps::Build
+    } else if args.dev_deps {
+        ExtraDeps::Dev
+    } else {
+        ExtraDeps::NoMore
+    };
+
     let cfgs = get_cfgs(config, &args.target, &ws)?;
     let graph = build_graph(
         &resolve,
@@ -243,6 +265,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         package.package_id(),
         target,
         cfgs.as_ref().map(|r| &**r),
+        extra_deps,
     )?;
 
     let direction = if args.invert {

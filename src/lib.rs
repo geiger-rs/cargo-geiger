@@ -838,6 +838,7 @@ pub fn build_graph<'a>(
     root: &'a PackageId,
     target: Option<&str>,
     cfgs: Option<&[Cfg]>,
+    extra_deps: ExtraDeps,
 ) -> CargoResult<Graph<'a>> {
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
@@ -860,6 +861,7 @@ pub fn build_graph<'a>(
                 .dependencies()
                 .iter()
                 .filter(|d| d.matches_id(raw_dep_id))
+                .filter(|d| extra_deps.allows(d.kind()))
                 .filter(|d| {
                     d.platform()
                         .and_then(|p| target.map(|t| p.matches(t, cfgs)))
@@ -1084,4 +1086,23 @@ fn table_row(pc: &PackageCounters) -> String {
         fmt(&pc.used.item_traits, &pc.not_used.item_traits),
         fmt(&pc.used.methods, &pc.not_used.methods),
     )
+}
+
+pub enum ExtraDeps {
+    All,
+    Build,
+    Dev,
+    NoMore,
+}
+
+impl ExtraDeps {
+    fn allows(&self, dep: Kind) -> bool {
+        match (self, dep) {
+            (_, Kind::Normal) => true,
+            (ExtraDeps::All, _) => true,
+            (ExtraDeps::Build, Kind::Build) => true,
+            (ExtraDeps::Dev, Kind::Development) => true,
+            _ => false,
+        }
+    }
 }
