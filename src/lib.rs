@@ -145,7 +145,7 @@ struct GeigerSynVisitor {
 }
 
 impl GeigerSynVisitor {
-    pub fn new(include_tests: IncludeTests, verbosity: Verbosity) -> Self {
+    fn new(include_tests: IncludeTests, verbosity: Verbosity) -> Self {
         GeigerSynVisitor {
             include_tests,
             verbosity,
@@ -168,7 +168,7 @@ pub struct GeigerContext {
 /// every single source file path and span within each source file and use that
 /// as a general filter for included code.
 /// TODO: Investigate if the needed information can be emitted by rustc today.
-pub fn is_test_mod(i: &ItemMod) -> bool {
+fn is_test_mod(i: &ItemMod) -> bool {
     use syn::Meta;
     i.attrs
         .iter()
@@ -194,7 +194,7 @@ pub fn is_test_mod(i: &ItemMod) -> bool {
 //         )
 //     ]
 // }
-pub fn meta_list_is_cfg_test(ml: &syn::MetaList) -> bool {
+fn meta_list_is_cfg_test(ml: &syn::MetaList) -> bool {
     use syn::NestedMeta;
     if ml.ident != "cfg" {
         return false;
@@ -205,7 +205,7 @@ pub fn meta_list_is_cfg_test(ml: &syn::MetaList) -> bool {
     })
 }
 
-pub fn meta_is_word_test(m: &syn::Meta) -> bool {
+fn meta_is_word_test(m: &syn::Meta) -> bool {
     use syn::Meta;
     match m {
         Meta::Word(ident) => ident == "test",
@@ -213,7 +213,7 @@ pub fn meta_is_word_test(m: &syn::Meta) -> bool {
     }
 }
 
-pub fn is_test_fn(i: &ItemFn) -> bool {
+fn is_test_fn(i: &ItemFn) -> bool {
     i.attrs
         .iter()
         .flat_map(|a| a.interpret_meta())
@@ -481,7 +481,11 @@ pub struct PrintConfig<'a> {
     pub verbosity: Verbosity,
     pub direction: EdgeDirection,
     pub prefix: Prefix,
+
+    // Is anyone using this? This is a carry-over from cargo-tree.
+    // TODO: Open a github issue to discuss deprecation.
     pub format: &'a Pattern,
+
     pub symbols: &'a Symbols,
     pub allow_partial_results: bool,
     pub include_tests: IncludeTests,
@@ -505,8 +509,8 @@ pub enum RsResolveError {
     /// Failed to get the inner context out of the mutex.
     InnerContextMutex(String),
 
-    /// TODO: Add file path involved in parse error.
-    DepParse(String),
+    /// Failed to parse a .dep file.
+    DepParse(String, PathBuf),
 }
 
 impl Error for RsResolveError {}
@@ -566,8 +570,12 @@ pub fn resolve_rs_file_deps(
             if !is_file_with_ext(&ent, "d") {
                 continue;
             }
-            let deps = parse_rustc_dep_info(ent.path())
-                .map_err(|e| RsResolveError::DepParse(e.to_string()))?;
+            let deps = parse_rustc_dep_info(ent.path()).map_err(|e| {
+                RsResolveError::DepParse(
+                    e.to_string(),
+                    ent.path().to_path_buf(),
+                )
+            })?;
             let canon_paths = deps
                 .into_iter()
                 .flat_map(|t| t.1)
