@@ -1,3 +1,14 @@
+//! # The cargo-geiger library.
+//!
+//! ## How Errors implements Display and why
+//!
+//! Display is required by Error. Errors in cargo-geiger simply forwards the the
+//! implementation of the Display trait to the derived Debug trait. In the
+//! general case, proper end-user error message formatting and presentation must
+//! be done in the UI layer. To separate data and presentation, the error
+//! struct/enum should avoid all formatting and instead only provide structured
+//! unformatted error information.
+
 #![forbid(unsafe_code)]
 
 // TODO: Investigate how cargo-clippy is implemented. Is it using syn?
@@ -46,11 +57,65 @@ use std::ops::Add;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::{self, FromStr};
+use std::string::FromUtf8Error;
 use std::sync::Arc;
 use std::sync::Mutex;
 use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemMod, ItemTrait};
 
 pub mod format;
+
+#[derive(Debug)]
+pub enum ScanFileError {
+    Io(io::Error, PathBuf),
+    Utf8(FromUtf8Error, PathBuf),
+    Syn(syn::Error, PathBuf),
+}
+
+impl Error for ScanFileError {}
+
+/// Forward Display to Debug. See the crate root documentation.
+impl fmt::Display for ScanFileError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
+#[derive(Debug)]
+pub enum RsResolveError {
+    Walkdir(walkdir::Error),
+
+    /// Like io::Error but with the related path.
+    Io(io::Error, PathBuf),
+
+    /// Would like cargo::Error here, but it's private, why?
+    /// This is still way better than a panic though.
+    Cargo(String),
+
+    /// This should not happen unless incorrect assumptions have been made in
+    /// cargo-geiger about how the cargo API works.
+    ArcUnwrap(),
+
+    /// Failed to get the inner context out of the mutex.
+    InnerContextMutex(String),
+
+    /// Failed to parse a .dep file.
+    DepParse(String, PathBuf),
+}
+
+impl Error for RsResolveError {}
+
+/// Forward Display to Debug. See the crate root documentation.
+impl fmt::Display for RsResolveError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
+impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
+    fn from(e: PoisonError<CustomExecutorInnerContext>) -> Self {
+        RsResolveError::InnerContextMutex(e.to_string())
+    }
+}
 
 #[derive(Debug, Default, Clone)]
 pub struct Count {
@@ -132,23 +197,19 @@ pub enum IncludeTests {
 
 struct GeigerSynVisitor {
     /// Count unsafe usage inside tests
-    pub include_tests: IncludeTests,
-
-    /// Verbose logging.
-    pub verbosity: Verbosity,
+    include_tests: IncludeTests,
 
     /// Metrics storage.
-    pub counters: CounterBlock,
+    counters: CounterBlock,
 
     /// Used by the Visit trait implementation to track the traversal state.
     in_unsafe_block: bool,
 }
 
 impl GeigerSynVisitor {
-    pub fn new(include_tests: IncludeTests, verbosity: Verbosity) -> Self {
+    fn new(include_tests: IncludeTests) -> Self {
         GeigerSynVisitor {
             include_tests,
-            verbosity,
             counters: Default::default(),
             in_unsafe_block: false,
         }
@@ -168,7 +229,7 @@ pub struct GeigerContext {
 /// every single source file path and span within each source file and use that
 /// as a general filter for included code.
 /// TODO: Investigate if the needed information can be emitted by rustc today.
-pub fn is_test_mod(i: &ItemMod) -> bool {
+fn is_test_mod(i: &ItemMod) -> bool {
     use syn::Meta;
     i.attrs
         .iter()
@@ -194,7 +255,7 @@ pub fn is_test_mod(i: &ItemMod) -> bool {
 //         )
 //     ]
 // }
-pub fn meta_list_is_cfg_test(ml: &syn::MetaList) -> bool {
+fn meta_list_is_cfg_test(ml: &syn::MetaList) -> bool {
     use syn::NestedMeta;
     if ml.ident != "cfg" {
         return false;
@@ -205,7 +266,7 @@ pub fn meta_list_is_cfg_test(ml: &syn::MetaList) -> bool {
     })
 }
 
-pub fn meta_is_word_test(m: &syn::Meta) -> bool {
+fn meta_is_word_test(m: &syn::Meta) -> bool {
     use syn::Meta;
     match m {
         Meta::Word(ident) => ident == "test",
@@ -213,7 +274,7 @@ pub fn meta_is_word_test(m: &syn::Meta) -> bool {
     }
 }
 
-pub fn is_test_fn(i: &ItemFn) -> bool {
+fn is_test_fn(i: &ItemFn) -> bool {
     i.attrs
         .iter()
         .flat_map(|a| a.interpret_meta())
@@ -299,7 +360,7 @@ pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
     ext.to_string_lossy() == file_ext
 }
 
-fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
+pub fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     let walker = WalkDir::new(dir).into_iter();
     walker.filter_map(|entry| {
         let entry = entry.expect("walkdir error."); // TODO: Return result.
@@ -318,36 +379,19 @@ fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
 pub fn find_unsafe_in_file(
     p: &Path,
     include_tests: IncludeTests,
-    verbosity: Verbosity,
-    allow_partial_results: bool, // TODO: Move this concern up the call stack.
-) -> Option<CounterBlock> {
-    let mut vis = GeigerSynVisitor::new(include_tests, verbosity);
-
-    // TODO: Return Result!
-    let mut file = File::open(p).expect("Unable to open file");
-
+) -> Result<CounterBlock, ScanFileError> {
+    let mut vis = GeigerSynVisitor::new(include_tests);
+    let mut file =
+        File::open(p).map_err(|e| ScanFileError::Io(e, p.to_path_buf()))?;
     let mut src = vec![];
-
-    // TODO: Return Result!
-    file.read_to_end(&mut src).expect("Unable to read file");
-
-    let syntax = match (
-        allow_partial_results,
-        syn::parse_file(&String::from_utf8_lossy(&src)),
-    ) {
-        (_, Ok(s)) => s,
-        (true, Err(e)) => {
-            // TODO: Return Result!
-            eprintln!("Failed to parse file: {}, {:?}", p.display(), e);
-            return None;
-        }
-        (false, Err(e)) => {
-            // TODO: Return Result!
-            panic!("Failed to parse file: {}, {:?} ", p.display(), e)
-        }
-    };
+    file.read_to_end(&mut src)
+        .map_err(|e| ScanFileError::Io(e, p.to_path_buf()))?;
+    let src = String::from_utf8(src)
+        .map_err(|e| ScanFileError::Utf8(e, p.to_path_buf()))?;
+    let syntax = syn::parse_file(&src)
+        .map_err(|e| ScanFileError::Syn(e, p.to_path_buf()))?;
     syn::visit::visit_file(&mut vis, &syntax);
-    Some(vis.counters)
+    Ok(vis.counters)
 }
 
 pub fn find_rs_files_in_package<'a>(
@@ -359,10 +403,9 @@ pub fn find_rs_files_in_package<'a>(
 }
 
 pub fn find_rs_files_in_packages<'a, 'b>(
-    packs: &'a PackageSet<'b>,
+    packs: &'a Vec<&'b Package>,
 ) -> impl Iterator<Item = (&'a PackageId, PathBuf)> + 'a {
-    let packs = packs.get_many(packs.package_ids()).unwrap();
-    packs.into_iter().flat_map(|pack| {
+    packs.iter().flat_map(|pack| {
         find_rs_files_in_package(pack)
             .map(move |path| (pack.package_id(), path))
     })
@@ -376,8 +419,9 @@ pub fn find_unsafe_in_packages<'a, 'b>(
     verbosity: Verbosity,
 ) -> GeigerContext {
     let mut pack_id_to_counters = HashMap::new();
-    let rs_file_iterator = find_rs_files_in_packages(packs);
-    for (pack_id, path) in rs_file_iterator {
+    let packs = packs.get_many(packs.package_ids()).unwrap();
+    let pack_paths = find_rs_files_in_packages(&packs);
+    for (pack_id, path) in pack_paths {
         let p = &path;
         let scan_counter = rs_files_used.get_mut(p);
         let used_by_build = match scan_counter {
@@ -407,20 +451,25 @@ pub fn find_unsafe_in_packages<'a, 'b>(
                 false
             }
         };
-        if let Some(file_counters) = find_unsafe_in_file(
-            p,
-            include_tests,
-            verbosity,
-            allow_partial_results,
-        ) {
-            let pack_counters = pack_id_to_counters
-                .entry(pack_id.clone())
-                .or_insert(PackageCounters::default());
-            let target = match used_by_build {
-                true => &mut pack_counters.used,
-                false => &mut pack_counters.not_used,
-            };
-            *target = target.clone() + file_counters;
+        match find_unsafe_in_file(p, include_tests) {
+            Err(e) => match allow_partial_results {
+                true => {
+                    eprintln!("Failed to parse file: {}, {:?} ", p.display(), e)
+                }
+                false => {
+                    panic!("Failed to parse file: {}, {:?} ", p.display(), e)
+                }
+            },
+            Ok(file_counters) => {
+                let pack_counters = pack_id_to_counters
+                    .entry(pack_id.clone())
+                    .or_insert(PackageCounters::default());
+                let target = match used_by_build {
+                    true => &mut pack_counters.used,
+                    false => &mut pack_counters.not_used,
+                };
+                *target = target.clone() + file_counters;
+            }
         }
     }
     GeigerContext {
@@ -481,46 +530,14 @@ pub struct PrintConfig<'a> {
     pub verbosity: Verbosity,
     pub direction: EdgeDirection,
     pub prefix: Prefix,
+
+    // Is anyone using this? This is a carry-over from cargo-tree.
+    // TODO: Open a github issue to discuss deprecation.
     pub format: &'a Pattern,
+
     pub symbols: &'a Symbols,
     pub allow_partial_results: bool,
     pub include_tests: IncludeTests,
-}
-
-#[derive(Debug)]
-pub enum RsResolveError {
-    Walkdir(walkdir::Error),
-
-    /// Like io::Error but with the related path.
-    Io(io::Error, PathBuf),
-
-    /// Would like cargo::Error here, but it's private, why?
-    /// This is still way better than a panic though.
-    Cargo(String),
-
-    /// This should not happen unless incorrect assumptions have been made in
-    /// cargo-geiger about how the cargo API works.
-    ArcUnwrap(),
-
-    /// Failed to get the inner context out of the mutex.
-    InnerContextMutex(String),
-
-    /// TODO: Add file path involved in parse error.
-    DepParse(String),
-}
-
-impl Error for RsResolveError {}
-
-impl fmt::Display for RsResolveError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
-}
-
-impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
-    fn from(e: PoisonError<CustomExecutorInnerContext>) -> Self {
-        RsResolveError::InnerContextMutex(e.to_string())
-    }
 }
 
 /// Trigger a `cargo clean` + `cargo check` and listen to the cargo/rustc
@@ -566,8 +583,12 @@ pub fn resolve_rs_file_deps(
             if !is_file_with_ext(&ent, "d") {
                 continue;
             }
-            let deps = parse_rustc_dep_info(ent.path())
-                .map_err(|e| RsResolveError::DepParse(e.to_string()))?;
+            let deps = parse_rustc_dep_info(ent.path()).map_err(|e| {
+                RsResolveError::DepParse(
+                    e.to_string(),
+                    ent.path().to_path_buf(),
+                )
+            })?;
             let canon_paths = deps
                 .into_iter()
                 .flat_map(|t| t.1)
@@ -592,7 +613,7 @@ pub fn resolve_rs_file_deps(
 ///
 /// TODO: Make a PR to the cargo project to expose this function or to expose
 /// the dependency data in some other way.
-pub fn parse_rustc_dep_info(
+fn parse_rustc_dep_info(
     rustc_dep_info: &Path,
 ) -> CargoResult<Vec<(String, Vec<String>)>> {
     let contents = paths::read(rustc_dep_info)?;
@@ -624,13 +645,13 @@ pub fn parse_rustc_dep_info(
 }
 
 #[derive(Debug, Default)]
-pub struct CustomExecutorInnerContext {
+struct CustomExecutorInnerContext {
     /// Stores all lib.rs, main.rs etc. passed to rustc during the build.
-    pub rs_file_args: HashSet<PathBuf>,
+    rs_file_args: HashSet<PathBuf>,
 
     /// Investigate if this needs to be intercepted like this or if it can be
     /// looked up in a nicer way.
-    pub out_dir_args: HashSet<PathBuf>,
+    out_dir_args: HashSet<PathBuf>,
 }
 
 use std::sync::PoisonError;
@@ -642,19 +663,19 @@ use std::sync::PoisonError;
 /// scanning of the the expanded code. (incl. code generated by build.rs).
 /// Seems to require nightly rust.
 #[derive(Debug)]
-pub struct CustomExecutor {
+struct CustomExecutor {
     /// Current work dir
-    pub cwd: PathBuf,
+    cwd: PathBuf,
 
     /// Needed since multiple rustc calls can be in flight at the same time.
-    pub inner_ctx: Arc<Mutex<CustomExecutorInnerContext>>,
+    inner_ctx: Arc<Mutex<CustomExecutorInnerContext>>,
 }
 
 use std::error::Error;
 use std::fmt;
 
 #[derive(Debug)]
-pub enum CustomExecutorError {
+enum CustomExecutorError {
     OutDirKeyMissing(String),
     OutDirValueMissing(String),
     InnerContextMutex(String),
@@ -663,6 +684,7 @@ pub enum CustomExecutorError {
 
 impl Error for CustomExecutorError {}
 
+/// Forward Display to Debug. See the crate root documentation.
 impl fmt::Display for CustomExecutorError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self, f)
@@ -758,7 +780,6 @@ pub fn get_cfgs(
     if let Some(ref s) = *target {
         process.arg("--target").arg(s);
     }
-
     let output = match process.exec_with_output() {
         Ok(output) => output,
         Err(_) => return Ok(None),

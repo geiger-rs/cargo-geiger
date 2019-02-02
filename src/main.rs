@@ -1,5 +1,4 @@
 extern crate cargo;
-extern crate cargo_geiger;
 extern crate colored;
 extern crate petgraph;
 extern crate structopt;
