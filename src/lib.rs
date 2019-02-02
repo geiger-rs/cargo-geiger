@@ -349,7 +349,8 @@ pub fn find_unsafe_in_file(
     let mut src = vec![];
     file.read_to_end(&mut src)
         .map_err(|e| ScanFileError::Io(e, p.to_path_buf()))?;
-    let src = String::from_utf8_lossy(&src);
+    let src = String::from_utf8(src)
+        .map_err(|e| ScanFileError::Utf8(e, p.to_path_buf()))?;
     let syntax = syn::parse_file(&src)
         .map_err(|e| ScanFileError::Syn(e, p.to_path_buf()))?;
     syn::visit::visit_file(&mut vis, &syntax);
