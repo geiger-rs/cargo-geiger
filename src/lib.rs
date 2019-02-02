@@ -64,6 +64,59 @@ use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemMod, ItemTrait};
 
 pub mod format;
 
+#[derive(Debug)]
+pub enum ScanFileError {
+    Io(io::Error, PathBuf),
+    Utf8(FromUtf8Error, PathBuf),
+    Syn(syn::Error, PathBuf),
+}
+
+impl Error for ScanFileError {}
+
+/// Forward Display to Debug. See the crate root documentation.
+impl fmt::Display for ScanFileError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
+#[derive(Debug)]
+pub enum RsResolveError {
+    Walkdir(walkdir::Error),
+
+    /// Like io::Error but with the related path.
+    Io(io::Error, PathBuf),
+
+    /// Would like cargo::Error here, but it's private, why?
+    /// This is still way better than a panic though.
+    Cargo(String),
+
+    /// This should not happen unless incorrect assumptions have been made in
+    /// cargo-geiger about how the cargo API works.
+    ArcUnwrap(),
+
+    /// Failed to get the inner context out of the mutex.
+    InnerContextMutex(String),
+
+    /// Failed to parse a .dep file.
+    DepParse(String, PathBuf),
+}
+
+impl Error for RsResolveError {}
+
+/// Forward Display to Debug. See the crate root documentation.
+impl fmt::Display for RsResolveError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
+impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
+    fn from(e: PoisonError<CustomExecutorInnerContext>) -> Self {
+        RsResolveError::InnerContextMutex(e.to_string())
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Count {
     /// Number of safe items, in .rs files used by the build.
@@ -323,22 +376,6 @@ pub fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     })
 }
 
-#[derive(Debug)]
-pub enum ScanFileError {
-    Io(io::Error, PathBuf),
-    Utf8(FromUtf8Error, PathBuf),
-    Syn(syn::Error, PathBuf),
-}
-
-impl Error for ScanFileError {}
-
-/// Forward Display to Debug. See the crate root documentation.
-impl fmt::Display for ScanFileError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
-}
-
 pub fn find_unsafe_in_file(
     p: &Path,
     include_tests: IncludeTests,
@@ -501,43 +538,6 @@ pub struct PrintConfig<'a> {
     pub symbols: &'a Symbols,
     pub allow_partial_results: bool,
     pub include_tests: IncludeTests,
-}
-
-#[derive(Debug)]
-pub enum RsResolveError {
-    Walkdir(walkdir::Error),
-
-    /// Like io::Error but with the related path.
-    Io(io::Error, PathBuf),
-
-    /// Would like cargo::Error here, but it's private, why?
-    /// This is still way better than a panic though.
-    Cargo(String),
-
-    /// This should not happen unless incorrect assumptions have been made in
-    /// cargo-geiger about how the cargo API works.
-    ArcUnwrap(),
-
-    /// Failed to get the inner context out of the mutex.
-    InnerContextMutex(String),
-
-    /// Failed to parse a .dep file.
-    DepParse(String, PathBuf),
-}
-
-impl Error for RsResolveError {}
-
-/// Forward Display to Debug. See the crate root documentation.
-impl fmt::Display for RsResolveError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
-}
-
-impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
-    fn from(e: PoisonError<CustomExecutorInnerContext>) -> Self {
-        RsResolveError::InnerContextMutex(e.to_string())
-    }
 }
 
 /// Trigger a `cargo clean` + `cargo check` and listen to the cargo/rustc
