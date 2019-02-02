@@ -1,3 +1,14 @@
+//! # The cargo-geiger library.
+//!
+//! ## How Errors implements Display and why
+//!
+//! Display is required by Error. Errors in cargo-geiger simply forwards the the
+//! implementation of the Display trait to the derived Debug trait. In the
+//! general case, proper end-user error message formatting and presentation must
+//! be done in the UI layer. To separate data and presentation, the error
+//! struct/enum should avoid all formatting and instead only provide structured
+//! unformatted error information.
+
 #![forbid(unsafe_code)]
 
 // TODO: Investigate how cargo-clippy is implemented. Is it using syn?
@@ -46,6 +57,7 @@ use std::ops::Add;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::{self, FromStr};
+use std::string::FromUtf8Error;
 use std::sync::Arc;
 use std::sync::Mutex;
 use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemMod, ItemTrait};
@@ -295,7 +307,7 @@ pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
     ext.to_string_lossy() == file_ext
 }
 
-fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
+pub fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     let walker = WalkDir::new(dir).into_iter();
     walker.filter_map(|entry| {
         let entry = entry.expect("walkdir error."); // TODO: Return result.
@@ -311,38 +323,37 @@ fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     })
 }
 
+#[derive(Debug)]
+pub enum ScanFileError {
+    Io(io::Error, PathBuf),
+    Utf8(FromUtf8Error, PathBuf),
+    Syn(syn::Error, PathBuf),
+}
+
+impl Error for ScanFileError {}
+
+/// Forward Display to Debug. See the crate root documentation.
+impl fmt::Display for ScanFileError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
 pub fn find_unsafe_in_file(
     p: &Path,
     include_tests: IncludeTests,
-    allow_partial_results: bool, // TODO: Move this concern up the call stack.
-) -> Option<CounterBlock> {
+) -> Result<CounterBlock, ScanFileError> {
     let mut vis = GeigerSynVisitor::new(include_tests);
-
-    // TODO: Return Result!
-    let mut file = File::open(p).expect("Unable to open file");
-
+    let mut file =
+        File::open(p).map_err(|e| ScanFileError::Io(e, p.to_path_buf()))?;
     let mut src = vec![];
-
-    // TODO: Return Result!
-    file.read_to_end(&mut src).expect("Unable to read file");
-
-    let syntax = match (
-        allow_partial_results,
-        syn::parse_file(&String::from_utf8_lossy(&src)),
-    ) {
-        (_, Ok(s)) => s,
-        (true, Err(e)) => {
-            // TODO: Return Result!
-            eprintln!("Failed to parse file: {}, {:?}", p.display(), e);
-            return None;
-        }
-        (false, Err(e)) => {
-            // TODO: Return Result!
-            panic!("Failed to parse file: {}, {:?} ", p.display(), e)
-        }
-    };
+    file.read_to_end(&mut src)
+        .map_err(|e| ScanFileError::Io(e, p.to_path_buf()))?;
+    let src = String::from_utf8_lossy(&src);
+    let syntax = syn::parse_file(&src)
+        .map_err(|e| ScanFileError::Syn(e, p.to_path_buf()))?;
     syn::visit::visit_file(&mut vis, &syntax);
-    Some(vis.counters)
+    Ok(vis.counters)
 }
 
 pub fn find_rs_files_in_package<'a>(
@@ -402,17 +413,25 @@ pub fn find_unsafe_in_packages<'a, 'b>(
                 false
             }
         };
-        if let Some(file_counters) =
-            find_unsafe_in_file(p, include_tests, allow_partial_results)
-        {
-            let pack_counters = pack_id_to_counters
-                .entry(pack_id.clone())
-                .or_insert(PackageCounters::default());
-            let target = match used_by_build {
-                true => &mut pack_counters.used,
-                false => &mut pack_counters.not_used,
-            };
-            *target = target.clone() + file_counters;
+        match find_unsafe_in_file(p, include_tests) {
+            Err(e) => match allow_partial_results {
+                true => {
+                    eprintln!("Failed to parse file: {}, {:?} ", p.display(), e)
+                }
+                false => {
+                    panic!("Failed to parse file: {}, {:?} ", p.display(), e)
+                }
+            },
+            Ok(file_counters) => {
+                let pack_counters = pack_id_to_counters
+                    .entry(pack_id.clone())
+                    .or_insert(PackageCounters::default());
+                let target = match used_by_build {
+                    true => &mut pack_counters.used,
+                    false => &mut pack_counters.not_used,
+                };
+                *target = target.clone() + file_counters;
+            }
         }
     }
     GeigerContext {
@@ -507,6 +526,7 @@ pub enum RsResolveError {
 
 impl Error for RsResolveError {}
 
+/// Forward Display to Debug. See the crate root documentation.
 impl fmt::Display for RsResolveError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self, f)
@@ -663,6 +683,7 @@ enum CustomExecutorError {
 
 impl Error for CustomExecutorError {}
 
+/// Forward Display to Debug. See the crate root documentation.
 impl fmt::Display for CustomExecutorError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self, f)
