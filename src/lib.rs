@@ -359,10 +359,9 @@ pub fn find_rs_files_in_package<'a>(
 }
 
 pub fn find_rs_files_in_packages<'a, 'b>(
-    packs: &'a PackageSet<'b>,
+    packs: &'a Vec<&'b Package>,
 ) -> impl Iterator<Item = (&'a PackageId, PathBuf)> + 'a {
-    let packs = packs.get_many(packs.package_ids()).unwrap();
-    packs.into_iter().flat_map(|pack| {
+    packs.iter().flat_map(|pack| {
         find_rs_files_in_package(pack)
             .map(move |path| (pack.package_id(), path))
     })
@@ -376,8 +375,9 @@ pub fn find_unsafe_in_packages<'a, 'b>(
     verbosity: Verbosity,
 ) -> GeigerContext {
     let mut pack_id_to_counters = HashMap::new();
-    let rs_file_iterator = find_rs_files_in_packages(packs);
-    for (pack_id, path) in rs_file_iterator {
+    let packs = packs.get_many(packs.package_ids()).unwrap();
+    let pack_paths = find_rs_files_in_packages(&packs);
+    for (pack_id, path) in pack_paths {
         let p = &path;
         let scan_counter = rs_files_used.get_mut(p);
         let used_by_build = match scan_counter {
