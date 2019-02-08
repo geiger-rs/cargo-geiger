@@ -26,6 +26,7 @@ use cargo_geiger::PrintConfig;
 use cargo_geiger::ASCII_SYMBOLS;
 use cargo_geiger::UNSAFE_COUNTERS_HEADER;
 use cargo_geiger::UTF8_SYMBOLS;
+use cargo_geiger::ExtraDeps;
 use colored::Colorize;
 use petgraph::EdgeDirection;
 use std::path::PathBuf;
