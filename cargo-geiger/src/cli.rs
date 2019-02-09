@@ -8,23 +8,17 @@
 // TODO: Investigate how cargo-clippy is implemented. Is it using syn?  Is is
 // using rustc? Is it implementing a compiler plugin?
 
-
 extern crate cargo;
 extern crate colored;
 extern crate env_logger;
 extern crate failure;
+extern crate geiger;
 extern crate petgraph;
 extern crate structopt;
-extern crate geiger;
 extern crate walkdir;
 
 use self::walkdir::DirEntry;
 use self::walkdir::WalkDir;
-use geiger::IncludeTests;
-use geiger::Count;
-use geiger::find_rs_files_in_dir;
-use geiger::find_unsafe_in_file;
-use geiger::CounterBlock;
 use crate::format::Pattern;
 use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
@@ -44,6 +38,11 @@ use cargo::util::ProcessBuilder;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::Config;
 use colored::Colorize;
+use geiger::find_rs_files_in_dir;
+use geiger::find_unsafe_in_file;
+use geiger::Count;
+use geiger::CounterBlock;
+use geiger::IncludeTests;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;

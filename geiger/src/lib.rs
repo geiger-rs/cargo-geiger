@@ -11,6 +11,8 @@ extern crate walkdir;
 
 use self::walkdir::DirEntry;
 use self::walkdir::WalkDir;
+use std::error::Error;
+use std::fmt;
 use std::fs::File;
 use std::io;
 use std::io::Read;
@@ -18,8 +20,6 @@ use std::ops::Add;
 use std::path::Path;
 use std::path::PathBuf;
 use std::string::FromUtf8Error;
-use std::fmt;
-use std::error::Error;
 use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemMod, ItemTrait};
 
 #[derive(Debug)]
