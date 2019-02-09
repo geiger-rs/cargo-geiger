@@ -1,9 +1,13 @@
-//! # TODO: Document me, after workspace restructuring.
+//! This module provides the bulk of the code for `cargo-geiger` executable.
 
-// TODO: Investigate how cargo-clippy is implemented. Is it using syn?
-// Is is using rustc? Is it implementing a compiler plugin?
+// TODO: Review the module structure in this crate. There is very tight coupling
+// between the main.rs and this module. Should this module be split into smaller
+// parts? The printing and scanning can probably be further decoupled to provide
+// a better base for adding more output formats.
 
-#![forbid(unsafe_code)]
+// TODO: Investigate how cargo-clippy is implemented. Is it using syn?  Is is
+// using rustc? Is it implementing a compiler plugin?
+
 
 extern crate cargo;
 extern crate colored;
@@ -21,7 +25,7 @@ use geiger::Count;
 use geiger::find_rs_files_in_dir;
 use geiger::find_unsafe_in_file;
 use geiger::CounterBlock;
-use self::format::Pattern;
+use crate::format::Pattern;
 use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
 use cargo::core::compiler::Unit;
@@ -52,8 +56,6 @@ use std::path::PathBuf;
 use std::str::{self, FromStr};
 use std::sync::Arc;
 use std::sync::Mutex;
-
-pub mod format;
 
 #[derive(Debug)]
 pub enum RsResolveError {
