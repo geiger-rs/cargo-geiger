@@ -69,23 +69,26 @@ Roadmap
 Changelog
 ---------
 
-### Unreleased
- - Merge pull request #46 from alexmaco/dependency_kind_control. add options to filter dependencies by kind; defaults to Kind::Normal.
- - Can be used as a library now (?)
- - Merge pull request #40 from jiminhsieh/rust-2018. Use Rust 2018 edition.
+### 0.5.0
+ - Moved resusable parts, decoupled from `cargo`, to the new crate
+   [geiger][geiger]. Main github issue: [#30].
+ - Some general refactoring and cleanup.
+ - Merge pull request [#46] from alexmaco/dependency_kind_control. add options
+   to filter dependencies by kind; defaults to Kind::Normal.
+ - Merge pull request [#40] from jiminhsieh/rust-2018. Use Rust 2018 edition.
 
 ### 0.4.2
- - Merge pull request #38 from anderejd/updated-deps. Updated deps and fixed
-   build errors.
-
- - __BUGFIX__: Merge pull request #33 from ajpaverd/windows_filepaths.
+ - __BUGFIX__: Merge pull request [#33] from ajpaverd/windows_filepaths.
    Canonicalize file paths from walker.
 
+ - Merge pull request [#38] from anderejd/updated-deps. Updated deps and fixed
+   build errors.
+
 ### 0.4.1
- - Merge pull request #28 from alexmaco/deps_upgrade. fix build on rust 1.30:
+ - Merge pull request [#28] from alexmaco/deps_upgrade. fix build on rust 1.30:
    upgrade petgraph to 0.4.13
 
- - Merge pull request #29 from alexmaco/invalid_utf8_source. fix handling
+ - Merge pull request [#29] from alexmaco/invalid_utf8_source. fix handling
    source files with invalid utf8: lossy conversion to string
 
 ### 0.4.0
@@ -115,5 +118,12 @@ Changelog
  - Initial experimental versions.
  - Mostly README.md updates.
 
-
+[#28]: https://github.com/anderejd/cargo-geiger/issues/28
+[#29]: https://github.com/anderejd/cargo-geiger/issues/29
+[#30]: https://github.com/anderejd/cargo-geiger/issues/30
+[#33]: https://github.com/anderejd/cargo-geiger/issues/33
+[#38]: https://github.com/anderejd/cargo-geiger/issues/38
+[#40]: https://github.com/anderejd/cargo-geiger/issues/40
+[#46]: https://github.com/anderejd/cargo-geiger/issues/46
+[geiger]: https://crates.io/crates/geiger
 
