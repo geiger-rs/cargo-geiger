@@ -1,4 +1,4 @@
-//! This module provides the bulk of the code for `cargo-geiger` executable.
+//! This module provides the bulk of the code for the `cargo-geiger` executable.
 
 // TODO: Review the module structure in this crate. There is very tight coupling
 // between the main.rs and this module. Should this module be split into smaller
