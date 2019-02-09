@@ -1,8 +1,30 @@
+//! The outer CLI parts of the `cargo-geiger` cargo plugin executable.
+#![forbid(unsafe_code)]
+
 extern crate cargo;
 extern crate colored;
 extern crate petgraph;
 extern crate structopt;
 
+mod cli;
+mod format;
+
+use crate::cli::build_graph;
+use crate::cli::find_unsafe_in_packages;
+use crate::cli::get_cfgs;
+use crate::cli::print_tree;
+use crate::cli::registry;
+use crate::cli::resolve;
+use crate::cli::resolve_rs_file_deps;
+use crate::cli::workspace;
+use crate::cli::Charset;
+use crate::cli::ExtraDeps;
+use crate::cli::Prefix;
+use crate::cli::PrintConfig;
+use crate::cli::ASCII_SYMBOLS;
+use crate::cli::UNSAFE_COUNTERS_HEADER;
+use crate::cli::UTF8_SYMBOLS;
+use crate::format::Pattern;
 use cargo::core::compiler::CompileMode;
 use cargo::core::resolver::Method;
 use cargo::core::shell::Shell;
@@ -10,24 +32,8 @@ use cargo::core::shell::Verbosity;
 use cargo::ops::CompileOptions;
 use cargo::CliResult;
 use cargo::Config;
-use cargo_geiger::build_graph;
-use cargo_geiger::find_unsafe_in_packages;
-use cargo_geiger::format::Pattern;
-use cargo_geiger::get_cfgs;
-use cargo_geiger::print_tree;
-use cargo_geiger::registry;
-use cargo_geiger::resolve;
-use cargo_geiger::resolve_rs_file_deps;
-use cargo_geiger::workspace;
-use cargo_geiger::Charset;
-use cargo_geiger::IncludeTests;
-use cargo_geiger::Prefix;
-use cargo_geiger::PrintConfig;
-use cargo_geiger::ASCII_SYMBOLS;
-use cargo_geiger::UNSAFE_COUNTERS_HEADER;
-use cargo_geiger::UTF8_SYMBOLS;
-use cargo_geiger::ExtraDeps;
 use colored::Colorize;
+use geiger::IncludeTests;
 use petgraph::EdgeDirection;
 use std::path::PathBuf;
 use structopt::clap::AppSettings;

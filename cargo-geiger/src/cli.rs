@@ -1,31 +1,25 @@
-//! # The cargo-geiger library.
-//!
-//! ## How Errors implements Display and why
-//!
-//! Display is required by Error. Errors in cargo-geiger simply forwards the the
-//! implementation of the Display trait to the derived Debug trait. In the
-//! general case, proper end-user error message formatting and presentation must
-//! be done in the UI layer. To separate data and presentation, the error
-//! struct/enum should avoid all formatting and instead only provide structured
-//! unformatted error information.
+//! This module provides the bulk of the code for `cargo-geiger` executable.
 
-#![forbid(unsafe_code)]
+// TODO: Review the module structure in this crate. There is very tight coupling
+// between the main.rs and this module. Should this module be split into smaller
+// parts? The printing and scanning can probably be further decoupled to provide
+// a better base for adding more output formats.
 
-// TODO: Investigate how cargo-clippy is implemented. Is it using syn?
-// Is is using rustc? Is it implementing a compiler plugin?
+// TODO: Investigate how cargo-clippy is implemented. Is it using syn?  Is is
+// using rustc? Is it implementing a compiler plugin?
 
 extern crate cargo;
 extern crate colored;
 extern crate env_logger;
 extern crate failure;
+extern crate geiger;
 extern crate petgraph;
 extern crate structopt;
-extern crate syn;
 extern crate walkdir;
 
-use self::format::Pattern;
 use self::walkdir::DirEntry;
 use self::walkdir::WalkDir;
+use crate::format::Pattern;
 use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
 use cargo::core::compiler::Unit;
@@ -44,41 +38,23 @@ use cargo::util::ProcessBuilder;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::Config;
 use colored::Colorize;
+use geiger::find_rs_files_in_dir;
+use geiger::find_unsafe_in_file;
+use geiger::Count;
+use geiger::CounterBlock;
+use geiger::IncludeTests;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
-use std::fs::File;
 use std::io;
-use std::io::Read;
-use std::ops::Add;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::{self, FromStr};
-use std::string::FromUtf8Error;
 use std::sync::Arc;
 use std::sync::Mutex;
-use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemMod, ItemTrait};
-
-pub mod format;
-
-#[derive(Debug)]
-pub enum ScanFileError {
-    Io(io::Error, PathBuf),
-    Utf8(FromUtf8Error, PathBuf),
-    Syn(syn::Error, PathBuf),
-}
-
-impl Error for ScanFileError {}
-
-/// Forward Display to Debug. See the crate root documentation.
-impl fmt::Display for ScanFileError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
-}
 
 #[derive(Debug)]
 pub enum RsResolveError {
@@ -104,7 +80,7 @@ pub enum RsResolveError {
 
 impl Error for RsResolveError {}
 
-/// Forward Display to Debug. See the crate root documentation.
+/// Forward Display to Debug.
 impl fmt::Display for RsResolveError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self, f)
@@ -117,69 +93,6 @@ impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
     }
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct Count {
-    /// Number of safe items, in .rs files used by the build.
-    pub safe: u64,
-
-    /// Number of unsafe items, in .rs files used by the build.
-    pub unsafe_: u64,
-}
-
-impl Count {
-    fn count(&mut self, is_unsafe: bool) {
-        match is_unsafe {
-            true => self.unsafe_ += 1,
-            false => self.safe += 1,
-        }
-    }
-}
-
-impl Add for Count {
-    type Output = Count;
-
-    fn add(self, other: Count) -> Count {
-        Count {
-            safe: self.safe + other.safe,
-            unsafe_: self.unsafe_ + other.unsafe_,
-        }
-    }
-}
-
-/// Unsafe usage metrics collection.
-#[derive(Debug, Default, Clone)]
-pub struct CounterBlock {
-    pub functions: Count,
-    pub exprs: Count,
-    pub item_impls: Count,
-    pub item_traits: Count,
-    pub methods: Count,
-}
-
-impl CounterBlock {
-    fn has_unsafe(&self) -> bool {
-        self.functions.unsafe_ > 0
-            || self.exprs.unsafe_ > 0
-            || self.item_impls.unsafe_ > 0
-            || self.item_traits.unsafe_ > 0
-            || self.methods.unsafe_ > 0
-    }
-}
-
-impl Add for CounterBlock {
-    type Output = CounterBlock;
-
-    fn add(self, other: CounterBlock) -> CounterBlock {
-        CounterBlock {
-            functions: self.functions + other.functions,
-            exprs: self.exprs + other.exprs,
-            item_impls: self.item_impls + other.item_impls,
-            item_traits: self.item_traits + other.item_traits,
-            methods: self.methods + other.methods,
-        }
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct PackageCounters {
     /// Unsafe usage included by the build.
@@ -189,162 +102,17 @@ pub struct PackageCounters {
     pub not_used: CounterBlock,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum IncludeTests {
-    Yes,
-    No,
-}
-
-struct GeigerSynVisitor {
-    /// Count unsafe usage inside tests
-    include_tests: IncludeTests,
-
-    /// Metrics storage.
-    counters: CounterBlock,
-
-    /// Used by the Visit trait implementation to track the traversal state.
-    in_unsafe_block: bool,
-}
-
-impl GeigerSynVisitor {
-    fn new(include_tests: IncludeTests) -> Self {
-        GeigerSynVisitor {
-            include_tests,
-            counters: Default::default(),
-            in_unsafe_block: false,
-        }
-    }
-}
-
 /// TODO: Write documentation.
 pub struct GeigerContext {
     pub pack_id_to_counters: HashMap<PackageId, PackageCounters>,
     pub rs_files_used: HashMap<PathBuf, u32>,
 }
 
-/// Will return true for #[cfg(test)] decodated modules.
-///
-/// This function is a somewhat of a hack and will probably missinterpret more
-/// advanded cfg expressions. A better way to do this would be to let rustc emit
-/// every single source file path and span within each source file and use that
-/// as a general filter for included code.
-/// TODO: Investigate if the needed information can be emitted by rustc today.
-fn is_test_mod(i: &ItemMod) -> bool {
-    use syn::Meta;
-    i.attrs
-        .iter()
-        .flat_map(|a| a.interpret_meta())
-        .any(|m| match m {
-            Meta::List(ml) => meta_list_is_cfg_test(&ml),
-            _ => false,
-        })
-}
-
-// MetaList {
-//     ident: Ident(
-//         cfg
-//     ),
-//     paren_token: Paren,
-//     nested: [
-//         Meta(
-//             Word(
-//                 Ident(
-//                     test
-//                 )
-//             )
-//         )
-//     ]
-// }
-fn meta_list_is_cfg_test(ml: &syn::MetaList) -> bool {
-    use syn::NestedMeta;
-    if ml.ident != "cfg" {
-        return false;
-    }
-    ml.nested.iter().any(|n| match n {
-        NestedMeta::Meta(meta) => meta_is_word_test(meta),
-        _ => false,
-    })
-}
-
-fn meta_is_word_test(m: &syn::Meta) -> bool {
-    use syn::Meta;
-    match m {
-        Meta::Word(ident) => ident == "test",
-        _ => false,
-    }
-}
-
-fn is_test_fn(i: &ItemFn) -> bool {
-    i.attrs
-        .iter()
-        .flat_map(|a| a.interpret_meta())
-        .any(|m| meta_is_word_test(&m))
-}
-
-impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
-    /// Free-standing functions
-    fn visit_item_fn(&mut self, i: &ItemFn) {
-        if IncludeTests::No == self.include_tests && is_test_fn(i) {
-            return;
-        }
-        self.counters.functions.count(i.unsafety.is_some());
-        visit::visit_item_fn(self, i);
-    }
-
-    fn visit_expr(&mut self, i: &Expr) {
-        // Total number of expressions of any type
-        match i {
-            Expr::Unsafe(i) => {
-                self.in_unsafe_block = true;
-                visit::visit_expr_unsafe(self, i);
-                self.in_unsafe_block = false;
-            }
-            Expr::Path(_) | Expr::Lit(_) => {
-                // Do not count. The expression `f(x)` should count as one
-                // expression, not three.
-            }
-            other => {
-                // TODO: Print something pretty here or gather the data for later
-                // printing.
-                // if self.verbosity == Verbosity::Verbose && self.in_unsafe_block {
-                //     println!("{:#?}", other);
-                // }
-                self.counters.exprs.count(self.in_unsafe_block);
-                visit::visit_expr(self, other);
-            }
-        }
-    }
-
-    fn visit_item_mod(&mut self, i: &ItemMod) {
-        if IncludeTests::No == self.include_tests && is_test_mod(i) {
-            return;
-        }
-        visit::visit_item_mod(self, i);
-    }
-
-    fn visit_item_impl(&mut self, i: &ItemImpl) {
-        // unsafe trait impl's
-        self.counters.item_impls.count(i.unsafety.is_some());
-        visit::visit_item_impl(self, i);
-    }
-
-    fn visit_item_trait(&mut self, i: &ItemTrait) {
-        // Unsafe traits
-        self.counters.item_traits.count(i.unsafety.is_some());
-        visit::visit_item_trait(self, i);
-    }
-
-    fn visit_impl_item_method(&mut self, i: &ImplItemMethod) {
-        self.counters.methods.count(i.sig.unsafety.is_some());
-        visit::visit_impl_item_method(self, i);
-    }
-
-    // TODO: Visit macros.
-    //
-    // TODO: Figure out if there are other visit methods that should be
-    // implemented here.
-}
-
+// TODO: Review this. The same code exist in the `geiger` library crate, but is
+// private since I don't want to expose `WalkDir` in the public API for this
+// simple function. Is this function available in WalkDir already or something
+// similar? If not, open a github issue and ask if this would be appropriate as
+// a PR. Don't use to_string_lossy and return a result or option instead.
 pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
     if !entry.file_type().is_file() {
         return false;
@@ -358,40 +126,6 @@ pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
     // compatible extension and we do not keep the possibly lossy result
     // around.
     ext.to_string_lossy() == file_ext
-}
-
-pub fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
-    let walker = WalkDir::new(dir).into_iter();
-    walker.filter_map(|entry| {
-        let entry = entry.expect("walkdir error."); // TODO: Return result.
-        if !is_file_with_ext(&entry, "rs") {
-            return None;
-        }
-        Some(
-            entry
-                .path()
-                .canonicalize()
-                .expect("Error converting to canonical path"),
-        ) // TODO: Return result.
-    })
-}
-
-pub fn find_unsafe_in_file(
-    p: &Path,
-    include_tests: IncludeTests,
-) -> Result<CounterBlock, ScanFileError> {
-    let mut vis = GeigerSynVisitor::new(include_tests);
-    let mut file =
-        File::open(p).map_err(|e| ScanFileError::Io(e, p.to_path_buf()))?;
-    let mut src = vec![];
-    file.read_to_end(&mut src)
-        .map_err(|e| ScanFileError::Io(e, p.to_path_buf()))?;
-    let src = String::from_utf8(src)
-        .map_err(|e| ScanFileError::Utf8(e, p.to_path_buf()))?;
-    let syntax = syn::parse_file(&src)
-        .map_err(|e| ScanFileError::Syn(e, p.to_path_buf()))?;
-    syn::visit::visit_file(&mut vis, &syntax);
-    Ok(vis.counters)
 }
 
 pub fn find_rs_files_in_package<'a>(

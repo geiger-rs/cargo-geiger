@@ -1,0 +1,25 @@
+[package]
+authors = ["anderejd <rajder@gmail.com>"]
+categories = ["command-line-utilities", "development-tools", "development-tools::cargo-plugins", "parsing"]
+description = "Detects usage of unsafe Rust in your project and its dependencies."
+edition = "2018"
+keywords = ["unsafe", "cargo", "plugin"]
+license = "Apache-2.0/MIT"
+name = "cargo-geiger"
+readme = "README.md"
+repository = "https://github.com/anderejd/cargo-geiger"
+version = "0.4.2"
+
+[badges]
+maintenance = { status = "experimental" }
+
+[dependencies]
+cargo = "0.33.0"
+clap = "2.32.0"
+colored = "1.7.0"
+env_logger = "0.6.0"
+failure = "0.1.5"
+geiger = { path = "../geiger" }
+petgraph = "0.4.13"
+structopt = "0.2.14"
+walkdir = "2.2.7"
