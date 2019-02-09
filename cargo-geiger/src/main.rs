@@ -20,7 +20,7 @@ use cargo_geiger::resolve;
 use cargo_geiger::resolve_rs_file_deps;
 use cargo_geiger::workspace;
 use cargo_geiger::Charset;
-use cargo_geiger::IncludeTests;
+use geiger::IncludeTests;
 use cargo_geiger::Prefix;
 use cargo_geiger::PrintConfig;
 use cargo_geiger::ASCII_SYMBOLS;
