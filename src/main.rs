@@ -230,7 +230,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         args.all_features,
         args.no_default_features,
     )?;
-    let ids = packages.package_ids().cloned().collect::<Vec<_>>();
+    let ids = packages.package_ids().collect::<Vec<_>>();
     let packages = registry.get(&ids)?;
 
     let root_pack_id = match args.package {

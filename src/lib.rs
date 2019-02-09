@@ -402,9 +402,9 @@ pub fn find_rs_files_in_package<'a>(
         .flat_map(|p| find_rs_files_in_dir(p.root()))
 }
 
-pub fn find_rs_files_in_packages<'a, 'b>(
-    packs: &'a Vec<&'b Package>,
-) -> impl Iterator<Item = (&'a PackageId, PathBuf)> + 'a {
+pub fn find_rs_files_in_packages<'a>(
+    packs: &'a Vec<&Package>,
+) -> impl Iterator<Item = (PackageId, PathBuf)> + 'a {
     packs.iter().flat_map(|pack| {
         find_rs_files_in_package(pack)
             .map(move |path| (pack.package_id(), path))
@@ -697,7 +697,7 @@ impl Executor for CustomExecutor {
     fn exec(
         &self,
         cmd: ProcessBuilder,
-        _id: &PackageId,
+        _id: PackageId,
         _target: &Target,
         _mode: CompileMode,
     ) -> CargoResult<()> {
@@ -749,7 +749,7 @@ impl Executor for CustomExecutor {
     fn exec_json(
         &self,
         _cmd: ProcessBuilder,
-        _id: &PackageId,
+        _id: PackageId,
         _target: &Target,
         _mode: CompileMode,
         _handle_stdout: &mut FnMut(&str) -> CargoResult<()>,
@@ -807,7 +807,7 @@ pub fn registry<'a>(
     package: &Package,
 ) -> CargoResult<PackageRegistry<'a>> {
     let mut registry = PackageRegistry::new(config)?;
-    registry.add_sources(&[package.package_id().source_id().clone()])?;
+    registry.add_sources(Some(package.package_id().source_id()))?;
     Ok(registry)
 }
 
@@ -841,13 +841,13 @@ pub fn resolve<'a, 'cfg>(
 }
 
 pub struct Node<'a> {
-    id: &'a PackageId,
+    id: PackageId,
     pack: &'a Package,
 }
 
 pub struct Graph<'a> {
     graph: petgraph::Graph<Node<'a>, Kind>,
-    nodes: HashMap<&'a PackageId, NodeIndex>,
+    nodes: HashMap<PackageId, NodeIndex>,
 }
 
 /// Almost unmodified compared to the original in cargo-tree, should be fairly
@@ -856,7 +856,7 @@ pub struct Graph<'a> {
 pub fn build_graph<'a>(
     resolve: &'a Resolve,
     packages: &'a PackageSet,
-    root: &'a PackageId,
+    root: PackageId,
     target: Option<&str>,
     cfgs: Option<&[Cfg]>,
     extra_deps: ExtraDeps,
@@ -913,7 +913,7 @@ pub fn build_graph<'a>(
 }
 
 pub fn print_tree<'a>(
-    root_pack_id: &'a PackageId,
+    root_pack_id: PackageId,
     graph: &Graph<'a>,
     geiger_ctx: &GeigerContext,
     pc: &PrintConfig,
@@ -934,7 +934,7 @@ pub fn print_tree<'a>(
 fn print_dependency<'a>(
     package: &Node<'a>,
     graph: &Graph<'a>,
-    visited_deps: &mut HashSet<&'a PackageId>,
+    visited_deps: &mut HashSet<PackageId>,
     levels_continue: &mut Vec<bool>,
     geiger_ctx: &GeigerContext,
     pc: &PrintConfig,
@@ -964,7 +964,7 @@ fn print_dependency<'a>(
     let pack_counters =
         geiger_ctx
             .pack_id_to_counters
-            .get(package.id)
+            .get(&package.id)
             .expect(&format!(
                 "Failed to get unsafe counters for package: {}",
                 package.id
@@ -981,7 +981,7 @@ fn print_dependency<'a>(
     let dep_name = colorize(format!(
         "{}",
         pc.format
-            .display(package.id, package.pack.manifest().metadata())
+            .display(&package.id, package.pack.manifest().metadata())
     ));
     // TODO: Split up table and tree printing and paint into a backbuffer
     // before writing to stdout?
@@ -1029,7 +1029,7 @@ fn print_dependency_kind<'a>(
     kind: Kind,
     deps: &mut Vec<&Node<'a>>,
     graph: &Graph<'a>,
-    visited_deps: &mut HashSet<&'a PackageId>,
+    visited_deps: &mut HashSet<PackageId>,
     levels_continue: &mut Vec<bool>,
     geiger_ctx: &GeigerContext,
     pc: &PrintConfig,
