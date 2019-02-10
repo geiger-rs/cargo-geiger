@@ -40,10 +40,10 @@ impl fmt::Display for ScanFileError {
 
 #[derive(Debug, Default, Clone)]
 pub struct Count {
-    /// Number of safe items, in .rs files used by the build.
+    /// Number of safe items
     pub safe: u64,
 
-    /// Number of unsafe items, in .rs files used by the build.
+    /// Number of unsafe items
     pub unsafe_: u64,
 }
 
@@ -130,8 +130,8 @@ impl GeigerSynVisitor {
 
 /// Will return true for #[cfg(test)] decodated modules.
 ///
-/// This function is a somewhat of a hack and will probably missinterpret more
-/// advanded cfg expressions. A better way to do this would be to let rustc emit
+/// This function is a somewhat of a hack and will probably misinterpret more
+/// advanced cfg expressions. A better way to do this would be to let rustc emit
 /// every single source file path and span within each source file and use that
 /// as a general filter for included code.
 /// TODO: Investigate if the needed information can be emitted by rustc today.
