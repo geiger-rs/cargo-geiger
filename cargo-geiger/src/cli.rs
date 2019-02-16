@@ -24,6 +24,7 @@ use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
 use cargo::core::compiler::Unit;
 use cargo::core::dependency::Kind;
+use cargo::core::manifest::TargetKind;
 use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
@@ -55,7 +56,6 @@ use std::path::PathBuf;
 use std::str::{self, FromStr};
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::iter;
 
 #[derive(Debug)]
 pub enum RsResolveError {
@@ -95,17 +95,31 @@ impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
 }
 
 #[derive(Debug, Default)]
-pub struct PackageCounters {
-    /// Unsafe usage included by the build.
-    pub used: CounterBlock,
+pub struct PackageMetricsRoot {
+    pub used: PackageMetrics,
+    pub not_used: PackageMetrics,
+}
 
-    /// Unsafe usage not included by the build.
-    pub not_used: CounterBlock,
+#[derive(Debug, Default)]
+pub struct PackageMetrics {
+    pub counters: CounterBlock,
+    pub entry_points: EntryPointMetrics,
+}
+
+#[derive(Debug, Default)]
+pub struct EntryPointMetrics {
+    /// The number of build target entry point `.rs` files that declare
+    /// `!#[forbid(unsafe_code)]`.
+    pub forbids_unsafe: u64,
+
+    /// The number of build target entry point `.rs` files that does __not__
+    /// declare `!#[forbid(unsafe_code)]`.
+    pub allows_unsafe: u64,
 }
 
 /// TODO: Write documentation.
 pub struct GeigerContext {
-    pub pack_id_to_counters: HashMap<PackageId, PackageCounters>,
+    pub pack_id_to_metrics: HashMap<PackageId, PackageMetricsRoot>,
     pub rs_files_used: HashMap<PathBuf, u32>,
 }
 
@@ -129,18 +143,73 @@ pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
     ext.to_string_lossy() == file_ext
 }
 
-pub fn find_rs_files_in_package<'a>(
-    pack: &'a Package,
-) -> impl Iterator<Item = PathBuf> + 'a {
-    iter::once(pack)
-        .flat_map(|p| find_rs_files_in_dir(p.root()))
+// TODO: Make a wrapper type for canonical paths and hide all mutable access.
+
+/// Provides information needed to scan for crate root
+/// `#![forbid(unsafe_code)]`.
+/// The wrapped PathBufs are canonicalized.
+enum RsFile {
+    /// Library entry point source file, usually src/lib.rs
+    LibRoot(PathBuf),
+
+    /// Executable entry point source file, usually src/main.rs
+    BinRoot(PathBuf),
+
+    /// Not sure if this is relevant but let's be conservative for now.
+    CustomBuildRoot(PathBuf),
+
+    /// All other .rs files.
+    Other(PathBuf),
 }
 
-pub fn find_rs_files_in_packages<'a>(
+fn find_rs_files_in_package(pack: &Package) -> Vec<RsFile> {
+    // Find all build target entry point source files.
+    let mut canon_targets = HashMap::new();
+    for t in pack.targets() {
+        let path = t.src_path().path();
+        if !path.exists() {
+            // A package published to crates.io is not required to include
+            // everything. We have to skip this build target.
+            continue;
+        }
+        let canon = path
+            .canonicalize() // will Err on non-existing paths.
+            .expect("canonicalize failed."); // FIXME
+        let targets = canon_targets.entry(canon).or_insert_with(Vec::new);
+        targets.push(t);
+    }
+    let mut out = Vec::new();
+    for p in find_rs_files_in_dir(pack.root()) {
+        if !canon_targets.contains_key(&p) {
+            out.push(RsFile::Other(p));
+        }
+    }
+    for (k, v) in canon_targets.into_iter() {
+        for target in v {
+            out.push(into_rs_code_file(target.kind(), k.clone()));
+        }
+    }
+    out
+}
+
+fn into_rs_code_file(kind: &TargetKind, path: PathBuf) -> RsFile {
+    match kind {
+        TargetKind::Lib(_) => RsFile::LibRoot(path),
+        TargetKind::Bin => RsFile::BinRoot(path),
+        TargetKind::Test => RsFile::Other(path),
+        TargetKind::Bench => RsFile::Other(path),
+        TargetKind::ExampleLib(_) => RsFile::Other(path),
+        TargetKind::ExampleBin => RsFile::Other(path),
+        TargetKind::CustomBuild => RsFile::CustomBuildRoot(path),
+    }
+}
+
+fn find_rs_files_in_packages<'a>(
     packs: &'a Vec<&Package>,
-) -> impl Iterator<Item = (PackageId, PathBuf)> + 'a {
+) -> impl Iterator<Item = (PackageId, RsFile)> + 'a {
     packs.iter().flat_map(|pack| {
         find_rs_files_in_package(pack)
+            .into_iter()
             .map(move |path| (pack.package_id(), path))
     })
 }
@@ -152,11 +221,17 @@ pub fn find_unsafe_in_packages<'a, 'b>(
     include_tests: IncludeTests,
     verbosity: Verbosity,
 ) -> GeigerContext {
-    let mut pack_id_to_counters = HashMap::new();
+    let mut pack_id_to_metrics = HashMap::new();
     let packs = packs.get_many(packs.package_ids()).unwrap();
-    let pack_paths = find_rs_files_in_packages(&packs);
-    for (pack_id, path) in pack_paths {
-        let p = &path;
+    let pack_code_files = find_rs_files_in_packages(&packs);
+    for (pack_id, rs_code_file) in pack_code_files {
+        let (is_entry_point, p) = match rs_code_file {
+            RsFile::LibRoot(pb) => (true, pb),
+            RsFile::BinRoot(pb) => (true, pb),
+            RsFile::CustomBuildRoot(pb) => (true, pb),
+            RsFile::Other(pb) => (false, pb),
+        };
+        let p = &p;
         let scan_counter = rs_files_used.get_mut(p);
         let used_by_build = match scan_counter {
             Some(c) => {
@@ -194,20 +269,28 @@ pub fn find_unsafe_in_packages<'a, 'b>(
                     panic!("Failed to parse file: {}, {:?} ", p.display(), e)
                 }
             },
-            Ok(file_counters) => {
-                let pack_counters = pack_id_to_counters
+            Ok(file_metrics) => {
+                let pack_metrics_root = pack_id_to_metrics
                     .entry(pack_id.clone())
-                    .or_insert(PackageCounters::default());
+                    .or_insert(PackageMetricsRoot::default());
                 let target = match used_by_build {
-                    true => &mut pack_counters.used,
-                    false => &mut pack_counters.not_used,
+                    true => &mut pack_metrics_root.used,
+                    false => &mut pack_metrics_root.not_used,
                 };
-                *target = target.clone() + file_counters;
+                target.counters =
+                    target.counters.clone() + file_metrics.counters;
+                if is_entry_point {
+                    let ep = &mut target.entry_points;
+                    match file_metrics.forbids_unsafe {
+                        true => ep.forbids_unsafe += 1,
+                        false => ep.allows_unsafe += 1,
+                    }
+                }
             }
         }
     }
     GeigerContext {
-        pack_id_to_counters,
+        pack_id_to_metrics,
         rs_files_used,
     }
 }
@@ -312,6 +395,10 @@ pub fn resolve_rs_file_deps(
     };
     let mut hm = HashMap::<PathBuf, u32>::new();
     for out_dir in out_dir_args {
+        // TODO: Figure out if the `.d` dep files are used by one or more rustc
+        // calls. It could be useful to know which `.d` dep files belong to
+        // which rustc call. That would allow associating each `.rs` file found
+        // in each dep file with a PackageId.
         for ent in WalkDir::new(&out_dir) {
             let ent = ent.map_err(RsResolveError::Walkdir)?;
             if !is_file_with_ext(&ent, "d") {
@@ -489,8 +576,6 @@ impl Executor for CustomExecutor {
         _handle_stdout: &mut FnMut(&str) -> CargoResult<()>,
         _handle_stderr: &mut FnMut(&str) -> CargoResult<()>,
     ) -> CargoResult<()> {
-        //cmd.exec_with_streaming(handle_stdout, handle_stderr, false)?;
-        //Ok(())
         unimplemented!();
     }
 
@@ -665,6 +750,12 @@ pub fn print_tree<'a>(
     );
 }
 
+enum DetectionStatus {
+    NoneDetectedForbidsUnsafe,
+    NoneDetectedAllowsUnsafe,
+    UnsafeDetected,
+}
+
 fn print_dependency<'a>(
     package: &Node<'a>,
     graph: &Graph<'a>,
@@ -695,23 +786,46 @@ fn print_dependency<'a>(
         }
         Prefix::None => "".into(),
     };
-    let pack_counters =
-        geiger_ctx
-            .pack_id_to_counters
-            .get(&package.id)
-            .expect(&format!(
-                "Failed to get unsafe counters for package: {}",
-                package.id
-            )); // TODO: Try to be panic free and use Result everywhere.
-    let unsafe_found = pack_counters.used.has_unsafe();
-    let colorize = |s: String| {
-        if unsafe_found {
-            s.red().bold()
-        } else {
-            s.green()
-        }
+    let pack_metrics_root = geiger_ctx
+        .pack_id_to_metrics
+        .get(&package.id)
+        .expect(&format!(
+            "Failed to get unsafe counters for package: {}",
+            package.id
+        )); // TODO: Try to be panic free and use Result everywhere.
+    let unsafe_found = pack_metrics_root.used.counters.has_unsafe();
+    let all_used_targets_forbids_unsafe =
+        pack_metrics_root.used.entry_points.forbids_unsafe >= 1
+            && pack_metrics_root.used.entry_points.allows_unsafe == 0;
+
+    let detection_status = match (unsafe_found, all_used_targets_forbids_unsafe)
+    {
+        (false, true) => DetectionStatus::NoneDetectedForbidsUnsafe,
+        (false, false) => DetectionStatus::NoneDetectedAllowsUnsafe,
+        (true, _) => DetectionStatus::UnsafeDetected,
     };
-    let rad = if unsafe_found { "☢" } else { "" };
+
+    let colorize = |s: String| match detection_status {
+        DetectionStatus::NoneDetectedForbidsUnsafe => s.green(),
+        DetectionStatus::NoneDetectedAllowsUnsafe => s.normal(),
+        DetectionStatus::UnsafeDetected => s.red().bold(),
+    };
+
+    let icon = match detection_status {
+        DetectionStatus::NoneDetectedForbidsUnsafe => "🔒",
+        DetectionStatus::NoneDetectedAllowsUnsafe => "❓",
+
+        // TODO: Investigate if Rusts string formatting with alignment is
+        // broken for this emoji, it does seem like it treats this symbol as
+        // a single character in print size but it visually occupies two
+        // characters in iTerm. In Alacritty it occupies one character plus
+        // one empty space, at least on macOS. Test more platforms.
+        //
+        // NOTE: One extra space after the radiation symbol to workaround
+        // suspected formatting bug.
+        DetectionStatus::UnsafeDetected => "☢ ",
+    };
+
     let dep_name = colorize(format!(
         "{}",
         pc.format
@@ -719,8 +833,8 @@ fn print_dependency<'a>(
     ));
     // TODO: Split up table and tree printing and paint into a backbuffer
     // before writing to stdout?
-    let unsafe_info = colorize(table_row(&pack_counters));
-    println!("{}  {: <1} {}{}", unsafe_info, rad, treevines, dep_name);
+    let unsafe_info = colorize(table_row(&pack_metrics_root));
+    println!("{}  {} {}{}", unsafe_info, icon, treevines, dep_name);
     if !new {
         return;
     }
@@ -829,17 +943,20 @@ fn table_row_empty() -> String {
     )
 }
 
-fn table_row(pc: &PackageCounters) -> String {
+fn table_row(r: &PackageMetricsRoot) -> String {
     let fmt = |used: &Count, not_used: &Count| {
         format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
     };
     format!(
         "{: <10} {: <12} {: <6} {: <7} {: <7}",
-        fmt(&pc.used.functions, &pc.not_used.functions),
-        fmt(&pc.used.exprs, &pc.not_used.exprs),
-        fmt(&pc.used.item_impls, &pc.not_used.item_impls),
-        fmt(&pc.used.item_traits, &pc.not_used.item_traits),
-        fmt(&pc.used.methods, &pc.not_used.methods),
+        fmt(&r.used.counters.functions, &r.not_used.counters.functions),
+        fmt(&r.used.counters.exprs, &r.not_used.counters.exprs),
+        fmt(&r.used.counters.item_impls, &r.not_used.counters.item_impls),
+        fmt(
+            &r.used.counters.item_traits,
+            &r.not_used.counters.item_traits
+        ),
+        fmt(&r.used.counters.methods, &r.not_used.counters.methods),
     )
 }
 

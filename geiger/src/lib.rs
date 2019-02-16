@@ -5,6 +5,7 @@
 //! from `cargo`.
 
 #![forbid(unsafe_code)]
+#![forbid(warnings)]
 
 extern crate syn;
 extern crate walkdir;
@@ -101,6 +102,16 @@ impl Add for CounterBlock {
     }
 }
 
+/// Scan result for a single `.rs` file.
+#[derive(Debug, Default)]
+pub struct RsFileMetrics {
+    /// Metrics storage.
+    pub counters: CounterBlock,
+
+    /// This file is decorated with `#![forbid(unsafe_code)]`
+    pub forbids_unsafe: bool,
+}
+
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum IncludeTests {
     Yes,
@@ -111,19 +122,30 @@ struct GeigerSynVisitor {
     /// Count unsafe usage inside tests
     include_tests: IncludeTests,
 
-    /// Metrics storage.
-    counters: CounterBlock,
+    /// The resulting data from a single file scan.
+    metrics: RsFileMetrics,
 
     /// Used by the Visit trait implementation to track the traversal state.
     in_unsafe_block: bool,
+
+    forbid_unsafe_code_attribute: syn::Attribute,
 }
 
 impl GeigerSynVisitor {
     fn new(include_tests: IncludeTests) -> Self {
+        // TODO: Use lazy static?
+        let code = "#![forbid(unsafe_code)]";
+        let forbid_unsafe_code_attribute = match syn::parse_file(code) {
+            Ok(file) => file.attrs[0].clone(),
+            Err(e) => {
+                panic!("Failed to parse hard-coded literal: {}, {}", code, e)
+            }
+        };
         GeigerSynVisitor {
             include_tests,
-            counters: Default::default(),
+            metrics: Default::default(),
             in_unsafe_block: false,
+            forbid_unsafe_code_attribute,
         }
     }
 }
@@ -188,12 +210,20 @@ fn is_test_fn(i: &ItemFn) -> bool {
 }
 
 impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
+    fn visit_file(&mut self, i: &'ast syn::File) {
+        self.metrics.forbids_unsafe = i
+            .attrs
+            .iter()
+            .any(|a| a == &self.forbid_unsafe_code_attribute);
+        syn::visit::visit_file(self, i);
+    }
+
     /// Free-standing functions
     fn visit_item_fn(&mut self, i: &ItemFn) {
         if IncludeTests::No == self.include_tests && is_test_fn(i) {
             return;
         }
-        self.counters.functions.count(i.unsafety.is_some());
+        self.metrics.counters.functions.count(i.unsafety.is_some());
         visit::visit_item_fn(self, i);
     }
 
@@ -215,7 +245,7 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
                 // if self.verbosity == Verbosity::Verbose && self.in_unsafe_block {
                 //     println!("{:#?}", other);
                 // }
-                self.counters.exprs.count(self.in_unsafe_block);
+                self.metrics.counters.exprs.count(self.in_unsafe_block);
                 visit::visit_expr(self, other);
             }
         }
@@ -230,18 +260,24 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
 
     fn visit_item_impl(&mut self, i: &ItemImpl) {
         // unsafe trait impl's
-        self.counters.item_impls.count(i.unsafety.is_some());
+        self.metrics.counters.item_impls.count(i.unsafety.is_some());
         visit::visit_item_impl(self, i);
     }
 
     fn visit_item_trait(&mut self, i: &ItemTrait) {
         // Unsafe traits
-        self.counters.item_traits.count(i.unsafety.is_some());
+        self.metrics
+            .counters
+            .item_traits
+            .count(i.unsafety.is_some());
         visit::visit_item_trait(self, i);
     }
 
     fn visit_impl_item_method(&mut self, i: &ImplItemMethod) {
-        self.counters.methods.count(i.sig.unsafety.is_some());
+        self.metrics
+            .counters
+            .methods
+            .count(i.sig.unsafety.is_some());
         visit::visit_impl_item_method(self, i);
     }
 
@@ -291,8 +327,8 @@ pub fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
 pub fn find_unsafe_in_file(
     p: &Path,
     include_tests: IncludeTests,
-) -> Result<CounterBlock, ScanFileError> {
-    let mut vis = GeigerSynVisitor::new(include_tests);
+) -> Result<RsFileMetrics, ScanFileError> {
+    use syn::visit::Visit;
     let mut file =
         File::open(p).map_err(|e| ScanFileError::Io(e, p.to_path_buf()))?;
     let mut src = vec![];
@@ -302,6 +338,8 @@ pub fn find_unsafe_in_file(
         .map_err(|e| ScanFileError::Utf8(e, p.to_path_buf()))?;
     let syntax = syn::parse_file(&src)
         .map_err(|e| ScanFileError::Syn(e, p.to_path_buf()))?;
-    syn::visit::visit_file(&mut vis, &syntax);
-    Ok(vis.counters)
+    let mut vis = GeigerSynVisitor::new(include_tests);
+    //syn::visit::visit_file(&mut vis, &syntax);
+    vis.visit_file(&syntax);
+    Ok(vis.metrics)
 }
