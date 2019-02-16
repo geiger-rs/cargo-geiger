@@ -55,6 +55,7 @@ use std::path::PathBuf;
 use std::str::{self, FromStr};
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::iter;
 
 #[derive(Debug)]
 pub enum RsResolveError {
@@ -131,8 +132,7 @@ pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
 pub fn find_rs_files_in_package<'a>(
     pack: &'a Package,
 ) -> impl Iterator<Item = PathBuf> + 'a {
-    Some(pack)
-        .into_iter()
+    iter::once(pack)
         .flat_map(|p| find_rs_files_in_dir(p.root()))
 }
 

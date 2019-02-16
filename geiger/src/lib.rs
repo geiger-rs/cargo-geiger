@@ -270,6 +270,7 @@ fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
 
 /// TODO: Review this, should this be public? Hide this as private and export a
 /// `pub fn find_unsafe_in_dir` instead(?).
+/// Or require the caller to perform all directory walking?
 pub fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     let walker = WalkDir::new(dir).into_iter();
     walker.filter_map(|entry| {
