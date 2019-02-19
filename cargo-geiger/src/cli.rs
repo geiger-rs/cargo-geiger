@@ -786,7 +786,7 @@ fn print_dependency<'a>(
         }
         Prefix::None => "".into(),
     };
-    
+
     // TODO: Try to be panic free and use Result everywhere, but separate tree
     // printing and metrics printing first. Use a callback or produce tree rows
     // through an Iterator together with the PackageId and map together the
@@ -797,7 +797,7 @@ fn print_dependency<'a>(
         .expect(&format!(
             "Failed to get unsafe counters for package: {}",
             package.id
-        )); 
+        ));
     let unsafe_found = pack_metrics_root.used.counters.has_unsafe();
     let all_used_targets_forbids_unsafe =
         pack_metrics_root.used.entry_points.forbids_unsafe >= 1
