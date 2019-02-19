@@ -378,7 +378,6 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 
 fn main() {
     env_logger::init();
-
     let mut config = match Config::default() {
         Ok(cfg) => cfg,
         Err(e) => {
@@ -386,9 +385,7 @@ fn main() {
             cargo::exit_with_error(e.into(), &mut shell)
         }
     };
-
     let Opts::Geiger(args) = Opts::from_args();
-
     if let Err(e) = real_main(&args, &mut config) {
         let mut shell = Shell::new();
         cargo::exit_with_error(e, &mut shell)

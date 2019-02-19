@@ -174,7 +174,7 @@ fn find_rs_files_in_package(pack: &Package) -> Vec<RsFile> {
         }
         let canon = path
             .canonicalize() // will Err on non-existing paths.
-            .expect("canonicalize failed."); // FIXME
+            .expect("canonicalize for build target path failed."); // FIXME
         let targets = canon_targets.entry(canon).or_insert_with(Vec::new);
         targets.push(t);
     }
