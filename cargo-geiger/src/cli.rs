@@ -822,8 +822,10 @@ fn print_dependency<'a>(
         // one empty space, at least on macOS. Test more platforms.
         //
         // NOTE: One extra space after the radiation symbol to workaround
-        // suspected formatting bug.
-        DetectionStatus::UnsafeDetected => "☢ ",
+        // suspected formatting bug. There seems to be a special case for this
+        // symbol, it can be printed both as a simple character and as an emoji,
+        // maybe that is part of the puzzle.
+        DetectionStatus::UnsafeDetected => "☢️ ",
     };
 
     let dep_name = colorize(format!(
