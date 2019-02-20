@@ -71,6 +71,9 @@ Roadmap
 Changelog
 ---------
 
+### 0.6.1
+ - A tiny readme fix.
+
 ### 0.6.0
  - There are now three crate scanning result variants [#52]:
    - 🔒 No unsafe usage found and all build target entry point `.rs` source
