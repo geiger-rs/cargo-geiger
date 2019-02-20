@@ -353,7 +353,9 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     {
         println!("    {} = {}", cli::LOCK, forbids);
         println!("    {} = {}", cli::QUESTION_MARK, unknown);
-        println!("    {} = {}", cli::RADS, guilty);
+
+        // The same hack as in cli.rs, see the comment in that file.
+        println!("    {}\r\x1B[6C = {}", cli::RADS, guilty);
     }
     #[cfg(target_os = "windows")]
     {
