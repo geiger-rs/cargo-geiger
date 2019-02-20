@@ -341,9 +341,28 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 
     println!();
     println!("Metric output format: x/y");
-    println!("x = unsafe code used by the build");
-    println!("y = total unsafe code found in the crate");
+    println!("    x = unsafe code used by the build");
+    println!("    y = total unsafe code found in the crate");
     println!();
+
+    println!("Symbols: ");
+    let forbids =  "No `unsafe` usage found, declares #![forbid(unsafe_code)]";
+    let unknown = "No `unsafe` usage found, missing #![forbid(unsafe_code)]";
+    let guilty = "`unsafe` usage found";
+    #[cfg(not(target_os = "windows"))]
+    {
+        println!("    {} = {}", cli::LOCK, forbids);
+        println!("    {} = {}", cli::QUESTION_MARK, unknown);
+        println!("    {} = {}", cli::RADS, guilty);
+    }
+    #[cfg(target_os = "windows")]
+    {
+        println!("    {} = {}", ":)".green(), forbids);
+        println!("    {} = {}", "? ", unknown);
+        println!("    {} = {}", "! ".red().bold(), guilty);
+    }
+    println!();
+
     println!(
         "{}",
         UNSAFE_COUNTERS_HEADER

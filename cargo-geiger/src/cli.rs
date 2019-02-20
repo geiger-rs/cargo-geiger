@@ -57,6 +57,15 @@ use std::str::{self, FromStr};
 use std::sync::Arc;
 use std::sync::Mutex;
 
+#[cfg(not(target_os = "windows"))]
+pub const LOCK: &str = "🔒";
+
+#[cfg(not(target_os = "windows"))]
+pub const QUESTION_MARK: &str = "❓";
+
+#[cfg(not(target_os = "windows"))]
+pub const RADS: &str = "☢️";
+
 #[derive(Debug)]
 pub enum RsResolveError {
     Walkdir(walkdir::Error),
@@ -818,20 +827,21 @@ fn print_dependency<'a>(
 
     // This is a hack, maybe some third party terminal emulators on windows does
     // support emoji? Are there reliable ways to detect this feature or is the
-    // best case to lookup terminal emulator name and version?  Some googling
+    // best case to lookup terminal emulator name and version? Some googling
     // suggests that recent Linux desktop environments do support colored emoji
-    // in the terminal, so let's only disable emoji on Windows.
+    // in the terminal, so let's only disable emoji on Windows. Tested Pop_OS
+    // 18.10, seems to print emoji in the default terminal just fine.
     #[cfg(not(target_os = "windows"))]
     let icon = match detection_status {
-        DetectionStatus::NoneDetectedForbidsUnsafe => "🔒",
-        DetectionStatus::NoneDetectedAllowsUnsafe => "❓",
-        DetectionStatus::UnsafeDetected => "☢️",
+        DetectionStatus::NoneDetectedForbidsUnsafe => LOCK,
+        DetectionStatus::NoneDetectedAllowsUnsafe => QUESTION_MARK,
+        DetectionStatus::UnsafeDetected => RADS,
     };
     #[cfg(target_os = "windows")]
     let icon = match detection_status {
-        DetectionStatus::NoneDetectedForbidsUnsafe => ":)",
-        DetectionStatus::NoneDetectedAllowsUnsafe => " ?",
-        DetectionStatus::UnsafeDetected => " !",
+        DetectionStatus::NoneDetectedForbidsUnsafe => ":)".green(),
+        DetectionStatus::NoneDetectedAllowsUnsafe => "? ".normal(),
+        DetectionStatus::UnsafeDetected => "! ".red().bold(),
     };
 
     let dep_name = colorize(format!(
