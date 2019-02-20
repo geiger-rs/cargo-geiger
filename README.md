@@ -72,7 +72,7 @@ Changelog
 ---------
 
 ### 0.6.0 (unreleased)
- - There are now three crate scanning result variants:
+ - There are now three crate scanning result variants [#52]:
    - 🔒 No unsafe usage found and all build target entry point `.rs` source
      files, used by the build, declare `#![forbid(unsafe_code)]`. Crates like
      this will be printed in green.
@@ -138,5 +138,6 @@ Changelog
 [#38]: https://github.com/anderejd/cargo-geiger/issues/38
 [#40]: https://github.com/anderejd/cargo-geiger/issues/40
 [#46]: https://github.com/anderejd/cargo-geiger/issues/46
+[#52]: https://github.com/anderejd/cargo-geiger/issues/52
 [geiger]: https://crates.io/crates/geiger
 
