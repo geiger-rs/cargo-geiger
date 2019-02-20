@@ -849,7 +849,7 @@ fn print_dependency<'a>(
         pc.format
             .display(&package.id, package.pack.manifest().metadata())
     ));
-    
+
     let unsafe_info = colorize(table_row(&pack_metrics_root));
 
     // Here comes some special control characters to position the cursor

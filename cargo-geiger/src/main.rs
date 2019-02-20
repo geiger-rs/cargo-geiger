@@ -338,7 +338,11 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         pc.include_tests,
         pc.verbosity,
     );
-    println!("    {}...{}", "Scanning".green().bold(), "Done".green().bold());
+    println!(
+        "    {}...{}",
+        "Scanning".green().bold(),
+        "Done".green().bold()
+    );
 
     println!();
     println!("Metric output format: x/y");
@@ -347,7 +351,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     println!();
 
     println!("Symbols: ");
-    let forbids =  "No `unsafe` usage found, declares #![forbid(unsafe_code)]";
+    let forbids = "No `unsafe` usage found, declares #![forbid(unsafe_code)]";
     let unknown = "No `unsafe` usage found, missing #![forbid(unsafe_code)]";
     let guilty = "`unsafe` usage found";
     #[cfg(not(target_os = "windows"))]
