@@ -816,21 +816,22 @@ fn print_dependency<'a>(
         DetectionStatus::UnsafeDetected => s.red().bold(),
     };
 
+    // This is a hack, maybe some third party terminal emulators on windows does
+    // support emoji? Are there reliable ways to detect this feature or is the
+    // best case to lookup terminal emulator name and version?  Some googling
+    // suggests that recent Linux desktop environments do support colored emoji
+    // in the terminal, so let's only disable emoji on Windows.
+    #[cfg(not(target_os = "windows"))]
     let icon = match detection_status {
         DetectionStatus::NoneDetectedForbidsUnsafe => "🔒",
         DetectionStatus::NoneDetectedAllowsUnsafe => "❓",
-
-        // TODO: Investigate if Rusts string formatting with alignment is
-        // broken for this emoji, it does seem like it treats this symbol as
-        // a single character in print size but it visually occupies two
-        // characters in iTerm. In Alacritty it occupies one character plus
-        // one empty space, at least on macOS. Test more platforms.
-        //
-        // NOTE: One extra space after the radiation symbol to workaround
-        // suspected formatting bug. There seems to be a special case for this
-        // symbol, it can be printed both as a simple character and as an emoji,
-        // maybe that is part of the puzzle.
-        DetectionStatus::UnsafeDetected => "☢️ ",
+        DetectionStatus::UnsafeDetected => "☢️",
+    };
+    #[cfg(target_os = "windows")]
+    let icon = match detection_status {
+        DetectionStatus::NoneDetectedForbidsUnsafe => ":)",
+        DetectionStatus::NoneDetectedAllowsUnsafe => " ?",
+        DetectionStatus::UnsafeDetected => " !",
     };
 
     let dep_name = colorize(format!(
@@ -838,10 +839,21 @@ fn print_dependency<'a>(
         pc.format
             .display(&package.id, package.pack.manifest().metadata())
     ));
-    // TODO: Split up table and tree printing and paint into a backbuffer
-    // before writing to stdout?
+    
     let unsafe_info = colorize(table_row(&pack_metrics_root));
-    println!("{}  {} {}{}", unsafe_info, icon, treevines, dep_name);
+
+    // Here comes some special control characters to position the cursor
+    // properly for printing the last column containing the tree vines, after
+    // the emoji icon. This is a workaround for a potential bug where the
+    // radiation emoji will visually cover two characters in width but only
+    // count as a single character if using the column formatting provided by
+    // Rust. This could be unrelated to Rust and a quirk of this particular
+    // symbol or something in the Terminal app on macOS.
+    print!("{}  {}", unsafe_info, icon);
+    print!("\r"); // Return the cursor to the start of the line.
+    print!("\x1B[51C"); // Move the cursor 51 characters to the right.
+    println!("{}{}", treevines, dep_name);
+
     if !new {
         return;
     }
