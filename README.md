@@ -20,7 +20,7 @@ Usage
 Output example
 --------------
 
-![Example output](https://user-images.githubusercontent.com/3704611/42893683-54f16930-8ab5-11e8-87a5-785fe4a1d5d9.png)
+![Example output](https://user-images.githubusercontent.com/3704611/53132247-845f7080-356f-11e9-9c76-a9498d4a744b.png)
 
 
 Why even care about unsafe Rust usage?
