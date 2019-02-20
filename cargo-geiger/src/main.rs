@@ -329,7 +329,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         include_tests,
     };
 
-    eprintln!("Scanning...");
+    // TODO: Use the same progressbar crate as cargo!
+    println!("    {}...", "Scanning".green().bold());
     let geiger_ctx = find_unsafe_in_packages(
         &packages,
         rs_files_used,
@@ -337,7 +338,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         pc.include_tests,
         pc.verbosity,
     );
-    eprintln!("Scanning...Done.");
+    println!("    {}...{}", "Scanning".green().bold(), "Done".green().bold());
 
     println!();
     println!("Metric output format: x/y");

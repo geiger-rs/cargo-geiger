@@ -61,7 +61,7 @@ impl<'a> fmt::Display for Display<'a> {
         for chunk in &self.pattern.0 {
             match *chunk {
                 Chunk::Raw(ref s) => (fmt.write_str(s))?,
-                Chunk::Package => (write!(fmt, "{}", self.package))?,
+                Chunk::Package => (write!(fmt, "{} {}", self.package.name(), self.package.version()))?,
                 Chunk::License => {
                     if let Some(ref license) = self.metadata.license {
                         (write!(fmt, "{}", license))?
