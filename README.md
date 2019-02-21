@@ -81,7 +81,7 @@ Changelog
      this will be printed in green.
    - ❓ No unsafe usage found, but at least one build target entry pount `.rs`
      file, used by the build, does not declare `#[forbid(unsafe_code)]`.  Crates
-     like this will be printed in the default terminal forground color.
+     like this will be printed in the default terminal foreground color.
    - ☢️  Unsafe usage found. Crates like this will be printed in red, same as in
      the previous version.
 
