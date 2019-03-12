@@ -79,7 +79,7 @@ Changelog
    - 🔒 No unsafe usage found and all build target entry point `.rs` source
      files, used by the build, declare `#![forbid(unsafe_code)]`. Crates like
      this will be printed in green.
-   - ❓ No unsafe usage found, but at least one build target entry pount `.rs`
+   - ❓ No unsafe usage found, but at least one build target entry point `.rs`
      file, used by the build, does not declare `#[forbid(unsafe_code)]`.  Crates
      like this will be printed in the default terminal foreground color.
    - ☢️  Unsafe usage found. Crates like this will be printed in red, same as in
