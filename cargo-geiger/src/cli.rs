@@ -176,6 +176,10 @@ fn find_rs_files_in_package(pack: &Package) -> Vec<RsFile> {
     let mut canon_targets = HashMap::new();
     for t in pack.targets() {
         let path = t.src_path().path();
+        let path = match path {
+            None => continue,
+            Some(p) => p,
+        };
         if !path.exists() {
             // A package published to crates.io is not required to include
             // everything. We have to skip this build target.

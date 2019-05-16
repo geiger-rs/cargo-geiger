@@ -14,5 +14,5 @@ license = "Apache-2.0/MIT"
 maintenance = { status = "experimental" }
 
 [dependencies]
-syn = { version = "0.15.26", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
+syn = { version = "0.15.34", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
 walkdir = "2.2.7"
