@@ -13,7 +13,7 @@ Usage
 -----
 
 1. `cargo install cargo-geiger`
-2. Navigate to the same directory as the Cargo.toml you want to analyze.
+2. Navigate to the same directory as the `Cargo.toml` you want to analyze.
 3. `cargo geiger`
 
 
@@ -41,7 +41,7 @@ Why the name?
 
 <https://en.wikipedia.org/wiki/Geiger_counter>
 
-Unsafe Rust and ionizing radiation have something in common, they are both
+Unsafe code and ionizing radiation have something in common, they are both
 inevitable in some situations and both should preferably be safely contained!
 
 
@@ -72,7 +72,7 @@ Changelog
 ---------
 
 ### 0.7.0
- - Updated all dependencies, `geiger` to 0.3.0.
+ - Updated all dependencies, [geiger] to 0.3.0.
 
 ### 0.6.1
  - A tiny readme fix.
@@ -90,7 +90,7 @@ Changelog
 
 ### 0.5.0
  - Moved resusable parts, decoupled from `cargo`, to the new crate
-   [geiger][geiger]. Main github issue: [#30].
+   [geiger]. Main github issue: [#30].
  - Some general refactoring and cleanup.
  - Merge pull request [#46] from alexmaco/dependency_kind_control. add options
    to filter dependencies by kind; defaults to Kind::Normal.

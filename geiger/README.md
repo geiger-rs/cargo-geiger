@@ -1,10 +1,10 @@
 geiger ☢️ 
 =========
 
-This crate provides some library parts used by `cargo-geiger` that are decoupled
-from `cargo`.
+This crate provides some library parts used by [cargo-geiger] that are decoupled
+from [cargo].
 
-For more details please see the README.md in `cargo-geiger`.
+For more details please see the `README.md` in [cargo-geiger].
 
 Changelog
 ---------
@@ -20,4 +20,6 @@ Changelog
 
 [#52]: https://github.com/anderejd/cargo-geiger/pull/52
 [#55]: https://github.com/anderejd/cargo-geiger/pull/55
+[cargo-geiger]: https://crates.io/crates/cargo-geiger
+[cargo]: https://crates.io/crates/cargo
 
