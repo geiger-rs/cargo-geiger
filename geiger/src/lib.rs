@@ -323,14 +323,14 @@ pub fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     })
 }
 
-pub fn find_unsafe_in_string(src: &str, include_tests: IncludeTests) -> Result<RsFileMetrics, syn::Error> {
+pub fn find_unsafe_in_string(
+    src: &str,
+    include_tests: IncludeTests,
+) -> Result<RsFileMetrics, syn::Error> {
     use syn::visit::Visit;
     let syntax = syn::parse_file(&src)?;
-
     let mut vis = GeigerSynVisitor::new(include_tests);
-
     vis.visit_file(&syntax);
-
     Ok(vis.metrics)
 }
 
@@ -339,7 +339,6 @@ pub fn find_unsafe_in_file(
     p: &Path,
     include_tests: IncludeTests,
 ) -> Result<RsFileMetrics, ScanFileError> {
-
     let mut file =
         File::open(p).map_err(|e| ScanFileError::Io(e, p.to_path_buf()))?;
     let mut src = vec![];
@@ -347,7 +346,6 @@ pub fn find_unsafe_in_file(
         .map_err(|e| ScanFileError::Io(e, p.to_path_buf()))?;
     let src = String::from_utf8(src)
         .map_err(|e| ScanFileError::Utf8(e, p.to_path_buf()))?;
-
-    find_unsafe_in_string(&src,include_tests)
+    find_unsafe_in_string(&src, include_tests)
         .map_err(|e| ScanFileError::Syn(e, p.to_path_buf()))
 }
