@@ -71,6 +71,9 @@ Roadmap
 Changelog
 ---------
 
+### 0.7.0
+ - Updated all dependencies, `geiger` to 0.3.0.
+
 ### 0.6.1
  - A tiny readme fix.
 
