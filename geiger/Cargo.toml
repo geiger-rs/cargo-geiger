@@ -16,3 +16,4 @@ maintenance = { status = "experimental" }
 [dependencies]
 syn = { version = "0.15.34", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
 walkdir = "2.2.7"
+proc-macro2 = "0.4.30"
