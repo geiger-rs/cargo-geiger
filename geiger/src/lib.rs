@@ -11,7 +11,6 @@ extern crate proc_macro2;
 extern crate syn;
 extern crate walkdir;
 
-
 use self::walkdir::DirEntry;
 use self::walkdir::WalkDir;
 use std::error::Error;
@@ -210,36 +209,31 @@ fn file_forbids_unsafe(f: &syn::File) -> bool {
     let unsafe_code_ident = Ident::new("unsafe_code", Span::call_site());
     f.attrs
         .iter()
-        .filter(|a| {
-            match a.style {
-                AttrStyle::Inner(_) => true,
-                _ => false,
-            }
+        .filter(|a| match a.style {
+            AttrStyle::Inner(_) => true,
+            _ => false,
         })
-        .filter_map(|a| {
-            a.parse_meta().ok()
-        })
-        .filter(|meta| {
-            match meta {
-                Meta::List(MetaList {
-                    ident,
-                    paren_token: _paren,
-                    nested
-                }) => {
-                    if ident != &forbid_ident {
-                        return false;
-                    }
-                    nested.iter().any(|n| {
-                        match n {
-                            NestedMeta::Meta(Meta::Word(word)) => word == &unsafe_code_ident,
-                            _ => false,
-                        }
-                    })
+        .filter_map(|a| a.parse_meta().ok())
+        .filter(|meta| match meta {
+            Meta::List(MetaList {
+                ident,
+                paren_token: _paren,
+                nested,
+            }) => {
+                if ident != &forbid_ident {
+                    return false;
                 }
-                _ => false,
+                nested.iter().any(|n| match n {
+                    NestedMeta::Meta(Meta::Word(word)) => {
+                        word == &unsafe_code_ident
+                    }
+                    _ => false,
+                })
             }
+            _ => false,
         })
-        .count() > 0
+        .count()
+        > 0
 }
 
 impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
