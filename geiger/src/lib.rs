@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 #![forbid(warnings)]
 
+extern crate proc_macro2;
 extern crate syn;
 extern crate walkdir;
 
@@ -127,25 +128,14 @@ struct GeigerSynVisitor {
 
     /// Used by the Visit trait implementation to track the traversal state.
     in_unsafe_block: bool,
-
-    forbid_unsafe_code_attribute: syn::Attribute,
 }
 
 impl GeigerSynVisitor {
     fn new(include_tests: IncludeTests) -> Self {
-        // TODO: Use lazy static?
-        let code = "#![forbid(unsafe_code)]";
-        let forbid_unsafe_code_attribute = match syn::parse_file(code) {
-            Ok(file) => file.attrs[0].clone(),
-            Err(e) => {
-                panic!("Failed to parse hard-coded literal: {}, {}", code, e)
-            }
-        };
         GeigerSynVisitor {
             include_tests,
             metrics: Default::default(),
             in_unsafe_block: false,
-            forbid_unsafe_code_attribute,
         }
     }
 }
@@ -209,12 +199,46 @@ fn is_test_fn(i: &ItemFn) -> bool {
         .any(|m| meta_is_word_test(&m))
 }
 
+fn file_forbids_unsafe(f: &syn::File) -> bool {
+    use proc_macro2::{Ident, Span};
+    use syn::AttrStyle;
+    use syn::Meta;
+    use syn::MetaList;
+    use syn::NestedMeta;
+    let forbid_ident = Ident::new("forbid", Span::call_site());
+    let unsafe_code_ident = Ident::new("unsafe_code", Span::call_site());
+    f.attrs
+        .iter()
+        .filter(|a| match a.style {
+            AttrStyle::Inner(_) => true,
+            _ => false,
+        })
+        .filter_map(|a| a.parse_meta().ok())
+        .filter(|meta| match meta {
+            Meta::List(MetaList {
+                ident,
+                paren_token: _paren,
+                nested,
+            }) => {
+                if ident != &forbid_ident {
+                    return false;
+                }
+                nested.iter().any(|n| match n {
+                    NestedMeta::Meta(Meta::Word(word)) => {
+                        word == &unsafe_code_ident
+                    }
+                    _ => false,
+                })
+            }
+            _ => false,
+        })
+        .count()
+        > 0
+}
+
 impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
     fn visit_file(&mut self, i: &'ast syn::File) {
-        self.metrics.forbids_unsafe = i
-            .attrs
-            .iter()
-            .any(|a| a == &self.forbid_unsafe_code_attribute);
+        self.metrics.forbids_unsafe = file_forbids_unsafe(i);
         syn::visit::visit_file(self, i);
     }
 
