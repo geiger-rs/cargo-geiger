@@ -71,6 +71,9 @@ Roadmap
 Changelog
 ---------
 
+### Unreleased
+ - [#57]
+
 ### 0.7.0
  - Updated all dependencies, [geiger] to 0.3.0.
 
@@ -145,5 +148,6 @@ Changelog
 [#40]: https://github.com/anderejd/cargo-geiger/issues/40
 [#46]: https://github.com/anderejd/cargo-geiger/issues/46
 [#52]: https://github.com/anderejd/cargo-geiger/issues/52
+[#57]: https://github.com/anderejd/cargo-geiger/issues/57
 [geiger]: https://crates.io/crates/geiger
 

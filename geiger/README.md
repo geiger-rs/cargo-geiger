@@ -9,6 +9,9 @@ For more details please see the `README.md` in [cargo-geiger].
 Changelog
 ---------
 
+### Unreleased
+ - [#57]
+
 ### 0.3.0
  - Added a public function to scan source code strings. [#55]
 
@@ -20,6 +23,7 @@ Changelog
 
 [#52]: https://github.com/anderejd/cargo-geiger/pull/52
 [#55]: https://github.com/anderejd/cargo-geiger/pull/55
+[#57]: https://github.com/anderejd/cargo-geiger/pull/57
 [cargo-geiger]: https://crates.io/crates/cargo-geiger
 [cargo]: https://crates.io/crates/cargo
 
