@@ -302,7 +302,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         // Print all .rs files found through the .d files, in sorted order.
         let mut paths = rs_files_used
             .keys()
-            .map(|k| k.to_owned())
+            .map(std::borrow::ToOwned::to_owned)
             .collect::<Vec<PathBuf>>();
         paths.sort();
         paths
@@ -365,7 +365,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     #[cfg(target_os = "windows")]
     {
         println!("    {} = {}", ":)".green(), forbids);
-        println!("    {} = {}", "? ", unknown);
+        println!("    {} = ? ", unknown);
         println!("    {} = {}", "! ".red().bold(), guilty);
     }
     println!();

@@ -51,9 +51,10 @@ pub struct Count {
 
 impl Count {
     fn count(&mut self, is_unsafe: bool) {
-        match is_unsafe {
-            true => self.unsafe_ += 1,
-            false => self.safe += 1,
+        if is_unsafe {
+            self.unsafe_ += 1;
+        } else {
+            self.safe += 1;
         }
     }
 }
@@ -149,9 +150,10 @@ impl GeigerSynVisitor {
 /// TODO: Investigate if the needed information can be emitted by rustc today.
 fn is_test_mod(i: &ItemMod) -> bool {
     use syn::Meta;
+    use syn::Attribute;
     i.attrs
         .iter()
-        .flat_map(|a| a.interpret_meta())
+        .flat_map(Attribute::interpret_meta)
         .any(|m| match m {
             Meta::List(ml) => meta_list_is_cfg_test(&ml),
             _ => false,
@@ -193,9 +195,10 @@ fn meta_is_word_test(m: &syn::Meta) -> bool {
 }
 
 fn is_test_fn(i: &ItemFn) -> bool {
+    use syn::Attribute;
     i.attrs
         .iter()
-        .flat_map(|a| a.interpret_meta())
+        .flat_map(Attribute::interpret_meta)
         .any(|m| meta_is_word_test(&m))
 }
 
