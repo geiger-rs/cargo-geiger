@@ -149,8 +149,8 @@ impl GeigerSynVisitor {
 /// as a general filter for included code.
 /// TODO: Investigate if the needed information can be emitted by rustc today.
 fn is_test_mod(i: &ItemMod) -> bool {
-    use syn::Meta;
     use syn::Attribute;
+    use syn::Meta;
     i.attrs
         .iter()
         .flat_map(Attribute::interpret_meta)

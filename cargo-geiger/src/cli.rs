@@ -218,7 +218,7 @@ fn into_rs_code_file(kind: &TargetKind, path: PathBuf) -> RsFile {
 }
 
 fn find_rs_files_in_packages<'a>(
-    packs: &'a[&Package],
+    packs: &'a [&Package],
 ) -> impl Iterator<Item = (PackageId, RsFile)> + 'a {
     packs.iter().flat_map(|pack| {
         find_rs_files_in_package(pack)
@@ -274,13 +274,17 @@ pub fn find_unsafe_in_packages<'a, 'b>(
             }
         };
         match find_unsafe_in_file(p, include_tests) {
-            Err(e) => { 
+            Err(e) => {
                 if allow_partial_results {
-                    eprintln!("Failed to parse file: {}, {:?} ", p.display(), e);
+                    eprintln!(
+                        "Failed to parse file: {}, {:?} ",
+                        p.display(),
+                        e
+                    );
                 } else {
                     panic!("Failed to parse file: {}, {:?} ", p.display(), e);
                 }
-            },
+            }
             Ok(file_metrics) => {
                 let pack_metrics_root = pack_id_to_metrics
                     .entry(pack_id)
@@ -808,7 +812,9 @@ fn print_dependency<'a>(
     let pack_metrics_root = geiger_ctx
         .pack_id_to_metrics
         .get(&package.id)
-        .unwrap_or_else(|| panic!("Failed to get unsafe counters for package: {}", package.id));
+        .unwrap_or_else(|| {
+            panic!("Failed to get unsafe counters for package: {}", package.id)
+        });
     let unsafe_found = pack_metrics_root.used.counters.has_unsafe();
     let all_used_targets_forbids_unsafe =
         pack_metrics_root.used.entry_points.forbids_unsafe >= 1
