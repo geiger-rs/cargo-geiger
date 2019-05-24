@@ -33,7 +33,8 @@ pub enum ScanFileError {
 
 impl Error for ScanFileError {}
 
-/// Forward Display to Debug. See the crate root documentation.
+/// Forward Display to Debug, probably good enough for 
+/// programmer facing error messages.
 impl fmt::Display for ScanFileError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self, f)
