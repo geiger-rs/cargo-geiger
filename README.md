@@ -135,13 +135,13 @@ Changelog
    and better compact mode can be added later if requested.
 
 ### 0.2.0
- - (alexmaco) Table based default output format. Old format still available by
-   `--compact`.
+ - Table based output format [#9].
 
 ### 0.1.x
  - Initial experimental versions.
  - Mostly README.md updates.
 
+[#9]: https://github.com/anderejd/cargo-geiger/pull/9
 [#28]: https://github.com/anderejd/cargo-geiger/issues/28
 [#29]: https://github.com/anderejd/cargo-geiger/issues/29
 [#30]: https://github.com/anderejd/cargo-geiger/issues/30
