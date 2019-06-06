@@ -14,12 +14,12 @@ version = "0.7.0"
 maintenance = { status = "experimental" }
 
 [dependencies]
-cargo = "0.35.0"
+cargo = "0.36.0"
 clap = "2.33.0"
 colored = "1.8.0"
 env_logger = "0.6.1"
 failure = "0.1.5"
 geiger = { path = "../geiger", version = "0.3.0" }
 petgraph = "0.4.13"
-structopt = "0.2.15"
+structopt = "0.2.17"
 walkdir = "2.2.7"

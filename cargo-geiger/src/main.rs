@@ -246,7 +246,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         None => package.package_id(),
     };
 
-    let config_host = config.rustc(Some(&ws))?.host;
+    let config_host = config.load_global_rustc(Some(&ws))?.host;
     let target = if args.all_targets {
         None
     } else {
