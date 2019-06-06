@@ -157,14 +157,14 @@ dependencies = [
 
 [[package]]
 name = "cargo-geiger"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "cargo 0.36.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "colored 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "geiger 0.3.0",
+ "geiger 0.3.1",
  "petgraph 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 2.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -443,7 +443,7 @@ dependencies = [
 
 [[package]]
 name = "geiger"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "proc-macro2 0.4.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 0.15.34 (registry+https://github.com/rust-lang/crates.io-index)",
