@@ -65,16 +65,14 @@ Roadmap
  - An optional whitelist file at the root crate level to specify crates that are
    trusted to use unsafe (should only have an effect if placed in the root
    project).
- - Needs more refactoring.
- - All panics should be replaced with Result based errors handling.
- - Additional output formats.
 
 
 Changelog
 ---------
 
-### Unreleased
- - [#57]
+### 0.7.1
+ - Bugfix, related to attributes, in [geiger] [#57].
+ - Updated all dependencies.
 
 ### 0.7.0
  - Updated all dependencies, [geiger] to 0.3.0.

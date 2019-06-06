@@ -9,8 +9,8 @@ For more details please see the `README.md` in [cargo-geiger].
 Changelog
 ---------
 
-### Unreleased
- - [#57]
+### 0.3.1
+ - Bugfix for attributes [#57].
 
 ### 0.3.0
  - Added a public function to scan source code strings. [#55]
