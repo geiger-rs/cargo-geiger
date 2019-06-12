@@ -70,6 +70,9 @@ Roadmap
 Changelog
 ---------
 
+### 0.7.2
+ - Updated dependencies to fix [#59].
+
 ### 0.7.1
  - Bugfix, related to attributes, in [geiger] [#57].
  - Updated all dependencies.
@@ -149,5 +152,6 @@ Changelog
 [#46]: https://github.com/anderejd/cargo-geiger/issues/46
 [#52]: https://github.com/anderejd/cargo-geiger/issues/52
 [#57]: https://github.com/anderejd/cargo-geiger/issues/57
+[#59]: https://github.com/anderejd/cargo-geiger/issues/59
 [geiger]: https://crates.io/crates/geiger
 
