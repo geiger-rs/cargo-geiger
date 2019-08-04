@@ -10,6 +10,7 @@
 
 extern crate cargo;
 extern crate colored;
+extern crate console;
 extern crate env_logger;
 extern crate failure;
 extern crate geiger;
@@ -56,15 +57,6 @@ use std::path::PathBuf;
 use std::str::{self, FromStr};
 use std::sync::Arc;
 use std::sync::Mutex;
-
-#[cfg(not(target_os = "windows"))]
-pub const LOCK: &str = "🔒";
-
-#[cfg(not(target_os = "windows"))]
-pub const QUESTION_MARK: &str = "❓";
-
-#[cfg(not(target_os = "windows"))]
-pub const RADS: &str = "☢️";
 
 #[derive(Debug)]
 pub enum RsResolveError {
@@ -127,9 +119,10 @@ pub struct EntryPointMetrics {
 }
 
 /// TODO: Write documentation.
-pub struct GeigerContext {
+pub struct GeigerContext<'s> {
     pub pack_id_to_metrics: HashMap<PackageId, PackageMetricsRoot>,
     pub rs_files_used: HashMap<PathBuf, u32>,
+    pub emoji_symbols: &'s EmojiSymbols
 }
 
 // TODO: Review this. The same code exist in the `geiger` library crate, but is
@@ -227,13 +220,14 @@ fn find_rs_files_in_packages<'a>(
     })
 }
 
-pub fn find_unsafe_in_packages<'a, 'b>(
+pub fn find_unsafe_in_packages<'a, 'b, 's>(
     packs: &'a PackageSet<'b>,
     mut rs_files_used: HashMap<PathBuf, u32>,
     allow_partial_results: bool,
     include_tests: IncludeTests,
     verbosity: Verbosity,
-) -> GeigerContext {
+    emoji_symbols: &'s EmojiSymbols
+) -> GeigerContext<'s> {
     let mut pack_id_to_metrics = HashMap::new();
     let packs = packs.get_many(packs.package_ids()).unwrap();
     let pack_code_files = find_rs_files_in_packages(&packs);
@@ -310,9 +304,11 @@ pub fn find_unsafe_in_packages<'a, 'b>(
     GeigerContext {
         pack_id_to_metrics,
         rs_files_used,
+        emoji_symbols
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
 pub enum Charset {
     Utf8,
     Ascii,
@@ -357,6 +353,51 @@ pub const ASCII_SYMBOLS: Symbols = Symbols {
     ell: "`",
     right: "-",
 };
+
+#[derive(Clone, Copy)]
+pub enum SymbolKind {
+    Lock = 0,
+    QuestionMark = 1,
+    Rads = 2
+}
+
+pub struct EmojiSymbols {
+    charset: Charset,
+    emojis: [&'static str; 3],
+    fallbacks: [colored::ColoredString; 3]
+}
+
+impl EmojiSymbols {
+    pub fn new(charset: Charset) -> EmojiSymbols {
+        Self {
+            charset: charset,
+            emojis: [
+                "🔒",
+                "❓",
+                "☢️",
+            ],
+            fallbacks: [
+                ":)".green(),
+                "?".normal(),
+                "!".red().bold()
+            ]
+        }
+    }
+    
+    pub fn will_output_emoji(&self) -> bool {
+        self.charset == Charset::Utf8
+            && console::Term::stdout().features().wants_emoji()
+    }
+
+    pub fn emoji(&self, kind: SymbolKind) -> Box<dyn std::fmt::Display> {
+        let idx = kind as usize;
+        if self.will_output_emoji() {
+            Box::new(self.emojis[idx])
+        } else {
+            Box::new(self.fallbacks[idx].clone())
+        }
+    }
+}
 
 pub struct PrintConfig<'a> {
     /// Don't truncate dependencies that have already been displayed.
@@ -842,17 +883,15 @@ fn print_dependency<'a>(
     // suggests that recent Linux desktop environments do support colored emoji
     // in the terminal, so let's only disable emoji on Windows. Tested Pop_OS
     // 18.10, seems to print emoji in the default terminal just fine.
-    #[cfg(not(target_os = "windows"))]
+
+    let emoji_symbols = &geiger_ctx.emoji_symbols;
     let icon = match detection_status {
-        DetectionStatus::NoneDetectedForbidsUnsafe => LOCK,
-        DetectionStatus::NoneDetectedAllowsUnsafe => QUESTION_MARK,
-        DetectionStatus::UnsafeDetected => RADS,
-    };
-    #[cfg(target_os = "windows")]
-    let icon = match detection_status {
-        DetectionStatus::NoneDetectedForbidsUnsafe => ":)".green(),
-        DetectionStatus::NoneDetectedAllowsUnsafe => "? ".normal(),
-        DetectionStatus::UnsafeDetected => "! ".red().bold(),
+        DetectionStatus::NoneDetectedForbidsUnsafe =>
+            emoji_symbols.emoji(SymbolKind::Lock),
+        DetectionStatus::NoneDetectedAllowsUnsafe =>
+            emoji_symbols.emoji(SymbolKind::QuestionMark),
+        DetectionStatus::UnsafeDetected =>
+            emoji_symbols.emoji(SymbolKind::Rads)
     };
 
     let dep_name = colorize(format!(
@@ -863,6 +902,9 @@ fn print_dependency<'a>(
 
     let unsafe_info = colorize(table_row(&pack_metrics_root));
 
+    let shift_chars = unsafe_info.chars().count() + 4;
+    print!("{}  {: <2}", unsafe_info, icon);
+
     // Here comes some special control characters to position the cursor
     // properly for printing the last column containing the tree vines, after
     // the emoji icon. This is a workaround for a potential bug where the
@@ -870,10 +912,12 @@ fn print_dependency<'a>(
     // count as a single character if using the column formatting provided by
     // Rust. This could be unrelated to Rust and a quirk of this particular
     // symbol or something in the Terminal app on macOS.
-    print!("{}  {}", unsafe_info, icon);
-    print!("\r"); // Return the cursor to the start of the line.
-    print!("\x1B[51C"); // Move the cursor 51 characters to the right.
-    println!("{}{}", treevines, dep_name);
+    if emoji_symbols.will_output_emoji() {
+        print!("\r"); // Return the cursor to the start of the line.
+        print!("\x1B[{}C", shift_chars); // Move the cursor to the right so that it points to the icon character.
+    }
+
+    println!(" {}{}", treevines, dep_name);
 
     if !new {
         return;

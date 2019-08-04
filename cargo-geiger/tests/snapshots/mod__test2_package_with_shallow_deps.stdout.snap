@@ -1,5 +1,5 @@
 ---
-created: "2019-08-04T17:08:43.014906197Z"
+created: "2019-08-04T18:52:10.690069132Z"
 creator: insta@0.10.0
 source: cargo-geiger/tests/mod.rs
 expression: stdout
@@ -10,13 +10,13 @@ Metric output format: x/y
     y = total unsafe code found in the crate
 
 Symbols: 
-    🔒 = No `unsafe` usage found, declares #![forbid(unsafe_code)]
-    ❓ = No `unsafe` usage found, missing #![forbid(unsafe_code)]
-    ☢️[6C = `unsafe` usage found
+    :) = No `unsafe` usage found, declares #![forbid(unsafe_code)]
+    ?  = No `unsafe` usage found, missing #![forbid(unsafe_code)]
+    !  = `unsafe` usage found
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-1/1        0/0          0/0    0/0     0/0      ☢️[51Ctest2_package_with_shallow_deps 0.1.0
-0/0        2/2          0/0    0/0     0/0      ☢️[51C├── ref_slice 1.1.1
-1/1        1/1          0/0    0/0     0/0      ☢️[51C└── test1_package_with_no_deps 0.1.0
+1/1        0/0          0/0    0/0     0/0      !  test2_package_with_shallow_deps 0.1.0
+0/0        2/2          0/0    0/0     0/0      !  |-- ref_slice 1.1.1
+1/1        1/1          0/0    0/0     0/0      !  `-- test1_package_with_no_deps 0.1.0
 

@@ -341,14 +341,18 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         include_tests,
     };
 
+    let emoji_symbols = cli::EmojiSymbols::new(args.charset);
+
     let mut progress = cargo::util::Progress::new("Scanning", config);
     progress.tick_now(0, rs_files_used.len(), "in progress")?;
+    
     let geiger_ctx = find_unsafe_in_packages(
         &packages,
         rs_files_used,
         pc.allow_partial_results,
         pc.include_tests,
         pc.verbosity,
+        &emoji_symbols
     );
     progress.clear();
     config.shell().status("Scanning", "done")?;
@@ -363,20 +367,17 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let forbids = "No `unsafe` usage found, declares #![forbid(unsafe_code)]";
     let unknown = "No `unsafe` usage found, missing #![forbid(unsafe_code)]";
     let guilty = "`unsafe` usage found";
-    #[cfg(not(target_os = "windows"))]
-    {
-        println!("    {} = {}", cli::LOCK, forbids);
-        println!("    {} = {}", cli::QUESTION_MARK, unknown);
 
-        // The same hack as in cli.rs, see the comment in that file.
-        println!("    {}\r\x1B[6C = {}", cli::RADS, guilty);
-    }
-    #[cfg(target_os = "windows")]
-    {
-        println!("    {} = {}", ":)".green(), forbids);
-        println!("    {} = ? ", unknown);
-        println!("    {} = {}", "! ".red().bold(), guilty);
-    }
+    let shift_sequence = if emoji_symbols.will_output_emoji() {
+        "\r\x1B[7C" // The radiation icon's Unicode width is 2,
+                    // but by most terminals it seems to be rendered at width 1.
+    } else {
+        ""
+    };
+
+    println!("    {: <2} = {}", emoji_symbols.emoji(cli::SymbolKind::Lock), forbids);
+    println!("    {: <2} = {}", emoji_symbols.emoji(cli::SymbolKind::QuestionMark), unknown);
+    println!("    {: <2}{} = {}", emoji_symbols.emoji(cli::SymbolKind::Rads), shift_sequence, guilty);
     println!();
 
     println!(

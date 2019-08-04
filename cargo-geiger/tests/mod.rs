@@ -26,6 +26,9 @@ fn test_package(name: &str) {
         .arg("geiger")
         .arg("--color=never")
         .arg("--quiet=true")
+        .arg("--charset=ascii")
+        .arg("--all-targets")
+        .arg("--all-features")
         .current_dir(test_case_root_dir)
         .output()
         .expect("failed to run `cargo-geiger`");

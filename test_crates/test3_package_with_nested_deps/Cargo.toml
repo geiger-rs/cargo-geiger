@@ -5,5 +5,5 @@ edition = "2018"
 
 [dependencies]
 doc-comment = "0.3.1"
-num_cpus = { git = "https://github.com/seanmonstar/num_cpus.git", rev = "3a8994ba" }
+itertools = { git = "https://github.com/rust-itertools/itertools.git", rev = "8761fbefb3b209" }
 test2_package_with_shallow_deps = { path = "../test2_package_with_shallow_deps" }
