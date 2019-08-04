@@ -1,0 +1,9 @@
+[package]
+name = "test3_package_with_nested_deps"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+doc-comment = "0.3.1"
+num_cpus = { git = "https://github.com/seanmonstar/num_cpus.git", rev = "3a8994ba" }
+test2_package_with_shallow_deps = { path = "../test2_package_with_shallow_deps" }

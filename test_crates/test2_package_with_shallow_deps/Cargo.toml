@@ -1,0 +1,9 @@
+[package]
+name = "test2_package_with_shallow_deps"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+ref_slice = "1.1.1"
+test1_package_with_no_deps = { path = "../test1_package_with_no_deps" }
+

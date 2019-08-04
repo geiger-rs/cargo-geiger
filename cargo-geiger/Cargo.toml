@@ -23,3 +23,10 @@ geiger = { path = "../geiger", version = "0.3.2" }
 petgraph = "0.4.13"
 structopt = "0.2.16"
 walkdir = "2.2.8"
+
+[dev-dependencies]
+assert_cmd = "0.11"
+better-panic = "0.1"
+insta = "0.10"
+regex = "1"
+rstest = "0.3"

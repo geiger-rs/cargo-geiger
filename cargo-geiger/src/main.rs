@@ -213,6 +213,8 @@ pub fn build_compile_options<'a>(
 }
 
 fn real_main(args: &Args, config: &mut Config) -> CliResult {
+    use cargo::core::shell::ColorChoice;
+    
     let target_dir = None; // Doesn't add any value for cargo-geiger.
     config.configure(
         args.verbose,
@@ -228,6 +230,15 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     } else {
         Verbosity::Verbose
     };
+    match config.shell().color_choice() {
+        ColorChoice::Always =>
+            colored::control::set_override(true),
+        ColorChoice::Never =>
+            colored::control::set_override(false),
+        ColorChoice::CargoAuto =>
+            {}
+    }
+
     let ws = workspace(config, args.manifest_path.clone())?;
     let package = ws.current()?;
     let mut registry = registry(config, &package)?;
@@ -330,8 +341,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         include_tests,
     };
 
-    // TODO: Use the same progressbar crate as cargo!
-    println!("    {}...", "Scanning".green().bold());
+    let mut progress = cargo::util::Progress::new("Scanning", config);
+    progress.tick_now(0, rs_files_used.len(), "in progress")?;
     let geiger_ctx = find_unsafe_in_packages(
         &packages,
         rs_files_used,
@@ -339,11 +350,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         pc.include_tests,
         pc.verbosity,
     );
-    println!(
-        "    {}...{}",
-        "Scanning".green().bold(),
-        "Done".green().bold()
-    );
+    progress.clear();
+    config.shell().status("Scanning", "done")?;
 
     println!();
     println!("Metric output format: x/y");
