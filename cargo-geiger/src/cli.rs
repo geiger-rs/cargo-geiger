@@ -400,7 +400,7 @@ pub fn resolve_rs_file_deps(
             cwd: config.cwd().to_path_buf(),
             inner_ctx: inner_arc.clone(),
         };
-        let exec: Arc<Executor> = Arc::new(cust_exec);
+        let exec: Arc<dyn Executor> = Arc::new(cust_exec);
         ops::compile_with_exec(ws, &copt, &exec)
             .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
     }
@@ -591,8 +591,8 @@ impl Executor for CustomExecutor {
         _id: PackageId,
         _target: &Target,
         _mode: CompileMode,
-        _handle_stdout: &mut FnMut(&str) -> CargoResult<()>,
-        _handle_stderr: &mut FnMut(&str) -> CargoResult<()>,
+        _handle_stdout: &mut dyn FnMut(&str) -> CargoResult<()>,
+        _handle_stderr: &mut dyn FnMut(&str) -> CargoResult<()>,
     ) -> CargoResult<()> {
         unimplemented!();
     }
