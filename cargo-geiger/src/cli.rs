@@ -30,7 +30,7 @@ use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::core::shell::Verbosity;
 use cargo::core::Target;
-use cargo::core::{Package, PackageId, Resolve, Workspace};
+use cargo::core::{Package, PackageId, PackageIdSpec, Resolve, Workspace};
 use cargo::ops;
 use cargo::ops::CleanOptions;
 use cargo::ops::CompileOptions;
@@ -649,6 +649,7 @@ pub fn registry<'a>(
 }
 
 pub fn resolve<'a, 'cfg>(
+    package_id: PackageId,
     registry: &mut PackageRegistry<'cfg>,
     ws: &'a Workspace<'cfg>,
     features: Option<String>,
@@ -657,7 +658,6 @@ pub fn resolve<'a, 'cfg>(
 ) -> CargoResult<(PackageSet<'a>, Resolve)> {
     let features =
         Method::split_features(&features.into_iter().collect::<Vec<_>>());
-    let (packages, resolve) = ops::resolve_ws(ws)?;
     let method = Method::Required {
         dev_deps: true,
         features: &features,
@@ -668,12 +668,15 @@ pub fn resolve<'a, 'cfg>(
         registry,
         ws,
         method,
-        Some(&resolve),
         None,
-        &[],
+        None,
+        &[PackageIdSpec::from_package_id(package_id)],
         true,
         true,
     )?;
+    let packages = ops::get_resolved_packages(
+        &resolve,
+        PackageRegistry::new(ws.config())?)?;
     Ok((packages, resolve))
 }
 

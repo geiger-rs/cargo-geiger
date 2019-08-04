@@ -232,6 +232,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let package = ws.current()?;
     let mut registry = registry(config, &package)?;
     let (packages, resolve) = resolve(
+        package.package_id(),
         &mut registry,
         &ws,
         args.features.clone(),
