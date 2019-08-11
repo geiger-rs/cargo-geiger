@@ -705,11 +705,12 @@ pub fn resolve<'a, 'cfg>(
         all_features,
         uses_default_features: !no_default_features,
     };
+    let prev = ops::load_pkg_lockfile(ws)?;
     let resolve = ops::resolve_with_previous(
         registry,
         ws,
         method,
-        None,
+        prev.as_ref(),
         None,
         &[PackageIdSpec::from_package_id(package_id)],
         true,

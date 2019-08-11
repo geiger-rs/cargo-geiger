@@ -11,7 +11,8 @@ use std::process::Command;
     case("test2_package_with_shallow_deps"),
     case("test3_package_with_nested_deps"),
     case("test4_workspace_with_top_level_package"),
-    case("test5_workspace_with_virtual_manifest")
+    case("test5_workspace_with_virtual_manifest"),
+    case("test6_cargo_lock_out_of_date")
 )]
 fn test_package(name: &str) {
     better_panic::install();

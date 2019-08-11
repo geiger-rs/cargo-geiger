@@ -1,0 +1,9 @@
+[package]
+name = "geiger-test"
+version = "0.1.0"
+authors = ["anderejd <rajder@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+idna = "0.1.5"
+generational-arena = "0.2.2"

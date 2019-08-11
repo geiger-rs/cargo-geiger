@@ -12,4 +12,3 @@
 **/*.rs.bk
 
 /test_crates/**/target/
-/test_crates/**/Cargo.lock
