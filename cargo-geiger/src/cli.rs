@@ -220,18 +220,21 @@ fn find_rs_files_in_packages<'a>(
     })
 }
 
-pub fn find_unsafe_in_packages<'a, 'b, 's>(
+pub fn find_unsafe_in_packages<'a, 'b, 's, F>(
     packs: &'a PackageSet<'b>,
     mut rs_files_used: HashMap<PathBuf, u32>,
     allow_partial_results: bool,
     include_tests: IncludeTests,
     verbosity: Verbosity,
-    emoji_symbols: &'s EmojiSymbols
-) -> GeigerContext<'s> {
+    emoji_symbols: &'s EmojiSymbols,
+    mut progress_step: F
+) -> GeigerContext<'s>
+    where F: FnMut(usize, usize) -> CargoResult<()> {
     let mut pack_id_to_metrics = HashMap::new();
     let packs = packs.get_many(packs.package_ids()).unwrap();
-    let pack_code_files = find_rs_files_in_packages(&packs);
-    for (pack_id, rs_code_file) in pack_code_files {
+    let pack_code_files: Vec<_> = find_rs_files_in_packages(&packs).collect();
+    let pack_code_file_count = pack_code_files.len();
+    for (i, (pack_id, rs_code_file)) in pack_code_files.into_iter().enumerate() {
         let (is_entry_point, p) = match rs_code_file {
             RsFile::LibRoot(pb) => (true, pb),
             RsFile::BinRoot(pb) => (true, pb),
@@ -300,6 +303,8 @@ pub fn find_unsafe_in_packages<'a, 'b, 's>(
                 }
             }
         }
+
+        let _ = progress_step(i, pack_code_file_count);
     }
     GeigerContext {
         pack_id_to_metrics,

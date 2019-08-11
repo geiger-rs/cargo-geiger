@@ -214,7 +214,8 @@ pub fn build_compile_options<'a>(
 
 fn real_main(args: &Args, config: &mut Config) -> CliResult {
     use cargo::core::shell::ColorChoice;
-    
+    use cargo::util::errors::CargoResult;
+
     let target_dir = None; // Doesn't add any value for cargo-geiger.
     config.configure(
         args.verbose,
@@ -344,15 +345,16 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let emoji_symbols = cli::EmojiSymbols::new(args.charset);
 
     let mut progress = cargo::util::Progress::new("Scanning", config);
-    progress.tick_now(0, rs_files_used.len(), "in progress")?;
-    
     let geiger_ctx = find_unsafe_in_packages(
         &packages,
         rs_files_used,
         pc.allow_partial_results,
         pc.include_tests,
         pc.verbosity,
-        &emoji_symbols
+        &emoji_symbols,
+        |i, count| -> CargoResult<()> {
+            progress.tick(i, count)
+        }
     );
     progress.clear();
     config.shell().status("Scanning", "done")?;
