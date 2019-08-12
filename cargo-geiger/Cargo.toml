@@ -17,9 +17,17 @@ maintenance = { status = "experimental" }
 cargo = "0.36.0"
 clap = "2.33.0"
 colored = "1.8.0"
+console = "*"
 env_logger = "0.6.1"
 failure = "0.1.5"
 geiger = { path = "../geiger", version = "0.3.2" }
 petgraph = "0.4.13"
 structopt = "0.2.16"
 walkdir = "2.2.8"
+
+[dev-dependencies]
+assert_cmd = "0.11"
+better-panic = "0.1"
+insta = "0.10"
+regex = "1"
+rstest = "0.3"

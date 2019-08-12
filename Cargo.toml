@@ -1,5 +1,12 @@
 [workspace]
-
+exclude = [
+    "test_crates/test1_package_with_no_deps",
+    "test_crates/test2_package_with_shallow_deps",
+    "test_crates/test3_package_with_nested_deps",
+    "test_crates/test4_workspace_with_top_level_package",
+    "test_crates/test5_workspace_with_virtual_manifest",
+    "test_crates/test6_cargo_lock_out_of_date"
+]
 members = [
     "cargo-geiger",
     "geiger",

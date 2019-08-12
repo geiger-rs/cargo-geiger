@@ -10,3 +10,5 @@
 **/*.rs.bk
 /target/
 **/*.rs.bk
+
+/test_crates/**/target/

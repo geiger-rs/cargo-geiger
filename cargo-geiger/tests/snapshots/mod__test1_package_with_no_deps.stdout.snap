@@ -1,0 +1,20 @@
+---
+created: "2019-08-04T18:33:42.673360579Z"
+creator: insta@0.10.0
+source: cargo-geiger/tests/mod.rs
+expression: stdout
+---
+
+Metric output format: x/y
+    x = unsafe code used by the build
+    y = total unsafe code found in the crate
+
+Symbols: 
+    :) = No `unsafe` usage found, declares #![forbid(unsafe_code)]
+    ?  = No `unsafe` usage found, missing #![forbid(unsafe_code)]
+    !  = `unsafe` usage found
+
+Functions  Expressions  Impls  Traits  Methods  Dependency
+
+1/1        1/1          0/0    0/0     0/0      !  test1_package_with_no_deps 0.1.0
+

@@ -1,0 +1,8 @@
+---
+created: "2019-08-04T17:26:25.848181323Z"
+creator: insta@0.10.0
+source: cargo-geiger/tests/mod.rs
+expression: stderr
+---
+error: manifest path `{MANIFEST_PATH}` is a virtual manifest, but this command requires running against an actual package in this workspace
+

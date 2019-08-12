@@ -1,0 +1,28 @@
+---
+created: "2019-08-11T20:44:05.368283209Z"
+creator: insta@0.10.0
+source: cargo-geiger/tests/mod.rs
+expression: stdout
+---
+
+Metric output format: x/y
+    x = unsafe code used by the build
+    y = total unsafe code found in the crate
+
+Symbols: 
+    :) = No `unsafe` usage found, declares #![forbid(unsafe_code)]
+    ?  = No `unsafe` usage found, missing #![forbid(unsafe_code)]
+    !  = `unsafe` usage found
+
+Functions  Expressions  Impls  Traits  Methods  Dependency
+
+0/0        0/0          0/0    0/0     0/0      :) geiger-test 0.1.0
+0/0        0/0          0/0    0/0     0/0      :) |-- generational-arena 0.2.2
+0/0        0/0          0/0    0/0     0/0      ?  |   `-- cfg-if 0.1.9
+0/0        1/1          0/0    0/0     0/0      !  `-- idna 0.1.5
+0/0        0/0          0/0    0/0     0/0      ?      |-- matches 0.1.8
+0/0        0/0          0/0    0/0     0/0      :)     |-- unicode-bidi 0.3.4
+0/0        0/0          0/0    0/0     0/0      ?      |   `-- matches 0.1.8
+0/0        20/20        0/0    0/0     0/0      !      `-- unicode-normalization 0.1.8
+2/2        318/318      4/4    1/1     13/13    !          `-- smallvec 0.6.9
+

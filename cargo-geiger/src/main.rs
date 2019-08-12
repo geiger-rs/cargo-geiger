@@ -213,6 +213,9 @@ pub fn build_compile_options<'a>(
 }
 
 fn real_main(args: &Args, config: &mut Config) -> CliResult {
+    use cargo::core::shell::ColorChoice;
+    use cargo::util::errors::CargoResult;
+
     let target_dir = None; // Doesn't add any value for cargo-geiger.
     config.configure(
         args.verbose,
@@ -228,10 +231,20 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     } else {
         Verbosity::Verbose
     };
+    match config.shell().color_choice() {
+        ColorChoice::Always =>
+            colored::control::set_override(true),
+        ColorChoice::Never =>
+            colored::control::set_override(false),
+        ColorChoice::CargoAuto =>
+            {}
+    }
+
     let ws = workspace(config, args.manifest_path.clone())?;
     let package = ws.current()?;
     let mut registry = registry(config, &package)?;
     let (packages, resolve) = resolve(
+        package.package_id(),
         &mut registry,
         &ws,
         args.features.clone(),
@@ -329,20 +342,22 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         include_tests,
     };
 
-    // TODO: Use the same progressbar crate as cargo!
-    println!("    {}...", "Scanning".green().bold());
+    let emoji_symbols = cli::EmojiSymbols::new(args.charset);
+
+    let mut progress = cargo::util::Progress::new("Scanning", config);
     let geiger_ctx = find_unsafe_in_packages(
         &packages,
         rs_files_used,
         pc.allow_partial_results,
         pc.include_tests,
         pc.verbosity,
+        &emoji_symbols,
+        |i, count| -> CargoResult<()> {
+            progress.tick(i, count)
+        }
     );
-    println!(
-        "    {}...{}",
-        "Scanning".green().bold(),
-        "Done".green().bold()
-    );
+    progress.clear();
+    config.shell().status("Scanning", "done")?;
 
     println!();
     println!("Metric output format: x/y");
@@ -354,20 +369,17 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let forbids = "No `unsafe` usage found, declares #![forbid(unsafe_code)]";
     let unknown = "No `unsafe` usage found, missing #![forbid(unsafe_code)]";
     let guilty = "`unsafe` usage found";
-    #[cfg(not(target_os = "windows"))]
-    {
-        println!("    {} = {}", cli::LOCK, forbids);
-        println!("    {} = {}", cli::QUESTION_MARK, unknown);
 
-        // The same hack as in cli.rs, see the comment in that file.
-        println!("    {}\r\x1B[6C = {}", cli::RADS, guilty);
-    }
-    #[cfg(target_os = "windows")]
-    {
-        println!("    {} = {}", ":)".green(), forbids);
-        println!("    {} = ? ", unknown);
-        println!("    {} = {}", "! ".red().bold(), guilty);
-    }
+    let shift_sequence = if emoji_symbols.will_output_emoji() {
+        "\r\x1B[7C" // The radiation icon's Unicode width is 2,
+                    // but by most terminals it seems to be rendered at width 1.
+    } else {
+        ""
+    };
+
+    println!("    {: <2} = {}", emoji_symbols.emoji(cli::SymbolKind::Lock), forbids);
+    println!("    {: <2} = {}", emoji_symbols.emoji(cli::SymbolKind::QuestionMark), unknown);
+    println!("    {: <2}{} = {}", emoji_symbols.emoji(cli::SymbolKind::Rads), shift_sequence, guilty);
     println!();
 
     println!(
