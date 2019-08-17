@@ -585,6 +585,8 @@ impl Executor for CustomExecutor {
         _id: PackageId,
         _target: &Target,
         _mode: CompileMode,
+        _on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+        _on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>
     ) -> CargoResult<()> {
         let args = cmd.get_args();
         let out_dir_key = OsString::from("--out-dir");
@@ -627,20 +629,6 @@ impl Executor for CustomExecutor {
         }
         cmd.exec()?;
         Ok(())
-    }
-
-    /// TODO: Investigate if this returns the information we need through
-    /// stdout or stderr.
-    fn exec_json(
-        &self,
-        _cmd: ProcessBuilder,
-        _id: PackageId,
-        _target: &Target,
-        _mode: CompileMode,
-        _handle_stdout: &mut dyn FnMut(&str) -> CargoResult<()>,
-        _handle_stderr: &mut dyn FnMut(&str) -> CargoResult<()>,
-    ) -> CargoResult<()> {
-        unimplemented!();
     }
 
     /// Queried when queuing each unit of work. If it returns true, then the
@@ -702,11 +690,10 @@ pub fn resolve<'a, 'cfg>(
     all_features: bool,
     no_default_features: bool,
 ) -> CargoResult<(PackageSet<'a>, Resolve)> {
-    let features =
-        Method::split_features(&features.into_iter().collect::<Vec<_>>());
+    let features = std::rc::Rc::new(Method::split_features(&features.into_iter().collect::<Vec<_>>()));
     let method = Method::Required {
         dev_deps: true,
-        features: &features,
+        features,
         all_features,
         uses_default_features: !no_default_features,
     };
@@ -718,8 +705,7 @@ pub fn resolve<'a, 'cfg>(
         prev.as_ref(),
         None,
         &[PackageIdSpec::from_package_id(package_id)],
-        true,
-        true,
+        true
     )?;
     let packages = ops::get_resolved_packages(
         &resolve,

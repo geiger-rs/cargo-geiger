@@ -8,26 +8,26 @@ license = "Apache-2.0/MIT"
 name = "cargo-geiger"
 readme = "README.md"
 repository = "https://github.com/anderejd/cargo-geiger"
-version = "0.7.2"
+version = "0.7.3"
 
 [badges]
 maintenance = { status = "experimental" }
 
 [dependencies]
-cargo = "0.36.0"
+cargo = "0.38.0"
 clap = "2.33.0"
 colored = "1.8.0"
-console = "*"
-env_logger = "0.6.1"
+console = "0.7.7"
+env_logger = "0.6.2"
 failure = "0.1.5"
-geiger = { path = "../geiger", version = "0.3.2" }
+geiger = { path = "../geiger", version = "0.3.3" }
 petgraph = "0.4.13"
-structopt = "0.2.16"
-walkdir = "2.2.8"
+structopt = "0.2.18"
+walkdir = "2.2.9"
 
 [dev-dependencies]
-assert_cmd = "0.11"
-better-panic = "0.1"
-insta = "0.10"
-regex = "1"
-rstest = "0.3"
+assert_cmd = "0.11.1"
+better-panic = "0.1.2"
+insta = "0.10.1"
+regex = "1.2.1"
+rstest = "0.3.0"

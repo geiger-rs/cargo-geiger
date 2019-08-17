@@ -70,6 +70,10 @@ Roadmap
 Changelog
 ---------
 
+### 0.7.3
+ - Bugfix: Fix dependency collection for mixed workspaces [#66]
+ - Updated dependencies.
+
 ### 0.7.2
  - Updated dependencies to fix [#59].
 
@@ -153,5 +157,6 @@ Changelog
 [#52]: https://github.com/anderejd/cargo-geiger/issues/52
 [#57]: https://github.com/anderejd/cargo-geiger/issues/57
 [#59]: https://github.com/anderejd/cargo-geiger/issues/59
+[#66]: https://github.com/anderejd/cargo-geiger/issues/66
 [geiger]: https://crates.io/crates/geiger
 
