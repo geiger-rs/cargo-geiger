@@ -154,7 +154,7 @@ fn is_test_mod(i: &ItemMod) -> bool {
     use syn::Meta;
     i.attrs
         .iter()
-        .flat_map(Attribute::interpret_meta)
+        .flat_map(Attribute::parse_meta)
         .any(|m| match m {
             Meta::List(ml) => meta_list_is_cfg_test(&ml),
             _ => false,
@@ -178,7 +178,7 @@ fn is_test_mod(i: &ItemMod) -> bool {
 // }
 fn meta_list_is_cfg_test(ml: &syn::MetaList) -> bool {
     use syn::NestedMeta;
-    if ml.ident != "cfg" {
+    if !ml.path.is_ident("cfg") {
         return false;
     }
     ml.nested.iter().any(|n| match n {
@@ -190,7 +190,7 @@ fn meta_list_is_cfg_test(ml: &syn::MetaList) -> bool {
 fn meta_is_word_test(m: &syn::Meta) -> bool {
     use syn::Meta;
     match m {
-        Meta::Word(ident) => ident == "test",
+        Meta::Path(p) => p.is_ident("test"),
         _ => false,
     }
 }
@@ -199,18 +199,15 @@ fn is_test_fn(i: &ItemFn) -> bool {
     use syn::Attribute;
     i.attrs
         .iter()
-        .flat_map(Attribute::interpret_meta)
+        .flat_map(Attribute::parse_meta)
         .any(|m| meta_is_word_test(&m))
 }
 
 fn file_forbids_unsafe(f: &syn::File) -> bool {
-    use proc_macro2::{Ident, Span};
     use syn::AttrStyle;
     use syn::Meta;
     use syn::MetaList;
     use syn::NestedMeta;
-    let forbid_ident = Ident::new("forbid", Span::call_site());
-    let unsafe_code_ident = Ident::new("unsafe_code", Span::call_site());
     f.attrs
         .iter()
         .filter(|a| match a.style {
@@ -220,16 +217,16 @@ fn file_forbids_unsafe(f: &syn::File) -> bool {
         .filter_map(|a| a.parse_meta().ok())
         .filter(|meta| match meta {
             Meta::List(MetaList {
-                ident,
+                path,
                 paren_token: _paren,
                 nested,
             }) => {
-                if ident != &forbid_ident {
+                if !path.is_ident("forbid") {
                     return false;
                 }
                 nested.iter().any(|n| match n {
-                    NestedMeta::Meta(Meta::Word(word)) => {
-                        word == &unsafe_code_ident
+                    NestedMeta::Meta(Meta::Path(p)) => {
+                        p.is_ident("unsafe_code")
                     }
                     _ => false,
                 })
@@ -251,7 +248,7 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
         if IncludeTests::No == self.include_tests && is_test_fn(i) {
             return;
         }
-        self.metrics.counters.functions.count(i.unsafety.is_some());
+        self.metrics.counters.functions.count(i.sig.unsafety.is_some());
         visit::visit_item_fn(self, i);
     }
 

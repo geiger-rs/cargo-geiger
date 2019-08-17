@@ -9,6 +9,9 @@ For more details please see the `README.md` in [cargo-geiger].
 Changelog
 ---------
 
+### 0.3.3
+ - Updated dependencies.
+
 ### 0.3.2
  - Updated dependencies.
 
