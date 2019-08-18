@@ -248,7 +248,10 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
         if IncludeTests::No == self.include_tests && is_test_fn(i) {
             return;
         }
-        self.metrics.counters.functions.count(i.sig.unsafety.is_some());
+        self.metrics
+            .counters
+            .functions
+            .count(i.sig.unsafety.is_some());
         visit::visit_item_fn(self, i);
     }
 

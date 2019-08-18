@@ -237,12 +237,9 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         Verbosity::Verbose
     };
     match config.shell().color_choice() {
-        ColorChoice::Always =>
-            colored::control::set_override(true),
-        ColorChoice::Never =>
-            colored::control::set_override(false),
-        ColorChoice::CargoAuto =>
-            {}
+        ColorChoice::Always => colored::control::set_override(true),
+        ColorChoice::Never => colored::control::set_override(false),
+        ColorChoice::CargoAuto => {}
     }
 
     let ws = workspace(config, args.manifest_path.clone())?;
@@ -357,9 +354,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         pc.include_tests,
         pc.verbosity,
         &emoji_symbols,
-        |i, count| -> CargoResult<()> {
-            progress.tick(i, count)
-        }
+        |i, count| -> CargoResult<()> { progress.tick(i, count) },
     );
     progress.clear();
     config.shell().status("Scanning", "done")?;
@@ -382,9 +377,22 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         ""
     };
 
-    println!("    {: <2} = {}", emoji_symbols.emoji(cli::SymbolKind::Lock), forbids);
-    println!("    {: <2} = {}", emoji_symbols.emoji(cli::SymbolKind::QuestionMark), unknown);
-    println!("    {: <2}{} = {}", emoji_symbols.emoji(cli::SymbolKind::Rads), shift_sequence, guilty);
+    println!(
+        "    {: <2} = {}",
+        emoji_symbols.emoji(cli::SymbolKind::Lock),
+        forbids
+    );
+    println!(
+        "    {: <2} = {}",
+        emoji_symbols.emoji(cli::SymbolKind::QuestionMark),
+        unknown
+    );
+    println!(
+        "    {: <2}{} = {}",
+        emoji_symbols.emoji(cli::SymbolKind::Rads),
+        shift_sequence,
+        guilty
+    );
     println!();
 
     println!(

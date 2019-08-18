@@ -122,7 +122,7 @@ pub struct EntryPointMetrics {
 pub struct GeigerContext<'s> {
     pub pack_id_to_metrics: HashMap<PackageId, PackageMetricsRoot>,
     pub rs_files_used: HashMap<PathBuf, u32>,
-    pub emoji_symbols: &'s EmojiSymbols
+    pub emoji_symbols: &'s EmojiSymbols,
 }
 
 // TODO: Review this. The same code exist in the `geiger` library crate, but is
@@ -227,14 +227,17 @@ pub fn find_unsafe_in_packages<'a, 'b, 's, F>(
     include_tests: IncludeTests,
     verbosity: Verbosity,
     emoji_symbols: &'s EmojiSymbols,
-    mut progress_step: F
+    mut progress_step: F,
 ) -> GeigerContext<'s>
-    where F: FnMut(usize, usize) -> CargoResult<()> {
+where
+    F: FnMut(usize, usize) -> CargoResult<()>,
+{
     let mut pack_id_to_metrics = HashMap::new();
     let packs = packs.get_many(packs.package_ids()).unwrap();
     let pack_code_files: Vec<_> = find_rs_files_in_packages(&packs).collect();
     let pack_code_file_count = pack_code_files.len();
-    for (i, (pack_id, rs_code_file)) in pack_code_files.into_iter().enumerate() {
+    for (i, (pack_id, rs_code_file)) in pack_code_files.into_iter().enumerate()
+    {
         let (is_entry_point, p) = match rs_code_file {
             RsFile::LibRoot(pb) => (true, pb),
             RsFile::BinRoot(pb) => (true, pb),
@@ -309,7 +312,7 @@ pub fn find_unsafe_in_packages<'a, 'b, 's, F>(
     GeigerContext {
         pack_id_to_metrics,
         rs_files_used,
-        emoji_symbols
+        emoji_symbols,
     }
 }
 
@@ -363,32 +366,24 @@ pub const ASCII_SYMBOLS: Symbols = Symbols {
 pub enum SymbolKind {
     Lock = 0,
     QuestionMark = 1,
-    Rads = 2
+    Rads = 2,
 }
 
 pub struct EmojiSymbols {
     charset: Charset,
     emojis: [&'static str; 3],
-    fallbacks: [colored::ColoredString; 3]
+    fallbacks: [colored::ColoredString; 3],
 }
 
 impl EmojiSymbols {
     pub fn new(charset: Charset) -> EmojiSymbols {
         Self {
             charset: charset,
-            emojis: [
-                "🔒",
-                "❓",
-                "☢️",
-            ],
-            fallbacks: [
-                ":)".green(),
-                "?".normal(),
-                "!".red().bold()
-            ]
+            emojis: ["🔒", "❓", "☢️"],
+            fallbacks: [":)".green(), "?".normal(), "!".red().bold()],
         }
     }
-    
+
     pub fn will_output_emoji(&self) -> bool {
         self.charset == Charset::Utf8
             && console::Term::stdout().features().wants_emoji()
@@ -586,7 +581,7 @@ impl Executor for CustomExecutor {
         _target: &Target,
         _mode: CompileMode,
         _on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>,
-        _on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>
+        _on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
     ) -> CargoResult<()> {
         let args = cmd.get_args();
         let out_dir_key = OsString::from("--out-dir");
@@ -690,7 +685,9 @@ pub fn resolve<'a, 'cfg>(
     all_features: bool,
     no_default_features: bool,
 ) -> CargoResult<(PackageSet<'a>, Resolve)> {
-    let features = std::rc::Rc::new(Method::split_features(&features.into_iter().collect::<Vec<_>>()));
+    let features = std::rc::Rc::new(Method::split_features(
+        &features.into_iter().collect::<Vec<_>>(),
+    ));
     let method = Method::Required {
         dev_deps: true,
         features,
@@ -705,11 +702,12 @@ pub fn resolve<'a, 'cfg>(
         prev.as_ref(),
         None,
         &[PackageIdSpec::from_package_id(package_id)],
-        true
+        true,
     )?;
     let packages = ops::get_resolved_packages(
         &resolve,
-        PackageRegistry::new(ws.config())?)?;
+        PackageRegistry::new(ws.config())?,
+    )?;
     Ok((packages, resolve))
 }
 
@@ -878,12 +876,15 @@ fn print_dependency<'a>(
 
     let emoji_symbols = &geiger_ctx.emoji_symbols;
     let icon = match detection_status {
-        DetectionStatus::NoneDetectedForbidsUnsafe =>
-            emoji_symbols.emoji(SymbolKind::Lock),
-        DetectionStatus::NoneDetectedAllowsUnsafe =>
-            emoji_symbols.emoji(SymbolKind::QuestionMark),
-        DetectionStatus::UnsafeDetected =>
+        DetectionStatus::NoneDetectedForbidsUnsafe => {
+            emoji_symbols.emoji(SymbolKind::Lock)
+        }
+        DetectionStatus::NoneDetectedAllowsUnsafe => {
+            emoji_symbols.emoji(SymbolKind::QuestionMark)
+        }
+        DetectionStatus::UnsafeDetected => {
             emoji_symbols.emoji(SymbolKind::Rads)
+        }
     };
 
     let dep_name = colorize(format!(

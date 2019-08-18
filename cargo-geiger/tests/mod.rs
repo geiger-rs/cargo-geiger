@@ -6,7 +6,8 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 
-#[rstest_parametrize(name,
+#[rstest_parametrize(
+    name,
     case("test1_package_with_no_deps"),
     case("test2_package_with_shallow_deps"),
     case("test3_package_with_nested_deps"),
@@ -18,9 +19,8 @@ fn test_package(name: &str) {
     better_panic::install();
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let test_case_root_dir = Path::new(&manifest_dir)
-        .join("../test_crates")
-        .join(name);
+    let test_case_root_dir =
+        Path::new(&manifest_dir).join("../test_crates").join(name);
 
     let result = Command::cargo_bin("cargo-geiger")
         .unwrap()
@@ -33,11 +33,11 @@ fn test_package(name: &str) {
         .current_dir(test_case_root_dir)
         .output()
         .expect("failed to run `cargo-geiger`");
-   
+
     let stderr_filename = format!("{}.stderr", name);
     let stderr = String::from_utf8(result.stderr)
         .expect("output should have been valid utf-8");
-   
+
     if !stderr.is_empty() {
         let re = regex::Regex::new(r"`([^`]+).toml`").unwrap();
         let stderr = re.replace(&stderr, "`{MANIFEST_PATH}`");
@@ -53,4 +53,3 @@ fn test_package(name: &str) {
         assert!(result.status.success(), "`cargo-geiger` failed");
     }
 }
-
