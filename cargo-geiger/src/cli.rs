@@ -18,10 +18,10 @@ extern crate petgraph;
 extern crate structopt;
 extern crate walkdir;
 
+use self::walkdir::DirEntry;
+use self::walkdir::WalkDir;
+use crate::format::Pattern;
 use crate::Args;
-use cargo::CliResult;
-use cargo::Config;
-use cargo::core::Target;
 use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
 use cargo::core::compiler::Unit;
@@ -31,26 +31,26 @@ use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::core::shell::Verbosity;
+use cargo::core::Target;
 use cargo::core::{Package, PackageId, PackageIdSpec, Resolve, Workspace};
+use cargo::ops;
 use cargo::ops::CleanOptions;
 use cargo::ops::CompileOptions;
-use cargo::ops;
-use cargo::util::ProcessBuilder;
 use cargo::util::paths;
+use cargo::util::ProcessBuilder;
 use cargo::util::{self, important_paths, CargoResult, Cfg};
+use cargo::CliResult;
+use cargo::Config;
 use colored::Colorize;
-use crate::format::Pattern;
+use geiger::find_rs_files_in_dir;
+use geiger::find_unsafe_in_file;
 use geiger::Count;
 use geiger::CounterBlock;
 use geiger::IncludeTests;
-use geiger::find_rs_files_in_dir;
-use geiger::find_unsafe_in_file;
 use geiger::RsFileMetrics;
-use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
-use self::walkdir::DirEntry;
-use self::walkdir::WalkDir;
+use petgraph::EdgeDirection;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
@@ -257,7 +257,7 @@ pub fn run_scan_mode_default(
     root_pack_id: PackageId,
     graph: &Graph,
     pc: &PrintConfig,
-    args: &Args
+    args: &Args,
 ) -> CliResult {
     let copt = build_compile_options(args, config);
     let rs_files_used = resolve_rs_file_deps(&copt, &ws).unwrap();
@@ -427,16 +427,8 @@ pub fn run_scan_mode_forbid_only(
     let sym_lock = emoji_symbols.emoji(SymbolKind::Lock);
     let sym_qmark = emoji_symbols.emoji(SymbolKind::QuestionMark);
 
-    println!(
-        "    {: <2} = {}",
-        sym_lock,
-        forbids
-    );
-    println!(
-        "    {: <2} = {}",
-        sym_qmark,
-        unknown
-    );
+    println!("    {: <2} = {}", sym_lock, forbids);
+    println!("    {: <2} = {}", sym_qmark, unknown);
     println!();
 
     let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
@@ -448,9 +440,10 @@ pub fn run_scan_mode_forbid_only(
                 let pack_metrics = geiger_ctx.pack_id_to_metrics.get(&id);
                 let package_forbids_unsafe = match pack_metrics {
                     None => false, // no metrics available, .rs parsing failed?
-                    Some(pm) => pm.rs_path_to_metrics.iter().all(|(k, v)| {
-                        v.metrics.forbids_unsafe
-                    }),
+                    Some(pm) => pm
+                        .rs_path_to_metrics
+                        .iter()
+                        .all(|(k, v)| v.metrics.forbids_unsafe),
                 };
                 let (symbol, name) = if package_forbids_unsafe {
                     (&sym_lock, name.green())
@@ -458,7 +451,7 @@ pub fn run_scan_mode_forbid_only(
                     (&sym_qmark, name.red())
                 };
                 println!("{} {}{}", symbol, treevines, name);
-            },
+            }
             TextTreeLine::ExtraDepsGroup { kind, treevines } => {
                 let name = get_kind_group_name(kind);
                 if name.is_none() {
@@ -554,13 +547,13 @@ struct RsFileMetricsWrapper {
 #[derive(Debug, Default)]
 struct PackageMetrics {
     /// The key is the canonicalized path to the rs source file.
-    pub rs_path_to_metrics: HashMap<PathBuf, RsFileMetricsWrapper>
+    pub rs_path_to_metrics: HashMap<PathBuf, RsFileMetricsWrapper>,
 }
 
 /// Provides a more terse and searchable name for the wrapped generic
 /// collection.
 struct GeigerContext {
-    pack_id_to_metrics: HashMap<PackageId, PackageMetrics>
+    pack_id_to_metrics: HashMap<PackageId, PackageMetrics>,
 }
 
 /// Based on code from cargo-bloat. It seems weird that CompileOptions can be
@@ -764,9 +757,7 @@ where
         }
         let _ = progress_step(i, pack_code_file_count);
     }
-    GeigerContext {
-        pack_id_to_metrics
-    }
+    GeigerContext { pack_id_to_metrics }
 }
 
 impl FromStr for Charset {
@@ -1061,7 +1052,7 @@ fn print_tree<'a>(
     graph: &Graph<'a>,
     geiger_ctx: &GeigerContext,
     rs_files_used: &HashSet<PathBuf>,
-    pc: &PrintConfig
+    pc: &PrintConfig,
 ) {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
@@ -1081,16 +1072,10 @@ fn print_tree<'a>(
 /// dependency graph traversal.
 enum TextTreeLine {
     /// A text line for a package
-    Package {
-        id: PackageId,
-        treevines: String,
-    },
+    Package { id: PackageId, treevines: String },
     /// There're extra dependencies comming and we should print a group header,
     /// eg. "[build-dependencies]".
-    ExtraDepsGroup {
-        kind: Kind,
-        treevines: String,
-    }
+    ExtraDepsGroup { kind: Kind, treevines: String },
 }
 
 /// Temporary hack that is intended to merge back with the original functions
@@ -1116,7 +1101,8 @@ fn walk_dependency_tree<'a>(
         graph,
         &mut visited_deps,
         &mut levels_continue,
-        pc)
+        pc,
+    )
 }
 
 fn walk_dependency_node<'a>(
@@ -1124,7 +1110,7 @@ fn walk_dependency_node<'a>(
     graph: &Graph,
     visited_deps: &mut HashSet<PackageId>,
     levels_continue: &mut Vec<bool>,
-    pc: &PrintConfig
+    pc: &PrintConfig,
 ) -> Vec<TextTreeLine> {
     let new = pc.all || visited_deps.insert(package.id);
     let tree_symbols = get_tree_symbols(pc.charset);
@@ -1150,7 +1136,10 @@ fn walk_dependency_node<'a>(
         Prefix::None => "".into(),
     };
 
-    let mut all_out = vec![TextTreeLine::Package { id: package.id, treevines }];
+    let mut all_out = vec![TextTreeLine::Package {
+        id: package.id,
+        treevines,
+    }];
 
     if !new {
         return all_out;
@@ -1322,8 +1311,7 @@ fn print_dependency<'a>(
         .filter(|(_, v)| v.is_crate_entry_point)
         .all(|(_, v)| v.metrics.forbids_unsafe);
 
-    let detection_status = match (unsafe_found, crate_forbids_unsafe)
-    {
+    let detection_status = match (unsafe_found, crate_forbids_unsafe) {
         (false, true) => DetectionStatus::NoneDetectedForbidsUnsafe,
         (false, false) => DetectionStatus::NoneDetectedAllowsUnsafe,
         (true, _) => DetectionStatus::UnsafeDetected,
@@ -1341,7 +1329,7 @@ fn print_dependency<'a>(
     // suggests that recent Linux desktop environments do support colored emoji
     // in the terminal, so let's only disable emoji on Windows. Tested Pop_OS
     // 18.10, seems to print emoji in the default terminal just fine.
-    
+
     let emoji_symbols = EmojiSymbols::new(pc.charset);
 
     let icon = match detection_status {
@@ -1512,11 +1500,7 @@ fn table_row(pms: &PackageMetrics, rs_files_used: &HashSet<PathBuf>) -> String {
         fmt(&used.functions, &not_used.functions),
         fmt(&used.exprs, &not_used.exprs),
         fmt(&used.item_impls, &not_used.item_impls),
-        fmt(
-            &used.item_traits,
-            &not_used.item_traits
-        ),
+        fmt(&used.item_traits, &not_used.item_traits),
         fmt(&used.methods, &not_used.methods),
     )
 }
-

@@ -15,14 +15,14 @@ mod format;
 use crate::cli::build_graph;
 use crate::cli::get_cfgs;
 use crate::cli::get_registry;
-use crate::cli::resolve;
 use crate::cli::get_workspace;
+use crate::cli::resolve;
+use crate::cli::run_scan_mode_default;
+use crate::cli::run_scan_mode_forbid_only;
 use crate::cli::Charset;
 use crate::cli::ExtraDeps;
 use crate::cli::Prefix;
 use crate::cli::PrintConfig;
-use crate::cli::run_scan_mode_forbid_only;
-use crate::cli::run_scan_mode_default;
 use crate::format::Pattern;
 use cargo::core::compiler::CompileMode;
 use cargo::core::resolver::Method;
@@ -287,9 +287,24 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     };
 
     if args.forbid_only {
-        run_scan_mode_forbid_only(&config, &ws, &packages, root_pack_id, &graph, &pc)
+        run_scan_mode_forbid_only(
+            &config,
+            &ws,
+            &packages,
+            root_pack_id,
+            &graph,
+            &pc,
+        )
     } else {
-        run_scan_mode_default(&config, &ws, &packages, root_pack_id, &graph, &pc, &args)
+        run_scan_mode_default(
+            &config,
+            &ws,
+            &packages,
+            root_pack_id,
+            &graph,
+            &pc,
+            &args,
+        )
     }
 }
 
