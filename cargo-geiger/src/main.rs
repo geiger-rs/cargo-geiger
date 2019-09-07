@@ -29,11 +29,13 @@ use cargo::core::resolver::Method;
 use cargo::core::shell::Shell;
 use cargo::core::shell::Verbosity;
 use cargo::ops::CompileOptions;
+use cargo::util::errors::CliError;
 use cargo::CliResult;
 use cargo::Config;
 use colored::Colorize;
 use geiger::IncludeTests;
 use petgraph::EdgeDirection;
+use std::fmt;
 use std::path::PathBuf;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
@@ -178,6 +180,21 @@ pub struct Args {
     pub forbid_only: bool,
 }
 
+#[derive(Debug)]
+struct FormatError {
+    message: String,
+}
+
+impl std::error::Error for FormatError {}
+
+/// Forward Display to Debug, probably good enough for programmer facing error
+/// messages.
+impl fmt::Display for FormatError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
 fn real_main(args: &Args, config: &mut Config) -> CliResult {
     use cargo::core::shell::ColorChoice;
     use cargo::util::errors::CargoResult;
@@ -230,8 +247,15 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         Some(args.target.as_ref().unwrap_or(&config_host).as_str())
     };
 
-    let format = Pattern::try_build(&args.format)
-        .map_err(|e| failure::err_msg(e.to_string()))?;
+    let format = Pattern::try_build(&args.format).map_err(|e| {
+        CliError::new(
+            (FormatError {
+                message: e.to_string(),
+            })
+            .into(),
+            1,
+        )
+    })?;
 
     let extra_deps = if args.all_deps {
         ExtraDeps::All

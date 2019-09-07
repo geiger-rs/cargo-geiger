@@ -12,7 +12,6 @@ extern crate cargo;
 extern crate colored;
 extern crate console;
 extern crate env_logger;
-extern crate failure;
 extern crate geiger;
 extern crate petgraph;
 extern crate structopt;
