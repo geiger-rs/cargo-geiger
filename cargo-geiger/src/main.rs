@@ -2,7 +2,7 @@
 //! TODO: Refactor this file to only deal with command line argument processing.
 
 #![forbid(unsafe_code)]
-//#![forbid(warnings)]
+#![forbid(warnings)]
 
 extern crate cargo;
 extern crate colored;
@@ -24,15 +24,11 @@ use crate::cli::ExtraDeps;
 use crate::cli::Prefix;
 use crate::cli::PrintConfig;
 use crate::format::Pattern;
-use cargo::core::compiler::CompileMode;
-use cargo::core::resolver::Method;
 use cargo::core::shell::Shell;
 use cargo::core::shell::Verbosity;
-use cargo::ops::CompileOptions;
 use cargo::util::errors::CliError;
 use cargo::CliResult;
 use cargo::Config;
-use colored::Colorize;
 use geiger::IncludeTests;
 use petgraph::EdgeDirection;
 use std::fmt;
@@ -197,7 +193,6 @@ impl fmt::Display for FormatError {
 
 fn real_main(args: &Args, config: &mut Config) -> CliResult {
     use cargo::core::shell::ColorChoice;
-    use cargo::util::errors::CargoResult;
 
     let target_dir = None; // Doesn't add any value for cargo-geiger.
     config.configure(
@@ -311,14 +306,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     };
 
     if args.forbid_only {
-        run_scan_mode_forbid_only(
-            &config,
-            &ws,
-            &packages,
-            root_pack_id,
-            &graph,
-            &pc,
-        )
+        run_scan_mode_forbid_only(&config, &packages, root_pack_id, &graph, &pc)
     } else {
         run_scan_mode_default(
             &config,
