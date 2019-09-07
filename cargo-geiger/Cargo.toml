@@ -19,7 +19,6 @@ clap = "2.33.0"
 colored = "1.8.0"
 console = "0.7.7"
 env_logger = "0.6.2"
-failure = "0.1.5"
 geiger = { path = "../geiger", version = "0.3.3" }
 petgraph = "0.4.13"
 structopt = "0.2.18"
