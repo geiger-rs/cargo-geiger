@@ -8,6 +8,9 @@
 // TODO: Investigate how cargo-clippy is implemented. Is it using syn?  Is is
 // using rustc? Is it implementing a compiler plugin?
 
+// TODO: Consider making this a lib.rs (again) and expose a full API, excluding
+// only the terminal output..? That API would be dependent on cargo.
+
 extern crate cargo;
 extern crate colored;
 extern crate console;
@@ -99,13 +102,16 @@ pub struct PrintConfig<'a> {
     pub include_tests: IncludeTests,
 }
 
-pub struct Node<'a> {
+pub struct Node {
     id: PackageId,
-    pack: &'a Package,
+
+    // TODO: Investigate why this was needed before the separation of printing
+    // and graph traversal and if it should be added back.
+    //pack: &'a Package,
 }
 
-pub struct Graph<'a> {
-    graph: petgraph::Graph<Node<'a>, Kind>,
+pub struct Graph {
+    graph: petgraph::Graph<Node, Kind>,
     nodes: HashMap<PackageId, NodeIndex>,
 }
 
@@ -143,14 +149,14 @@ pub fn build_graph<'a>(
     target: Option<&str>,
     cfgs: Option<&[Cfg]>,
     extra_deps: ExtraDeps,
-) -> CargoResult<Graph<'a>> {
+) -> CargoResult<Graph> {
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
         nodes: HashMap::new(),
     };
     let node = Node {
         id: root,
-        pack: packages.get_one(root)?,
+        //pack: packages.get_one(root)?,
     };
     graph.nodes.insert(root, graph.graph.add_node(node));
 
@@ -182,7 +188,7 @@ pub fn build_graph<'a>(
                         pending.push(dep_id);
                         let node = Node {
                             id: dep_id,
-                            pack: packages.get_one(dep_id)?,
+                            //pack: packages.get_one(dep_id)?,
                         };
                         *e.insert(graph.graph.add_node(node))
                     }
@@ -330,9 +336,99 @@ pub fn run_scan_mode_default(
     );
     println!();
 
-    // TODO: Replace this with the new walk_dependency_tree and move most of the
-    // old printing logic here.
-    print_tree(root_pack_id, &graph, &geiger_ctx, &rs_files_used, &pc);
+    let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
+    for tl in tree_lines {
+        match tl {
+            TextTreeLine::Package { id, treevines } => {
+                let pack = packages
+                    .get_one(id)
+                    .unwrap_or_else(|_| {
+                        // TODO: Avoid panic, return Result.
+                        panic!("Expected to find package by id: {}",
+                               id);
+                    });
+                let pack_metrics = geiger_ctx
+                    .pack_id_to_metrics
+                    .get(&id)
+                    .unwrap_or_else(|| {
+                        // TODO: Avoid panic, return Result.
+                        panic!("Failed to get unsafe counters for package: {}",
+                               &id)
+                    });
+                let unsafe_found = pack_metrics
+                    .rs_path_to_metrics
+                    .iter()
+                    .filter(|(k, _)| rs_files_used.contains(k.as_path()))
+                    .any(|(_, v)| v.metrics.counters.has_unsafe());
+
+                // The crate level "forbids unsafe code" metric __used to__ only
+                // depend on entry point source files that were __used by the
+                // build__. This was too subtle in my opinion. For a crate to be
+                // classified as forbidding unsafe code, all entry point source
+                // files must declare `forbid(unsafe_code)`. Either a crate
+                // forbids all unsafe code or it allows it _to some degree_.
+                let crate_forbids_unsafe = pack_metrics
+                    .rs_path_to_metrics
+                    .iter()
+                    .filter(|(_, v)| v.is_crate_entry_point)
+                    .all(|(_, v)| v.metrics.forbids_unsafe);
+
+                let detection_status = match (unsafe_found, crate_forbids_unsafe) {
+                    (false, true) => DetectionStatus::NoneDetectedForbidsUnsafe,
+                    (false, false) => DetectionStatus::NoneDetectedAllowsUnsafe,
+                    (true, _) => DetectionStatus::UnsafeDetected,
+                };
+                let colorize = |s: String| match detection_status {
+                    DetectionStatus::NoneDetectedForbidsUnsafe => s.green(),
+                    DetectionStatus::NoneDetectedAllowsUnsafe => s.normal(),
+                    DetectionStatus::UnsafeDetected => s.red().bold(),
+                };
+                let emoji_symbols = EmojiSymbols::new(pc.charset);
+                let icon = match detection_status {
+                    DetectionStatus::NoneDetectedForbidsUnsafe => {
+                        emoji_symbols.emoji(SymbolKind::Lock)
+                    }
+                    DetectionStatus::NoneDetectedAllowsUnsafe => {
+                        emoji_symbols.emoji(SymbolKind::QuestionMark)
+                    }
+                    DetectionStatus::UnsafeDetected => {
+                        emoji_symbols.emoji(SymbolKind::Rads)
+                    }
+                };
+                let pack_name = colorize(format!(
+                    "{}",
+                    pc.format
+                        .display(&id, pack.manifest().metadata())
+                ));
+                let unsafe_info = colorize(table_row(&pack_metrics, &rs_files_used));
+                let shift_chars = unsafe_info.chars().count() + 4;
+                print!("{}  {: <2}", unsafe_info, icon);
+
+                // Here comes some special control characters to position the cursor
+                // properly for printing the last column containing the tree vines, after
+                // the emoji icon. This is a workaround for a potential bug where the
+                // radiation emoji will visually cover two characters in width but only
+                // count as a single character if using the column formatting provided by
+                // Rust. This could be unrelated to Rust and a quirk of this particular
+                // symbol or something in the Terminal app on macOS.
+                if emoji_symbols.will_output_emoji() {
+                    print!("\r"); // Return the cursor to the start of the line.
+                    print!("\x1B[{}C", shift_chars); // Move the cursor to the right so that it points to the icon character.
+                }
+
+                println!(" {}{}", treevines, pack_name);
+            }
+            TextTreeLine::ExtraDepsGroup { kind, treevines } => {
+                let name = get_kind_group_name(kind);
+                if name.is_none() {
+                    continue;
+                }
+                let name = name.unwrap();
+
+                println!("{}{}{}", table_row_empty(), treevines, name);
+            }
+        }
+    }
 
     let scanned_files = geiger_ctx
         .pack_id_to_metrics
@@ -998,27 +1094,6 @@ impl Executor for CustomExecutor {
     }
 }
 
-fn print_tree<'a>(
-    root_pack_id: PackageId,
-    graph: &Graph<'a>,
-    geiger_ctx: &GeigerContext,
-    rs_files_used: &HashSet<PathBuf>,
-    pc: &PrintConfig,
-) {
-    let mut visited_deps = HashSet::new();
-    let mut levels_continue = vec![];
-    let node = &graph.graph[graph.nodes[&root_pack_id]];
-    print_dependency(
-        node,
-        &graph,
-        &mut visited_deps,
-        &mut levels_continue,
-        geiger_ctx,
-        rs_files_used,
-        pc,
-    );
-}
-
 /// A step towards decoupling some parts of the table-tree printing from the
 /// dependency graph traversal.
 enum TextTreeLine {
@@ -1039,9 +1114,9 @@ enum TextTreeLine {
 ///
 /// TODO: Return a impl Iterator<Item = TextTreeLine ... >
 ///
-fn walk_dependency_tree<'a>(
+fn walk_dependency_tree(
     root_pack_id: PackageId,
-    graph: &'a Graph<'a>,
+    graph: &Graph,
     pc: &PrintConfig,
 ) -> Vec<TextTreeLine> {
     let mut visited_deps = HashSet::new();
@@ -1056,8 +1131,8 @@ fn walk_dependency_tree<'a>(
     )
 }
 
-fn walk_dependency_node<'a>(
-    package: &'a Node<'a>,
+fn walk_dependency_node(
+    package: &Node,
     graph: &Graph,
     visited_deps: &mut HashSet<PackageId>,
     levels_continue: &mut Vec<bool>,
@@ -1143,10 +1218,10 @@ fn walk_dependency_node<'a>(
     all_out
 }
 
-fn walk_dependency_kind<'a>(
+fn walk_dependency_kind(
     kind: Kind,
-    deps: &mut Vec<&Node<'a>>,
-    graph: &Graph<'a>,
+    deps: &mut Vec<&Node>,
+    graph: &Graph,
     visited_deps: &mut HashSet<PackageId>,
     levels_continue: &mut Vec<bool>,
     pc: &PrintConfig,
@@ -1199,214 +1274,6 @@ fn get_tree_symbols(cs: Charset) -> TreeSymbols {
     match cs {
         Charset::Utf8 => UTF8_TREE_SYMBOLS,
         Charset::Ascii => ASCII_TREE_SYMBOLS,
-    }
-}
-
-fn print_dependency<'a>(
-    package: &Node<'a>,
-    graph: &Graph<'a>,
-    visited_deps: &mut HashSet<PackageId>,
-    levels_continue: &mut Vec<bool>,
-    geiger_ctx: &GeigerContext,
-    rs_files_used: &HashSet<PathBuf>,
-    pc: &PrintConfig,
-) {
-    let new = pc.all || visited_deps.insert(package.id);
-    let tree_symbols = get_tree_symbols(pc.charset);
-    let treevines = match pc.prefix {
-        Prefix::Depth => format!("{} ", levels_continue.len()),
-        Prefix::Indent => {
-            let mut buf = String::new();
-            if let Some((&last_continues, rest)) = levels_continue.split_last()
-            {
-                for &continues in rest {
-                    let c = if continues { tree_symbols.down } else { " " };
-                    buf.push_str(&format!("{}   ", c));
-                }
-                let c = if last_continues {
-                    tree_symbols.tee
-                } else {
-                    tree_symbols.ell
-                };
-                buf.push_str(&format!("{0}{1}{1} ", c, tree_symbols.right));
-            }
-            buf
-        }
-        Prefix::None => "".into(),
-    };
-
-    // TODO: Try to be panic free and use Result everywhere, but separate tree
-    // printing and metrics printing first. Use a callback or produce tree rows
-    // through an Iterator together with the PackageId and map together the
-    // complete row for printing in the caller code.
-    let pack_metrics = geiger_ctx
-        .pack_id_to_metrics
-        .get(&package.id)
-        .unwrap_or_else(|| {
-            panic!("Failed to get unsafe counters for package: {}", package.id)
-        });
-    let unsafe_found = pack_metrics
-        .rs_path_to_metrics
-        .iter()
-        .filter(|(k, _)| rs_files_used.contains(k.as_path()))
-        .any(|(_, v)| v.metrics.counters.has_unsafe());
-
-    // The crate level "forbids unsafe code" metric used to only depend on entry
-    // point source files that were _used by the build_. This is too subtle in
-    // my oppinion. For a crate to be classified as forbidding unsafe code, all
-    // entry point source files must declare `forbid(unsafe_code)`. Either a
-    // crate forbids all unsafe code or it allows it to some degree.
-    let crate_forbids_unsafe = pack_metrics
-        .rs_path_to_metrics
-        .iter()
-        .filter(|(_, v)| v.is_crate_entry_point)
-        .all(|(_, v)| v.metrics.forbids_unsafe);
-
-    let detection_status = match (unsafe_found, crate_forbids_unsafe) {
-        (false, true) => DetectionStatus::NoneDetectedForbidsUnsafe,
-        (false, false) => DetectionStatus::NoneDetectedAllowsUnsafe,
-        (true, _) => DetectionStatus::UnsafeDetected,
-    };
-
-    let colorize = |s: String| match detection_status {
-        DetectionStatus::NoneDetectedForbidsUnsafe => s.green(),
-        DetectionStatus::NoneDetectedAllowsUnsafe => s.normal(),
-        DetectionStatus::UnsafeDetected => s.red().bold(),
-    };
-
-    // This is a hack, maybe some third party terminal emulators on windows does
-    // support emoji? Are there reliable ways to detect this feature or is the
-    // best case to lookup terminal emulator name and version? Some googling
-    // suggests that recent Linux desktop environments do support colored emoji
-    // in the terminal, so let's only disable emoji on Windows. Tested Pop_OS
-    // 18.10, seems to print emoji in the default terminal just fine.
-
-    let emoji_symbols = EmojiSymbols::new(pc.charset);
-
-    let icon = match detection_status {
-        DetectionStatus::NoneDetectedForbidsUnsafe => {
-            emoji_symbols.emoji(SymbolKind::Lock)
-        }
-        DetectionStatus::NoneDetectedAllowsUnsafe => {
-            emoji_symbols.emoji(SymbolKind::QuestionMark)
-        }
-        DetectionStatus::UnsafeDetected => {
-            emoji_symbols.emoji(SymbolKind::Rads)
-        }
-    };
-
-    let dep_name = colorize(format!(
-        "{}",
-        pc.format
-            .display(&package.id, package.pack.manifest().metadata())
-    ));
-
-    let unsafe_info = colorize(table_row(&pack_metrics, rs_files_used));
-
-    let shift_chars = unsafe_info.chars().count() + 4;
-    print!("{}  {: <2}", unsafe_info, icon);
-
-    // Here comes some special control characters to position the cursor
-    // properly for printing the last column containing the tree vines, after
-    // the emoji icon. This is a workaround for a potential bug where the
-    // radiation emoji will visually cover two characters in width but only
-    // count as a single character if using the column formatting provided by
-    // Rust. This could be unrelated to Rust and a quirk of this particular
-    // symbol or something in the Terminal app on macOS.
-    if emoji_symbols.will_output_emoji() {
-        print!("\r"); // Return the cursor to the start of the line.
-        print!("\x1B[{}C", shift_chars); // Move the cursor to the right so that it points to the icon character.
-    }
-
-    println!(" {}{}", treevines, dep_name);
-
-    if !new {
-        return;
-    }
-    let mut normal = vec![];
-    let mut build = vec![];
-    let mut development = vec![];
-    for edge in graph
-        .graph
-        .edges_directed(graph.nodes[&package.id], pc.direction)
-    {
-        let dep = match pc.direction {
-            EdgeDirection::Incoming => &graph.graph[edge.source()],
-            EdgeDirection::Outgoing => &graph.graph[edge.target()],
-        };
-        match *edge.weight() {
-            Kind::Normal => normal.push(dep),
-            Kind::Build => build.push(dep),
-            Kind::Development => development.push(dep),
-        }
-    }
-    let mut kinds = [
-        (Kind::Normal, normal),
-        (Kind::Build, build),
-        (Kind::Development, development),
-    ];
-    for (kind, kind_deps) in kinds.iter_mut() {
-        print_dependency_kind(
-            *kind,
-            kind_deps,
-            graph,
-            visited_deps,
-            levels_continue,
-            geiger_ctx,
-            rs_files_used,
-            pc,
-        );
-    }
-}
-
-fn print_dependency_kind<'a>(
-    kind: Kind,
-    deps: &mut Vec<&Node<'a>>,
-    graph: &Graph<'a>,
-    visited_deps: &mut HashSet<PackageId>,
-    levels_continue: &mut Vec<bool>,
-    geiger_ctx: &GeigerContext,
-    rs_files_used: &HashSet<PathBuf>,
-    pc: &PrintConfig,
-) {
-    if deps.is_empty() {
-        return;
-    }
-
-    // Resolve uses Hash data types internally but we want consistent output ordering
-    deps.sort_by_key(|n| n.id);
-
-    let name = match kind {
-        Kind::Normal => None,
-        Kind::Build => Some("[build-dependencies]"),
-        Kind::Development => Some("[dev-dependencies]"),
-    };
-    let tree_symbols = get_tree_symbols(pc.charset);
-    if let Prefix::Indent = pc.prefix {
-        if let Some(name) = name {
-            print!("{}", table_row_empty());
-            for &continues in &**levels_continue {
-                let c = if continues { tree_symbols.down } else { " " };
-                print!("{}   ", c);
-            }
-
-            println!("{}", name);
-        }
-    }
-
-    let mut it = deps.iter().peekable();
-    while let Some(dependency) = it.next() {
-        levels_continue.push(it.peek().is_some());
-        print_dependency(
-            dependency,
-            graph,
-            visited_deps,
-            levels_continue,
-            geiger_ctx,
-            rs_files_used,
-            pc,
-        );
-        levels_continue.pop();
     }
 }
 
