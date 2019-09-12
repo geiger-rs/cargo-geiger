@@ -428,6 +428,7 @@ pub fn run_scan_mode_default(
                 }
                 let name = name.unwrap();
 
+                // TODO: Fix this the alignment on macOS (others too?)
                 println!("{}{}{}", table_row_empty(), treevines, name);
             }
         }
@@ -509,6 +510,7 @@ pub fn run_scan_mode_forbid_only(
                     continue;
                 }
                 let name = name.unwrap();
+                // TODO: Fix this the alignment on macOS (others too?)
                 println!("  {}{}", treevines, name);
             }
         }
