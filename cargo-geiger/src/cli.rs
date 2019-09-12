@@ -104,7 +104,6 @@ pub struct PrintConfig<'a> {
 
 pub struct Node {
     id: PackageId,
-
     // TODO: Investigate why this was needed before the separation of printing
     // and graph traversal and if it should be added back.
     //pack: &'a Package,
@@ -340,20 +339,19 @@ pub fn run_scan_mode_default(
     for tl in tree_lines {
         match tl {
             TextTreeLine::Package { id, treevines } => {
-                let pack = packages
-                    .get_one(id)
-                    .unwrap_or_else(|_| {
-                        // TODO: Avoid panic, return Result.
-                        panic!("Expected to find package by id: {}",
-                               id);
-                    });
+                let pack = packages.get_one(id).unwrap_or_else(|_| {
+                    // TODO: Avoid panic, return Result.
+                    panic!("Expected to find package by id: {}", id);
+                });
                 let pack_metrics = geiger_ctx
                     .pack_id_to_metrics
                     .get(&id)
                     .unwrap_or_else(|| {
                         // TODO: Avoid panic, return Result.
-                        panic!("Failed to get unsafe counters for package: {}",
-                               &id)
+                        panic!(
+                            "Failed to get unsafe counters for package: {}",
+                            &id
+                        )
                     });
                 let unsafe_found = pack_metrics
                     .rs_path_to_metrics
@@ -373,11 +371,16 @@ pub fn run_scan_mode_default(
                     .filter(|(_, v)| v.is_crate_entry_point)
                     .all(|(_, v)| v.metrics.forbids_unsafe);
 
-                let detection_status = match (unsafe_found, crate_forbids_unsafe) {
-                    (false, true) => DetectionStatus::NoneDetectedForbidsUnsafe,
-                    (false, false) => DetectionStatus::NoneDetectedAllowsUnsafe,
-                    (true, _) => DetectionStatus::UnsafeDetected,
-                };
+                let detection_status =
+                    match (unsafe_found, crate_forbids_unsafe) {
+                        (false, true) => {
+                            DetectionStatus::NoneDetectedForbidsUnsafe
+                        }
+                        (false, false) => {
+                            DetectionStatus::NoneDetectedAllowsUnsafe
+                        }
+                        (true, _) => DetectionStatus::UnsafeDetected,
+                    };
                 let colorize = |s: String| match detection_status {
                     DetectionStatus::NoneDetectedForbidsUnsafe => s.green(),
                     DetectionStatus::NoneDetectedAllowsUnsafe => s.normal(),
@@ -397,10 +400,10 @@ pub fn run_scan_mode_default(
                 };
                 let pack_name = colorize(format!(
                     "{}",
-                    pc.format
-                        .display(&id, pack.manifest().metadata())
+                    pc.format.display(&id, pack.manifest().metadata())
                 ));
-                let unsafe_info = colorize(table_row(&pack_metrics, &rs_files_used));
+                let unsafe_info =
+                    colorize(table_row(&pack_metrics, &rs_files_used));
                 let shift_chars = unsafe_info.chars().count() + 4;
                 print!("{}  {: <2}", unsafe_info, icon);
 
