@@ -755,8 +755,8 @@ enum ScanMode {
     EntryPointsOnly,
 }
 
-fn find_unsafe_in_packages<'a, 'b, 's, F>(
-    packs: &'a PackageSet<'b>,
+fn find_unsafe_in_packages<F>(
+    packs: &PackageSet,
     allow_partial_results: bool,
     include_tests: IncludeTests,
     mode: ScanMode,
@@ -777,9 +777,8 @@ where
             RsFile::CustomBuildRoot(pb) => (true, pb),
             RsFile::Other(pb) => (false, pb),
         };
-        match (is_entry_point, &mode) {
-            (false, ScanMode::EntryPointsOnly) => continue,
-            _ => (),
+        if let (false, ScanMode::EntryPointsOnly) = (is_entry_point, &mode) {
+            continue;
         }
         match find_unsafe_in_file(&p, include_tests) {
             Err(e) => {
@@ -859,7 +858,7 @@ struct EmojiSymbols {
 impl EmojiSymbols {
     pub fn new(charset: Charset) -> EmojiSymbols {
         Self {
-            charset: charset,
+            charset,
             emojis: ["🔒", "❓", "☢️"],
             fallbacks: [":)".green(), "?".normal(), "!".red().bold()],
         }
