@@ -338,7 +338,7 @@ pub fn run_scan_mode_default(
     let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
     for tl in tree_lines {
         match tl {
-            TextTreeLine::Package { id, treevines } => {
+            TextTreeLine::Package { id, tree_vines } => {
                 let pack = packages.get_one(id).unwrap_or_else(|_| {
                     // TODO: Avoid panic, return Result.
                     panic!("Expected to find package by id: {}", id);
@@ -419,17 +419,17 @@ pub fn run_scan_mode_default(
                     print!("\x1B[{}C", shift_chars); // Move the cursor to the right so that it points to the icon character.
                 }
 
-                println!(" {}{}", treevines, pack_name);
+                println!(" {}{}", tree_vines, pack_name);
             }
-            TextTreeLine::ExtraDepsGroup { kind, treevines } => {
+            TextTreeLine::ExtraDepsGroup { kind, tree_vines } => {
                 let name = get_kind_group_name(kind);
                 if name.is_none() {
                     continue;
                 }
                 let name = name.unwrap();
 
-                // TODO: Fix this the alignment on macOS (others too?)
-                println!("{}{}{}", table_row_empty(), treevines, name);
+                // TODO: Fix the alignment on macOS (others too?)
+                println!("{}{}{}", table_row_empty(), tree_vines, name);
             }
         }
     }
@@ -486,7 +486,7 @@ pub fn run_scan_mode_forbid_only(
     let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
     for tl in tree_lines {
         match tl {
-            TextTreeLine::Package { id, treevines } => {
+            TextTreeLine::Package { id, tree_vines } => {
                 let pack = packages.get_one(id).unwrap(); // FIXME
                 let name = format_package_name(pack, pc.format);
                 let pack_metrics = geiger_ctx.pack_id_to_metrics.get(&id);
@@ -502,16 +502,16 @@ pub fn run_scan_mode_forbid_only(
                 } else {
                     (&sym_qmark, name.red())
                 };
-                println!("{} {}{}", symbol, treevines, name);
+                println!("{} {}{}", symbol, tree_vines, name);
             }
-            TextTreeLine::ExtraDepsGroup { kind, treevines } => {
+            TextTreeLine::ExtraDepsGroup { kind, tree_vines } => {
                 let name = get_kind_group_name(kind);
                 if name.is_none() {
                     continue;
                 }
                 let name = name.unwrap();
-                // TODO: Fix this the alignment on macOS (others too?)
-                println!("  {}{}", treevines, name);
+                // TODO: Fix the alignment on macOS (others too?)
+                println!("  {}{}", tree_vines, name);
             }
         }
     }
@@ -1102,21 +1102,17 @@ impl Executor for CustomExecutor {
 /// dependency graph traversal.
 enum TextTreeLine {
     /// A text line for a package
-    Package { id: PackageId, treevines: String },
+    Package { id: PackageId, tree_vines: String },
     /// There're extra dependencies comming and we should print a group header,
     /// eg. "[build-dependencies]".
-    ExtraDepsGroup { kind: Kind, treevines: String },
+    ExtraDepsGroup { kind: Kind, tree_vines: String },
 }
 
-/// Temporary hack that is intended to merge back with the original functions
-/// print_tree when it has been made flexible enough to handle any table tree
-/// printing or tree output buffer building for later printing.
-///
-/// Returns an iterator that produce a line of text at a time that corresponds
-/// to a single crate at a specific level in the dependency tree. All lines
-/// printed in sequence are expectged to produce a nice looking tree structure.
+/// To print the returned TextTreeLines in order are expectged to produce a nice
+/// looking tree structure.
 ///
 /// TODO: Return a impl Iterator<Item = TextTreeLine ... >
+/// TODO: Consider separating the tree vine building from the tree traversal.
 ///
 fn walk_dependency_tree(
     root_pack_id: PackageId,
@@ -1144,7 +1140,7 @@ fn walk_dependency_node(
 ) -> Vec<TextTreeLine> {
     let new = pc.all || visited_deps.insert(package.id);
     let tree_symbols = get_tree_symbols(pc.charset);
-    let treevines = match pc.prefix {
+    let tree_vines = match pc.prefix {
         Prefix::Depth => format!("{} ", levels_continue.len()),
         Prefix::Indent => {
             let mut buf = String::new();
@@ -1168,7 +1164,7 @@ fn walk_dependency_node(
 
     let mut all_out = vec![TextTreeLine::Package {
         id: package.id,
-        treevines,
+        tree_vines,
     }];
 
     if !new {
@@ -1243,12 +1239,12 @@ fn walk_dependency_kind(
         match kind {
             Kind::Normal => (),
             _ => {
-                let mut treevines = String::new();
+                let mut tree_vines = String::new();
                 for &continues in &**levels_continue {
                     let c = if continues { tree_symbols.down } else { " " };
-                    treevines.push_str(&format!("{}   ", c));
+                    tree_vines.push_str(&format!("{}   ", c));
                 }
-                output.push(TextTreeLine::ExtraDepsGroup { kind, treevines });
+                output.push(TextTreeLine::ExtraDepsGroup { kind, tree_vines });
             }
         }
     }
@@ -1281,7 +1277,9 @@ fn get_tree_symbols(cs: Charset) -> TreeSymbols {
     }
 }
 
-// TODO: use a table library, or factor the tableness out in a smarter way
+// TODO: use a table library, or factor the tableness out in a smarter way. This
+// is probably easier now when the tree formatting is separated from the tree
+// traversal.
 const UNSAFE_COUNTERS_HEADER: [&str; 6] = [
     "Functions ",
     "Expressions ",
