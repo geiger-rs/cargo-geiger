@@ -44,7 +44,6 @@ use cargo::util::{self, important_paths, CargoResult, Cfg};
 use cargo::CliResult;
 use cargo::Config;
 use colored::Colorize;
-use geiger::find_rs_files_in_dir;
 use geiger::find_unsafe_in_file;
 use geiger::Count;
 use geiger::CounterBlock;
@@ -652,11 +651,6 @@ pub fn build_compile_options<'a>(
     opt
 }
 
-// TODO: Review this. The same code exist in the `geiger` library crate, but is
-// private since I don't want to expose `WalkDir` in the public API for this
-// simple function. Is this function available in WalkDir already or something
-// similar? If not, open a github issue and ask if this would be appropriate as
-// a PR. Don't use to_string_lossy and return a result or option instead.
 fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
     if !entry.file_type().is_file() {
         return false;
@@ -1323,4 +1317,21 @@ fn table_row(pms: &PackageMetrics, rs_files_used: &HashSet<PathBuf>) -> String {
         fmt(&used.item_traits, &not_used.item_traits),
         fmt(&used.methods, &not_used.methods),
     )
+}
+
+
+pub fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
+    let walker = WalkDir::new(dir).into_iter();
+    walker.filter_map(|entry| {
+        let entry = entry.expect("walkdir error."); // TODO: Return result.
+        if !is_file_with_ext(&entry, "rs") {
+            return None;
+        }
+        Some(
+            entry
+                .path()
+                .canonicalize()
+                .expect("Error converting to canonical path"),
+        ) // TODO: Return result.
+    })
 }

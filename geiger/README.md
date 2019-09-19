@@ -11,6 +11,11 @@ For more details please see the `README.md` in [cargo-geiger].
 Changelog
 ---------
 
+### 0.4.0
+ - Reduced compile times.
+ - Removed walkdir as dependency.
+ - Removed `pub fn find_rs_files_in_dir`.
+
 ### 0.3.3
  - Updated dependencies.
 

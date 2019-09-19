@@ -71,6 +71,13 @@ Roadmap
 Changelog
 ---------
 
+### 0.8.0 (unreleased)
+ - Now requires all entry points for a crate to declare
+   `#[forbid(unsafe_code)]` for it to count as crate-wide.
+ - New optional scan mode `--forbid-only`. This mode doesn't require any calls
+   to `rustc` and only requires parsing the entry point .rs files, making it
+   much faster than the normal mode.
+
 ### 0.7.3
  - Bugfix: Fix dependency collection for mixed workspaces [#66]
  - Updated dependencies.

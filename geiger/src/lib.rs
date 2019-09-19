@@ -9,10 +9,7 @@
 
 extern crate proc_macro2;
 extern crate syn;
-extern crate walkdir;
 
-use self::walkdir::DirEntry;
-use self::walkdir::WalkDir;
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
@@ -313,42 +310,6 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
     //
     // TODO: Figure out if there are other visit methods that should be
     // implemented here.
-}
-
-// NOTE: The same code exist in `cargo-geiger`, see the comment in that crate
-// for more details.
-fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
-    if !entry.file_type().is_file() {
-        return false;
-    }
-    let p = entry.path();
-    let ext = match p.extension() {
-        Some(e) => e,
-        None => return false,
-    };
-    // to_string_lossy is ok since we only want to match against an ASCII
-    // compatible extension and we do not keep the possibly lossy result
-    // around.
-    ext.to_string_lossy() == file_ext
-}
-
-/// TODO: Review this, should this be public? Hide this as private and export a
-/// `pub fn find_unsafe_in_dir` instead(?).
-/// Or require the caller to perform all directory walking?
-pub fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
-    let walker = WalkDir::new(dir).into_iter();
-    walker.filter_map(|entry| {
-        let entry = entry.expect("walkdir error."); // TODO: Return result.
-        if !is_file_with_ext(&entry, "rs") {
-            return None;
-        }
-        Some(
-            entry
-                .path()
-                .canonicalize()
-                .expect("Error converting to canonical path"),
-        ) // TODO: Return result.
-    })
 }
 
 pub fn find_unsafe_in_string(
