@@ -72,7 +72,7 @@ Changelog
 ---------
 
 ### 0.8.0 (unreleased)
- - Properly account for possibly patched dependencies [#70].
+ - __Bugfix:__ Properly account for possibly patched dependencies [#70].
  - Now requires all entry points for a crate to declare
    `#[forbid(unsafe_code)]` for it to count as crate-wide.
  - New optional scan mode `--forbid-only`. This mode doesn't require any calls
@@ -80,14 +80,14 @@ Changelog
    much faster than the normal mode.
 
 ### 0.7.3
- - Bugfix: Fix dependency collection for mixed workspaces [#66].
+ - __Bugfix:__ Fix dependency collection for mixed workspaces [#66].
  - Updated dependencies.
 
 ### 0.7.2
  - Updated dependencies to fix [#59].
 
 ### 0.7.1
- - Bugfix, related to attributes, in [geiger] [#57].
+ - __Bugfix:__ related to attributes, in [geiger] [#57].
  - Updated all dependencies.
 
 ### 0.7.0
@@ -116,7 +116,7 @@ Changelog
  - Merge pull request [#40] from jiminhsieh/rust-2018. Use Rust 2018 edition.
 
 ### 0.4.2
- - __BUGFIX__: Merge pull request [#33] from ajpaverd/windows_filepaths.
+ - __Bugfix:__ Merge pull request [#33] from ajpaverd/windows_filepaths.
    Canonicalize file paths from walker.
 
  - Merge pull request [#38] from anderejd/updated-deps. Updated deps and fixed
@@ -126,8 +126,8 @@ Changelog
  - Merge pull request [#28] from alexmaco/deps_upgrade. fix build on rust 1.30:
    upgrade petgraph to 0.4.13
 
- - Merge pull request [#29] from alexmaco/invalid_utf8_source. fix handling
-   source files with invalid utf8: lossy conversion to string
+ - __Bugfix:__ Merge pull request [#29] from alexmaco/invalid_utf8_source. fix 
+   handling source files with invalid utf8: lossy conversion to string
 
 ### 0.4.0
  - Filters out tests by default. Tests can still be included by using
@@ -135,7 +135,7 @@ Changelog
    `#[test]` on functions and `#[cfg(test)]` on modules.
 
 ### 0.3.1
- - Some bugfixes related to cargo workspace path handling.
+ - __Bugfix:__ Some bugfixes related to cargo workspace path handling.
  - Slightly better error messages in some cases.
 
 ### 0.3.0
