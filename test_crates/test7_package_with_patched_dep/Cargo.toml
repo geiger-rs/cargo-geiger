@@ -1,0 +1,10 @@
+[package]
+name = "test7_package_with_patched_dep"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+num_cpus = { git = "https://github.com/seanmonstar/num_cpus" }
+
+[patch."https://github.com/seanmonstar/num_cpus"]
+num_cpus = { path = "../support/num_cpus" }

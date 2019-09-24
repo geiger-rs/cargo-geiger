@@ -168,7 +168,7 @@ pub fn build_graph<'a>(
             let it = pkg
                 .dependencies()
                 .iter()
-                .filter(|d| d.matches_id(raw_dep_id))
+                .filter(|d| d.matches_ignoring_source(raw_dep_id))
                 .filter(|d| extra_deps.allows(d.kind()))
                 .filter(|d| {
                     d.platform()

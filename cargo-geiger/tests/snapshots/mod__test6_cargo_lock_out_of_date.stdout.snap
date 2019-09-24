@@ -1,6 +1,6 @@
 ---
-created: "2019-08-11T20:44:05.368283209Z"
-creator: insta@0.10.0
+created: "2019-09-24T17:02:24.314541942Z"
+creator: insta@0.10.1
 source: cargo-geiger/tests/mod.rs
 expression: stdout
 ---
@@ -16,7 +16,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      :) geiger-test 0.1.0
+0/0        0/0          0/0    0/0     0/0      :) test6_cargo_lock_out_of_date 0.1.0
 0/0        0/0          0/0    0/0     0/0      :) |-- generational-arena 0.2.2
 0/0        0/0          0/0    0/0     0/0      ?  |   `-- cfg-if 0.1.9
 0/0        1/1          0/0    0/0     0/0      !  `-- idna 0.1.5

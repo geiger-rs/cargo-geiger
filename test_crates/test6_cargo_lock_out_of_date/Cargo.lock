@@ -6,14 +6,6 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "geiger-test"
-version = "0.1.0"
-dependencies = [
- "generational-arena 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "idna 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "generational-arena"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -40,6 +32,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "smallvec"
 version = "0.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "test6_cargo_lock_out_of_date"
+version = "0.1.0"
+dependencies = [
+ "generational-arena 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "idna 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "unicode-bidi"
