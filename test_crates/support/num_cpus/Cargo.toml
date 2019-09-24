@@ -1,0 +1,6 @@
+[package]
+name = "num_cpus"
+version = "1.10.1"
+
+[dependencies]
+test1_package_with_no_deps = { path = "../../test1_package_with_no_deps" }
