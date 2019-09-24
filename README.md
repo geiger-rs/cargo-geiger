@@ -72,7 +72,7 @@ Changelog
 ---------
 
 ### 0.8.0 (unreleased)
- - Properly account for possibly patched dependencies [#70]
+ - Properly account for possibly patched dependencies [#70].
  - Now requires all entry points for a crate to declare
    `#[forbid(unsafe_code)]` for it to count as crate-wide.
  - New optional scan mode `--forbid-only`. This mode doesn't require any calls
@@ -80,7 +80,7 @@ Changelog
    much faster than the normal mode.
 
 ### 0.7.3
- - Bugfix: Fix dependency collection for mixed workspaces [#66]
+ - Bugfix: Fix dependency collection for mixed workspaces [#66].
  - Updated dependencies.
 
 ### 0.7.2
