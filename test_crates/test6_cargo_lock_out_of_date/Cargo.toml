@@ -1,5 +1,5 @@
 [package]
-name = "geiger-test"
+name = "test6_cargo_lock_out_of_date"
 version = "0.1.0"
 authors = ["anderejd <rajder@gmail.com>"]
 edition = "2018"
