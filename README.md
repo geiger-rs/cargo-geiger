@@ -72,10 +72,11 @@ Changelog
 ---------
 
 ### 0.8.0 (unreleased)
+ - Properly account for possibly patched dependencies [#70]
  - Now requires all entry points for a crate to declare
    `#[forbid(unsafe_code)]` for it to count as crate-wide.
  - New optional scan mode `--forbid-only`. This mode doesn't require any calls
-   to `rustc` and only requires parsing the entry point .rs files, making it
+   to `rustc` and only requires parsing the entry point `.rs` files, making it
    much faster than the normal mode.
 
 ### 0.7.3
@@ -166,5 +167,6 @@ Changelog
 [#57]: https://github.com/anderejd/cargo-geiger/issues/57
 [#59]: https://github.com/anderejd/cargo-geiger/issues/59
 [#66]: https://github.com/anderejd/cargo-geiger/issues/66
+[#70]: https://github.com/anderejd/cargo-geiger/pull/70
 [geiger]: https://crates.io/crates/geiger
 
