@@ -12,3 +12,4 @@
 **/*.rs.bk
 
 /test_crates/**/target/
+.DS_Store
