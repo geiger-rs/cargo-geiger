@@ -11,7 +11,7 @@ For more details please see the `README.md` in [cargo-geiger].
 Changelog
 ---------
 
-### 0.4.1
+### 0.4.1 (unreleased)
  - __Bugfix:__ Count all expressions in unsafe functions and nested unsafe scopes [#72],[#71].
 
 ### 0.4.0
