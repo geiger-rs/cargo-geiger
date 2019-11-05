@@ -72,7 +72,7 @@ Changelog
 ---------
 
 ### 0.8.0 (unreleased)
-- __Bugfix:__ Count all expressions in unsafe functions and nested unsafe scopes, in [geiger], [#72] & [#71].
+- __Bugfix:__ Count all expressions in unsafe functions and nested unsafe scopes, in [geiger 0.4.1](geiger), [#72] & [#71].
 - __Bugfix:__ Properly account for possibly patched dependencies [#70].
  - Now requires all entry points for a crate to declare
    `#[forbid(unsafe_code)]` for it to count as crate-wide.
