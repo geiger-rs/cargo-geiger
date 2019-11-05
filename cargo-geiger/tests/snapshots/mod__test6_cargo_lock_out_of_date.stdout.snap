@@ -1,5 +1,5 @@
 ---
-created: "2019-09-24T17:02:24.314541942Z"
+created: "2019-11-05T20:25:10.736895Z"
 creator: insta@0.10.1
 source: cargo-geiger/tests/mod.rs
 expression: stdout
@@ -24,5 +24,5 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      :)     |-- unicode-bidi 0.3.4
 0/0        0/0          0/0    0/0     0/0      ?      |   `-- matches 0.1.8
 0/0        20/20        0/0    0/0     0/0      !      `-- unicode-normalization 0.1.8
-2/2        318/318      4/4    1/1     13/13    !          `-- smallvec 0.6.9
+2/2        354/354      4/4    1/1     13/13    !          `-- smallvec 0.6.9
 
