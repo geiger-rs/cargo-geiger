@@ -11,6 +11,9 @@ For more details please see the `README.md` in [cargo-geiger].
 Changelog
 ---------
 
+### 0.4.1
+ - __Bugfix:__ Count all expressions in unsafe functions and nested unsafe scopes [#72],[#71].
+
 ### 0.4.0
  - Reduced compile times.
  - Removed walkdir as dependency.
@@ -37,6 +40,8 @@ Changelog
 [#52]: https://github.com/anderejd/cargo-geiger/pull/52
 [#55]: https://github.com/anderejd/cargo-geiger/pull/55
 [#57]: https://github.com/anderejd/cargo-geiger/pull/57
+[#71]: https://github.com/anderejd/cargo-geiger/issues/71
+[#72]: https://github.com/anderejd/cargo-geiger/pull/72
 [cargo-geiger]: https://crates.io/crates/cargo-geiger
 [cargo]: https://crates.io/crates/cargo
 
