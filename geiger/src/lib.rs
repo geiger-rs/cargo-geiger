@@ -125,8 +125,14 @@ struct GeigerSynVisitor {
     /// The resulting data from a single file scan.
     metrics: RsFileMetrics,
 
-    /// Used by the Visit trait implementation to track the traversal state.
-    in_unsafe_block: bool,
+    /// The number of nested unsafe scopes that the GeigerSynVisitor are
+    /// currently in. For example, if the visitor is inside an unsafe function
+    /// and inside an unnecessary unsafe block inside that function, then this
+    /// number should be 2. If the visitor is outside unsafe scopes, in a safe
+    /// scope, this number should be 0.
+    /// This is needed since unsafe scopes can be nested and we need to know
+    /// when we leave the outmost unsafe scope and get back into a safe scope.
+    unsafe_scopes: u32,
 }
 
 impl GeigerSynVisitor {
@@ -134,8 +140,16 @@ impl GeigerSynVisitor {
         GeigerSynVisitor {
             include_tests,
             metrics: Default::default(),
-            in_unsafe_block: false,
+            unsafe_scopes: 0,
         }
+    }
+
+    fn enter_unsafe_scope(&mut self) {
+        self.unsafe_scopes += 1;
+    }
+
+    fn exit_unsafe_scope(&mut self) {
+        self.unsafe_scopes -= 1;
     }
 }
 
@@ -245,20 +259,26 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
         if IncludeTests::No == self.include_tests && is_test_fn(i) {
             return;
         }
+        if i.sig.unsafety.is_some() {
+            self.enter_unsafe_scope()
+        }
         self.metrics
             .counters
             .functions
             .count(i.sig.unsafety.is_some());
         visit::visit_item_fn(self, i);
+        if i.sig.unsafety.is_some() {
+            self.exit_unsafe_scope()
+        }
     }
 
     fn visit_expr(&mut self, i: &Expr) {
         // Total number of expressions of any type
         match i {
             Expr::Unsafe(i) => {
-                self.in_unsafe_block = true;
+                self.enter_unsafe_scope();
                 visit::visit_expr_unsafe(self, i);
-                self.in_unsafe_block = false;
+                self.exit_unsafe_scope();
             }
             Expr::Path(_) | Expr::Lit(_) => {
                 // Do not count. The expression `f(x)` should count as one
@@ -267,10 +287,10 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
             other => {
                 // TODO: Print something pretty here or gather the data for later
                 // printing.
-                // if self.verbosity == Verbosity::Verbose && self.in_unsafe_block {
+                // if self.verbosity == Verbosity::Verbose && self.unsafe_scopes > 0 {
                 //     println!("{:#?}", other);
                 // }
-                self.metrics.counters.exprs.count(self.in_unsafe_block);
+                self.metrics.counters.exprs.count(self.unsafe_scopes > 0);
                 visit::visit_expr(self, other);
             }
         }
@@ -299,11 +319,17 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
     }
 
     fn visit_impl_item_method(&mut self, i: &ImplItemMethod) {
+        if i.sig.unsafety.is_some() {
+            self.enter_unsafe_scope()
+        }
         self.metrics
             .counters
             .methods
             .count(i.sig.unsafety.is_some());
         visit::visit_impl_item_method(self, i);
+        if i.sig.unsafety.is_some() {
+            self.exit_unsafe_scope()
+        }
     }
 
     // TODO: Visit macros.

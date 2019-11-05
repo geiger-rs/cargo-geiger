@@ -1,6 +1,6 @@
 ---
-created: "2019-08-04T17:27:53.034149454Z"
-creator: insta@0.10.0
+created: "2019-11-05T20:30:26.212139Z"
+creator: insta@0.10.1
 source: cargo-geiger/tests/mod.rs
 expression: stdout
 ---
