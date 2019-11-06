@@ -1,7 +1,6 @@
 cargo-geiger ☢️ 
 ===============
 
-[![Build Status](https://travis-ci.com/anderejd/cargo-geiger.svg?branch=master)](https://travis-ci.com/anderejd/cargo-geiger)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 
 A program that list statistics related to usage of unsafe Rust code in a Rust
