@@ -349,7 +349,7 @@ pub fn run_scan_mode_default(
     let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
     let mut total = CounterBlock::default();
     let mut total_unused = CounterBlock::default();
-    let mut total_detection_status = DetectionStatus::NoneDetectedAllowsUnsafe;
+    let mut total_detection_status = DetectionStatus::NoneDetectedForbidsUnsafe;
     for tl in tree_lines {
         match tl {
             TextTreeLine::Package { id, tree_vines } => {
@@ -407,7 +407,7 @@ pub fn run_scan_mode_default(
                         (DetectionStatus::UnsafeDetected,_) => {
                             total_detection_status = DetectionStatus::UnsafeDetected;
                         }
-                        (DetectionStatus::NoneDetectedForbidsUnsafe,DetectionStatus::NoneDetectedAllowsUnsafe) => {
+                        (DetectionStatus::NoneDetectedAllowsUnsafe,DetectionStatus::NoneDetectedForbidsUnsafe) => {
                             total_detection_status = DetectionStatus::NoneDetectedForbidsUnsafe;
                         }
                         (_,_) => ()
