@@ -30,8 +30,8 @@ use cargo::core::compiler::Unit;
 use cargo::core::dependency::Kind;
 use cargo::core::manifest::TargetKind;
 use cargo::core::package::PackageSet;
+use cargo::core::resolver::ResolveOpts;
 use cargo::core::registry::PackageRegistry;
-use cargo::core::resolver::Method;
 use cargo::core::shell::Verbosity;
 use cargo::core::Target;
 use cargo::core::{Package, PackageId, PackageIdSpec, Resolve, Workspace};
@@ -168,16 +168,21 @@ pub fn build_graph<'a>(
             let it = pkg
                 .dependencies()
                 .iter()
-                .filter(|d| d.matches_ignoring_source(raw_dep_id))
+                .filter(|d| d.matches_ignoring_source(raw_dep_id.0))
                 .filter(|d| extra_deps.allows(d.kind()))
                 .filter(|d| {
                     d.platform()
-                        .and_then(|p| target.map(|t| p.matches(t, cfgs)))
+                        .and_then(|p| target.map(|t| {
+                            match cfgs {
+                                None => false,
+                                Some(cfgs) => p.matches(t, cfgs),
+                            }
+                        }))
                         .unwrap_or(true)
                 });
-            let dep_id = match resolve.replacement(raw_dep_id) {
+            let dep_id = match resolve.replacement(raw_dep_id.0) {
                 Some(id) => id,
-                None => raw_dep_id,
+                None => raw_dep_id.0,
             };
             for dep in it {
                 let dep_idx = match graph.nodes.entry(dep_id) {
@@ -223,24 +228,23 @@ pub fn resolve<'a, 'cfg>(
     package_id: PackageId,
     registry: &mut PackageRegistry<'cfg>,
     ws: &'a Workspace<'cfg>,
-    features: Option<String>,
+    features: &[String],
     all_features: bool,
     no_default_features: bool,
 ) -> CargoResult<(PackageSet<'a>, Resolve)> {
-    let features = std::rc::Rc::new(Method::split_features(
-        &features.into_iter().collect::<Vec<_>>(),
-    ));
-    let method = Method::Required {
-        dev_deps: true,
+    let dev_deps = true; // TODO: Review this.
+    let uses_default_features = !no_default_features;
+    let opts = ResolveOpts::new(
+        dev_deps,
         features,
         all_features,
-        uses_default_features: !no_default_features,
-    };
+        uses_default_features
+    );
     let prev = ops::load_pkg_lockfile(ws)?;
     let resolve = ops::resolve_with_previous(
         registry,
         ws,
-        method,
+        opts,
         prev.as_ref(),
         None,
         &[PackageIdSpec::from_package_id(package_id)],
@@ -642,19 +646,21 @@ struct GeigerContext {
 /// Based on code from cargo-bloat. It seems weird that CompileOptions can be
 /// constructed without providing all standard cargo options, TODO: Open an issue
 /// in cargo?
-pub fn build_compile_options<'a>(
+fn build_compile_options<'a>(
     args: &'a Args,
     config: &'a Config,
 ) -> CompileOptions<'a> {
-    let features = Method::split_features(
-        &args.features.clone().into_iter().collect::<Vec<_>>(),
-    )
-    .into_iter()
-    .map(|s| s.to_string());
+    let features = args.features
+            .as_ref()
+            .map(|f| f.clone())
+            .unwrap_or_else(|| String::new())
+            .split(' ')
+            .map(str::to_owned)
+            .collect::<Vec::<String>>();
     let mut opt =
         CompileOptions::new(&config, CompileMode::Check { test: false })
             .unwrap();
-    opt.features = features.collect::<_>();
+    opt.features = features;
     opt.all_features = args.all_features;
     opt.no_default_features = args.no_default_features;
 

@@ -41,11 +41,11 @@ use structopt::StructOpt;
 pub enum Opts {
     #[structopt(
         name = "geiger",
-        raw(
-            setting = "AppSettings::UnifiedHelpMessage",
-            setting = "AppSettings::DeriveDisplayOrder",
-            setting = "AppSettings::DontCollapseArgsInUsage"
-        )
+        global_settings(&[
+            AppSettings::UnifiedHelpMessage,
+            AppSettings::DeriveDisplayOrder,
+            AppSettings::DontCollapseArgsInUsage
+        ])
     )]
     /// Detects usage of unsafe Rust in a Rust crate and its dependencies.
     Geiger(Args),
@@ -219,11 +219,18 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let ws = get_workspace(config, args.manifest_path.clone())?;
     let package = ws.current()?;
     let mut registry = get_registry(config, &package)?;
+    let features = args.features
+            .as_ref()
+            .map(|f| f.clone())
+            .unwrap_or_else(|| String::new())
+            .split(' ')
+            .map(str::to_owned)
+            .collect::<Vec::<String>>();
     let (packages, resolve) = resolve(
         package.package_id(),
         &mut registry,
         &ws,
-        args.features.clone(),
+        &features,
         args.all_features,
         args.no_default_features,
     )?;

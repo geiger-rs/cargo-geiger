@@ -72,8 +72,10 @@ Changelog
 ---------
 
 ### 0.8.0 (unreleased)
-- __Bugfix:__ Count all expressions in unsafe functions and nested unsafe scopes, in [geiger 0.4.1](geiger), [#72] & [#71].
-- __Bugfix:__ Properly account for possibly patched dependencies [#70].
+ - Summary for each metrics column, [#76].
+ - __Bugfix:__ Count all expressions in unsafe functions and nested unsafe
+   scopes, in [geiger 0.4.1](geiger), [#72] & [#71].
+ - __Bugfix:__ Properly account for possibly patched dependencies [#70].
  - Now requires all entry points for a crate to declare
    `#[forbid(unsafe_code)]` for it to count as crate-wide.
  - New optional scan mode `--forbid-only`. This mode doesn't require any calls
@@ -171,5 +173,6 @@ Changelog
 [#70]: https://github.com/anderejd/cargo-geiger/pull/70
 [#71]: https://github.com/anderejd/cargo-geiger/issues/71
 [#72]: https://github.com/anderejd/cargo-geiger/pull/72
+[#76]: https://github.com/anderejd/cargo-geiger/pull/76
 [geiger]: https://crates.io/crates/geiger
 
