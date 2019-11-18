@@ -1,5 +1,5 @@
 ---
-created: "2019-11-05T20:25:00.986247Z"
+created: "2019-11-12T23:54:30.239559130Z"
 creator: insta@0.10.1
 source: cargo-geiger/tests/mod.rs
 expression: stdout
@@ -19,4 +19,8 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      :) test7_package_with_patched_dep 0.1.0
 0/0        0/0          0/0    0/0     0/0      ?  `-- num_cpus 1.10.1
 1/1        2/2          0/0    0/0     0/0      !      `-- test1_package_with_no_deps 0.1.0
+
+
+
+1/1        2/2          0/0    0/0     0/0    
 

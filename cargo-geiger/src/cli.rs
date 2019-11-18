@@ -253,6 +253,18 @@ pub fn resolve<'a, 'cfg>(
     Ok((packages, resolve))
 }
 
+fn colorize(
+    s: String,
+    detection_status: &DetectionStatus,
+) -> colored::ColoredString {
+    match detection_status {
+                    DetectionStatus::NoneDetectedForbidsUnsafe => s.green(),
+                    DetectionStatus::NoneDetectedAllowsUnsafe => s.normal(),
+                    DetectionStatus::UnsafeDetected => s.red().bold(),
+    }
+}
+
+
 pub fn run_scan_mode_default(
     config: &Config,
     ws: &Workspace,
@@ -335,6 +347,9 @@ pub fn run_scan_mode_default(
     println!();
 
     let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
+    let mut total = CounterBlock::default();
+    let mut total_unused = CounterBlock::default();
+    let mut total_detection_status = DetectionStatus::NoneDetectedForbidsUnsafe;
     for tl in tree_lines {
         match tl {
             TextTreeLine::Package { id, tree_vines } => {
@@ -380,11 +395,26 @@ pub fn run_scan_mode_default(
                         }
                         (true, _) => DetectionStatus::UnsafeDetected,
                     };
-                let colorize = |s: String| match detection_status {
-                    DetectionStatus::NoneDetectedForbidsUnsafe => s.green(),
-                    DetectionStatus::NoneDetectedAllowsUnsafe => s.normal(),
-                    DetectionStatus::UnsafeDetected => s.red().bold(),
-                };
+
+                for (k, v) in pack_metrics.rs_path_to_metrics.iter() {
+                    let target = if rs_files_used.contains(k) {
+                        &mut total
+                    } else {
+                        &mut total_unused
+                    };
+                    *target = target.clone() + v.metrics.counters.clone();
+                    match (&detection_status,&total_detection_status)  {
+                        (DetectionStatus::UnsafeDetected,_) => {
+                            total_detection_status = DetectionStatus::UnsafeDetected;
+                        }
+                        (DetectionStatus::NoneDetectedAllowsUnsafe,DetectionStatus::NoneDetectedForbidsUnsafe) => {
+                            total_detection_status = DetectionStatus::NoneDetectedForbidsUnsafe;
+                        }
+                        (_,_) => ()
+                    }
+                }
+
+
                 let emoji_symbols = EmojiSymbols::new(pc.charset);
                 let icon = match detection_status {
                     DetectionStatus::NoneDetectedForbidsUnsafe => {
@@ -400,9 +430,9 @@ pub fn run_scan_mode_default(
                 let pack_name = colorize(format!(
                     "{}",
                     pc.format.display(&id, pack.manifest().metadata())
-                ));
+                ),&detection_status);
                 let unsafe_info =
-                    colorize(table_row(&pack_metrics, &rs_files_used));
+                    colorize(table_row(&pack_metrics, &rs_files_used),&detection_status);
                 let shift_chars = unsafe_info.chars().count() + 4;
                 print!("{}  {: <2}", unsafe_info, icon);
 
@@ -432,6 +462,7 @@ pub fn run_scan_mode_default(
             }
         }
     }
+    println!("{}",table_footer(total,total_unused,total_detection_status));
 
     let scanned_files = geiger_ctx
         .pack_id_to_metrics
@@ -1319,6 +1350,19 @@ fn table_row(pms: &PackageMetrics, rs_files_used: &HashSet<PathBuf>) -> String {
     )
 }
 
+fn table_footer(used: CounterBlock, not_used: CounterBlock, status: DetectionStatus) -> colored::ColoredString {
+    let fmt = |used: &Count, not_used: &Count| format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_);
+    let output = format!(
+        "{: <10} {: <12} {: <6} {: <7} {: <7}",
+        fmt(&used.functions, &not_used.functions),
+        fmt(&used.exprs, &not_used.exprs),
+        fmt(&used.item_impls, &not_used.item_impls),
+        fmt(&used.item_traits, &not_used.item_traits),
+        fmt(&used.methods, &not_used.methods),
+    );
+    println!("\n\n");
+    colorize(output,&status)
+}
 
 pub fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     let walker = WalkDir::new(dir).into_iter();
