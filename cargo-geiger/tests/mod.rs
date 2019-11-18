@@ -1,5 +1,8 @@
+#![forbid(unsafe_code)]
+#![forbid(warnings)]
+
 use assert_cmd::prelude::*;
-use insta::assert_snapshot_matches;
+use insta::assert_snapshot;
 use rstest::rstest_parametrize;
 
 use std::env;
@@ -42,13 +45,13 @@ fn test_package(name: &str) {
     if !stderr.is_empty() {
         let re = regex::Regex::new(r"`([^`]+).toml`").unwrap();
         let stderr = re.replace(&stderr, "`{MANIFEST_PATH}`");
-        assert_snapshot_matches!(stderr_filename, stderr);
+        assert_snapshot!(stderr_filename, stderr);
     }
 
     let stdout_filename = format!("{}.stdout", name);
     let stdout = String::from_utf8(result.stdout)
         .expect("output should have been valid utf-8");
-    assert_snapshot_matches!(stdout_filename, stdout);
+    assert_snapshot!(stdout_filename, stdout);
 
     if stderr.is_empty() {
         assert!(result.status.success(), "`cargo-geiger` failed");
