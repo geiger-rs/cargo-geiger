@@ -30,8 +30,8 @@ use cargo::core::compiler::Unit;
 use cargo::core::dependency::Kind;
 use cargo::core::manifest::TargetKind;
 use cargo::core::package::PackageSet;
-use cargo::core::resolver::ResolveOpts;
 use cargo::core::registry::PackageRegistry;
+use cargo::core::resolver::ResolveOpts;
 use cargo::core::shell::Verbosity;
 use cargo::core::Target;
 use cargo::core::{Package, PackageId, PackageIdSpec, Resolve, Workspace};
@@ -172,12 +172,12 @@ pub fn build_graph<'a>(
                 .filter(|d| extra_deps.allows(d.kind()))
                 .filter(|d| {
                     d.platform()
-                        .and_then(|p| target.map(|t| {
-                            match cfgs {
+                        .and_then(|p| {
+                            target.map(|t| match cfgs {
                                 None => false,
                                 Some(cfgs) => p.matches(t, cfgs),
-                            }
-                        }))
+                            })
+                        })
                         .unwrap_or(true)
                 });
             let dep_id = match resolve.replacement(raw_dep_id.0) {
@@ -238,7 +238,7 @@ pub fn resolve<'a, 'cfg>(
         dev_deps,
         features,
         all_features,
-        uses_default_features
+        uses_default_features,
     );
     let prev = ops::load_pkg_lockfile(ws)?;
     let resolve = ops::resolve_with_previous(
@@ -262,12 +262,11 @@ fn colorize(
     detection_status: &DetectionStatus,
 ) -> colored::ColoredString {
     match detection_status {
-                    DetectionStatus::NoneDetectedForbidsUnsafe => s.green(),
-                    DetectionStatus::NoneDetectedAllowsUnsafe => s.normal(),
-                    DetectionStatus::UnsafeDetected => s.red().bold(),
+        DetectionStatus::NoneDetectedForbidsUnsafe => s.green(),
+        DetectionStatus::NoneDetectedAllowsUnsafe => s.normal(),
+        DetectionStatus::UnsafeDetected => s.red().bold(),
     }
 }
-
 
 pub fn run_scan_mode_default(
     config: &Config,
@@ -407,17 +406,21 @@ pub fn run_scan_mode_default(
                         &mut total_unused
                     };
                     *target = target.clone() + v.metrics.counters.clone();
-                    match (&detection_status,&total_detection_status)  {
-                        (DetectionStatus::UnsafeDetected,_) => {
-                            total_detection_status = DetectionStatus::UnsafeDetected;
+                    match (&detection_status, &total_detection_status) {
+                        (DetectionStatus::UnsafeDetected, _) => {
+                            total_detection_status =
+                                DetectionStatus::UnsafeDetected;
                         }
-                        (DetectionStatus::NoneDetectedAllowsUnsafe,DetectionStatus::NoneDetectedForbidsUnsafe) => {
-                            total_detection_status = DetectionStatus::NoneDetectedForbidsUnsafe;
+                        (
+                            DetectionStatus::NoneDetectedAllowsUnsafe,
+                            DetectionStatus::NoneDetectedForbidsUnsafe,
+                        ) => {
+                            total_detection_status =
+                                DetectionStatus::NoneDetectedForbidsUnsafe;
                         }
-                        (_,_) => ()
+                        (_, _) => (),
                     }
                 }
-
 
                 let emoji_symbols = EmojiSymbols::new(pc.charset);
                 let icon = match detection_status {
@@ -431,12 +434,17 @@ pub fn run_scan_mode_default(
                         emoji_symbols.emoji(SymbolKind::Rads)
                     }
                 };
-                let pack_name = colorize(format!(
-                    "{}",
-                    pc.format.display(&id, pack.manifest().metadata())
-                ),&detection_status);
-                let unsafe_info =
-                    colorize(table_row(&pack_metrics, &rs_files_used),&detection_status);
+                let pack_name = colorize(
+                    format!(
+                        "{}",
+                        pc.format.display(&id, pack.manifest().metadata())
+                    ),
+                    &detection_status,
+                );
+                let unsafe_info = colorize(
+                    table_row(&pack_metrics, &rs_files_used),
+                    &detection_status,
+                );
                 let shift_chars = unsafe_info.chars().count() + 4;
                 print!("{}  {: <2}", unsafe_info, icon);
 
@@ -466,7 +474,10 @@ pub fn run_scan_mode_default(
             }
         }
     }
-    println!("{}",table_footer(total,total_unused,total_detection_status));
+    println!(
+        "{}",
+        table_footer(total, total_unused, total_detection_status)
+    );
 
     let scanned_files = geiger_ctx
         .pack_id_to_metrics
@@ -650,13 +661,14 @@ fn build_compile_options<'a>(
     args: &'a Args,
     config: &'a Config,
 ) -> CompileOptions<'a> {
-    let features = args.features
-            .as_ref()
-            .map(|f| f.clone())
-            .unwrap_or_else(|| String::new())
-            .split(' ')
-            .map(str::to_owned)
-            .collect::<Vec::<String>>();
+    let features = args
+        .features
+        .as_ref()
+        .map(|f| f.clone())
+        .unwrap_or_else(|| String::new())
+        .split(' ')
+        .map(str::to_owned)
+        .collect::<Vec<String>>();
     let mut opt =
         CompileOptions::new(&config, CompileMode::Check { test: false })
             .unwrap();
@@ -1356,8 +1368,14 @@ fn table_row(pms: &PackageMetrics, rs_files_used: &HashSet<PathBuf>) -> String {
     )
 }
 
-fn table_footer(used: CounterBlock, not_used: CounterBlock, status: DetectionStatus) -> colored::ColoredString {
-    let fmt = |used: &Count, not_used: &Count| format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_);
+fn table_footer(
+    used: CounterBlock,
+    not_used: CounterBlock,
+    status: DetectionStatus,
+) -> colored::ColoredString {
+    let fmt = |used: &Count, not_used: &Count| {
+        format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
+    };
     let output = format!(
         "{: <10} {: <12} {: <6} {: <7} {: <7}",
         fmt(&used.functions, &not_used.functions),
@@ -1367,7 +1385,7 @@ fn table_footer(used: CounterBlock, not_used: CounterBlock, status: DetectionSta
         fmt(&used.methods, &not_used.methods),
     );
     println!("\n\n");
-    colorize(output,&status)
+    colorize(output, &status)
 }
 
 pub fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {

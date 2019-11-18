@@ -72,15 +72,16 @@ Changelog
 ---------
 
 ### 0.8.0 (unreleased)
- - Summary for each metrics column, [#76].
  - __Bugfix:__ Count all expressions in unsafe functions and nested unsafe
    scopes, in [geiger 0.4.1](geiger), [#72] & [#71].
  - __Bugfix:__ Properly account for possibly patched dependencies [#70].
+ - Summary for each metrics column, [#76].
  - Now requires all entry points for a crate to declare
    `#[forbid(unsafe_code)]` for it to count as crate-wide.
  - New optional scan mode `--forbid-only`. This mode doesn't require any calls
    to `rustc` and only requires parsing the entry point `.rs` files, making it
    much faster than the normal mode.
+ - Updated dependencies.
 
 ### 0.7.3
  - __Bugfix:__ Fix dependency collection for mixed workspaces [#66].

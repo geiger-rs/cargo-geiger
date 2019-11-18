@@ -219,13 +219,14 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let ws = get_workspace(config, args.manifest_path.clone())?;
     let package = ws.current()?;
     let mut registry = get_registry(config, &package)?;
-    let features = args.features
-            .as_ref()
-            .map(|f| f.clone())
-            .unwrap_or_else(|| String::new())
-            .split(' ')
-            .map(str::to_owned)
-            .collect::<Vec::<String>>();
+    let features = args
+        .features
+        .as_ref()
+        .map(|f| f.clone())
+        .unwrap_or_else(|| String::new())
+        .split(' ')
+        .map(str::to_owned)
+        .collect::<Vec<String>>();
     let (packages, resolve) = resolve(
         package.package_id(),
         &mut registry,
