@@ -1,6 +1,4 @@
 ---
-created: "2019-11-12T23:54:39.948458908Z"
-creator: insta@0.10.1
 source: cargo-geiger/tests/mod.rs
 expression: stdout
 ---
@@ -26,7 +24,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        20/20        0/0    0/0     0/0      !      `-- unicode-normalization 0.1.8
 2/2        354/354      4/4    1/1     13/13    !          `-- smallvec 0.6.9
 
-
-
 2/2        375/375      4/4    1/1     13/13  
+
 

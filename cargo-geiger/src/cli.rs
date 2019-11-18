@@ -474,11 +474,12 @@ pub fn run_scan_mode_default(
             }
         }
     }
+    println!("");
     println!(
         "{}",
         table_footer(total, total_unused, total_detection_status)
     );
-
+    println!("");
     let scanned_files = geiger_ctx
         .pack_id_to_metrics
         .iter()
@@ -492,7 +493,6 @@ pub fn run_scan_mode_default(
             path.display()
         )
     }
-
     Ok(())
 }
 
@@ -1384,7 +1384,6 @@ fn table_footer(
         fmt(&used.item_traits, &not_used.item_traits),
         fmt(&used.methods, &not_used.methods),
     );
-    println!("\n\n");
     colorize(output, &status)
 }
 
