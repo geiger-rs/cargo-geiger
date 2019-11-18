@@ -1,10 +1,10 @@
 strategy:
   matrix:
-    windows:
+    Windows:
       imageName: 'windows-latest'
     macOS:
       imageName: 'macOS-latest'
-    linux:
+    Linux:
       imageName: 'ubuntu-latest'
 
 pool:
@@ -18,7 +18,7 @@ steps:
       curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain stable
       export PATH=$PATH:$HOME/.cargo/bin
       echo "##vso[task.setvariable variable=PATH;]$PATH:$HOME/.cargo/bin"
-    displayName: "Install rust (*nix)"
+    displayName: "Install Rust (*nix)"
     condition: not(eq(variables['Agent.OS'], 'Windows_NT'))
 
   # Windows.
