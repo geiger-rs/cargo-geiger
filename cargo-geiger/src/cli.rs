@@ -474,12 +474,12 @@ pub fn run_scan_mode_default(
             }
         }
     }
-    println!("");
+    println!();
     println!(
         "{}",
         table_footer(total, total_unused, total_detection_status)
     );
-    println!("");
+    println!();
     let scanned_files = geiger_ctx
         .pack_id_to_metrics
         .iter()
@@ -664,8 +664,8 @@ fn build_compile_options<'a>(
     let features = args
         .features
         .as_ref()
-        .map(|f| f.clone())
-        .unwrap_or_else(|| String::new())
+        .cloned()
+        .unwrap_or_else(String::new)
         .split(' ')
         .map(str::to_owned)
         .collect::<Vec<String>>();

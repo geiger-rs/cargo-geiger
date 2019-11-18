@@ -222,8 +222,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let features = args
         .features
         .as_ref()
-        .map(|f| f.clone())
-        .unwrap_or_else(|| String::new())
+        .cloned()
+        .unwrap_or_else(String::new)
         .split(' ')
         .map(str::to_owned)
         .collect::<Vec<String>>();
