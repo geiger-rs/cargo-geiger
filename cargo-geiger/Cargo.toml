@@ -15,13 +15,12 @@ maintenance = { status = "experimental" }
 
 [dependencies]
 cargo = "0.40.0"
-clap = "2.33.0"
 colored = "1.9.0"
 console = "0.9.1"
 env_logger = "0.7.1"
 geiger = { path = "../geiger", version = "0.4.1" }
 petgraph = "0.4.13"
-structopt = "0.3.4"
+pico-args = "0.3.0"
 walkdir = "2.2.9"
 
 [dev-dependencies]

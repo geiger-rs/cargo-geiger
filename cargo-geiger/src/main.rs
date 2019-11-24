@@ -7,7 +7,6 @@
 extern crate cargo;
 extern crate colored;
 extern crate petgraph;
-extern crate structopt;
 
 mod cli;
 mod format;
@@ -33,147 +32,135 @@ use geiger::IncludeTests;
 use petgraph::EdgeDirection;
 use std::fmt;
 use std::path::PathBuf;
-use structopt::clap::AppSettings;
-use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(bin_name = "cargo")]
-pub enum Opts {
-    #[structopt(
-        name = "geiger",
-        global_settings(&[
-            AppSettings::UnifiedHelpMessage,
-            AppSettings::DeriveDisplayOrder,
-            AppSettings::DontCollapseArgsInUsage
-        ])
-    )]
-    /// Detects usage of unsafe Rust in a Rust crate and its dependencies.
-    Geiger(Args),
+const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
+
+const HELP: &'static str =
+    "Detects usage of unsafe Rust in a Rust crate and its dependencies.
+
+USAGE:
+    cargo geiger [OPTIONS]
+
+OPTIONS:
+    -p, --package <SPEC>          Package to be used as the root of the tree.
+        --features <FEATURES>     Space-separated list of features to activate.
+        --all-features            Activate all available features.
+        --no-default-features     Do not activate the `default` feature.
+        --target <TARGET>         Set the target triple.
+        --all-targets             Return dependencies for all targets. By
+                                  default only the host target is matched.
+        --manifest-path <PATH>    Path to Cargo.toml.
+    -i, --invert                  Invert the tree direction.
+        --no-indent               Display the dependencies as a list (rather
+                                  than a tree).
+        --prefix-depth            Display the dependencies as a list (rather
+                                  than a tree), but prefixed with the depth.
+    -a, --all                     Don't truncate dependencies that have already
+                                  been displayed.
+        --charset <CHARSET>       Character set to use in output: utf8, ascii
+                                  [default: utf8].
+    --format <FORMAT>             Format string used for printing dependencies
+                                  [default: {p}].
+    -v, --verbose                 Use verbose output (-vv very verbose/build.rs
+                                  output).
+    -q, --quiet                   No output printed to stdout other than the
+                                  tree.
+        --color <WHEN>            Coloring: auto, always, never.
+        --frozen                  Require Cargo.lock and cache are up to date.
+        --locked                  Require Cargo.lock is up to date.
+        --offline                 Run without accessing the network.
+    -Z \"<FLAG>...\"                Unstable (nightly-only) flags to Cargo.
+        --include-tests           Count unsafe usage in tests..
+        --build-dependencies      Also analyze build dependencies.
+        --dev-dependencies        Also analyze dev dependencies.
+        --all-dependencies        Analyze all dependencies, including build and
+                                  dev.
+        --forbid-only             Don't build or clean anything, only scan
+                                  entry point .rs source files for.
+                                  forbid(unsafe_code) flags. This is
+                                  significantly faster than the default
+                                  scanning mode. TODO: Add ability to combine
+                                  this with a whitelist for use in CI.
+    -h, --help                    Prints help information.
+    -V, --version                 Prints version information.
+";
+
+pub struct Args {
+    pub all: bool,
+    pub all_deps: bool,
+    pub all_features: bool,
+    pub all_targets: bool,
+    pub build_deps: bool,
+    pub charset: Charset,
+    pub color: Option<String>,
+    pub dev_deps: bool,
+    pub features: Option<String>,
+    pub forbid_only: bool,
+    pub format: String,
+    pub frozen: bool,
+    pub help: bool,
+    pub include_tests: bool,
+    pub invert: bool,
+    pub locked: bool,
+    pub manifest_path: Option<PathBuf>,
+    pub no_default_features: bool,
+    pub no_indent: bool,
+    pub offline: bool,
+    pub package: Option<String>,
+    pub prefix_depth: bool,
+    pub quiet: Option<bool>,
+    pub target: Option<String>,
+    pub unstable_flags: Vec<String>,
+    pub verbose: u32,
+    pub version: bool,
 }
 
-#[derive(StructOpt)]
-pub struct Args {
-    #[structopt(long = "package", short = "p", value_name = "SPEC")]
-    /// Package to be used as the root of the tree
-    pub package: Option<String>,
-
-    #[structopt(long = "features", value_name = "FEATURES")]
-    /// Space-separated list of features to activate
-    pub features: Option<String>,
-
-    #[structopt(long = "all-features")]
-    /// Activate all available features
-    pub all_features: bool,
-
-    #[structopt(long = "no-default-features")]
-    /// Do not activate the `default` feature
-    pub no_default_features: bool,
-
-    #[structopt(long = "target", value_name = "TARGET")]
-    /// Set the target triple
-    pub target: Option<String>,
-
-    #[structopt(long = "all-targets")]
-    /// Return dependencies for all targets. By default only the host target is matched.
-    pub all_targets: bool,
-
-    #[structopt(
-        long = "manifest-path",
-        value_name = "PATH",
-        parse(from_os_str)
-    )]
-    /// Path to Cargo.toml
-    pub manifest_path: Option<PathBuf>,
-
-    #[structopt(long = "invert", short = "i")]
-    /// Invert the tree direction
-    pub invert: bool,
-
-    #[structopt(long = "no-indent")]
-    /// Display the dependencies as a list (rather than a tree)
-    pub no_indent: bool,
-
-    #[structopt(long = "prefix-depth")]
-    /// Display the dependencies as a list (rather than a tree), but prefixed with the depth
-    pub prefix_depth: bool,
-
-    #[structopt(long = "all", short = "a")]
-    /// Don't truncate dependencies that have already been displayed
-    pub all: bool,
-
-    #[structopt(
-        long = "charset",
-        value_name = "CHARSET",
-        default_value = "utf8"
-    )]
-    /// Character set to use in output: utf8, ascii
-    pub charset: Charset,
-
-    #[structopt(
-        long = "format",
-        short = "f",
-        value_name = "FORMAT",
-        default_value = "{p}"
-    )]
-    /// Format string used for printing dependencies
-    pub format: String,
-
-    #[structopt(long = "verbose", short = "v", parse(from_occurrences))]
-    /// Use verbose output (-vv very verbose/build.rs output)
-    pub verbose: u32,
-
-    #[structopt(long = "quiet", short = "q")]
-    /// No output printed to stdout other than the tree
-    pub quiet: Option<bool>,
-
-    #[structopt(long = "color", value_name = "WHEN")]
-    /// Coloring: auto, always, never
-    pub color: Option<String>,
-
-    #[structopt(long = "frozen")]
-    /// Require Cargo.lock and cache are up to date
-    pub frozen: bool,
-
-    #[structopt(long = "locked")]
-    /// Require Cargo.lock is up to date
-    pub locked: bool,
-
-    #[structopt(long = "offline")]
-    /// Run without accessing the network
-    pub offline: bool,
-
-    #[structopt(short = "Z", value_name = "FLAG")]
-    /// Unstable (nightly-only) flags to Cargo
-    pub unstable_flags: Vec<String>,
-
-    // TODO: Implement a new compact output mode where all metrics are
-    // aggregated to a single used/unused ratio and output string.
-    //#[structopt(long = "compact")]
-    // Display compact output instead of table
-    //compact: bool,
-    #[structopt(long = "include-tests")]
-    /// Count unsafe usage in tests.
-    pub include_tests: bool,
-
-    #[structopt(long = "build-dependencies", alias = "build-deps")]
-    /// Also analyze build dependencies
-    pub build_deps: bool,
-
-    #[structopt(long = "dev-dependencies", alias = "dev-deps")]
-    /// Also analyze dev dependencies
-    pub dev_deps: bool,
-
-    #[structopt(long = "all-dependencies", alias = "all-deps")]
-    /// Analyze all dependencies, including build and dev
-    pub all_deps: bool,
-
-    #[structopt(long = "forbid-only")]
-    /// Don't build or clean anything, only scan entry point .rs source files
-    /// for forbid(unsafe_code) flags. This is significantly faster than the
-    /// default scanning mode. TODO: Add ability to combine this with a
-    /// whitelist for use in CI situations. Unsafe code in dependencies should
-    /// not be able to sneak in undetected.
-    pub forbid_only: bool,
+fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
+    let mut args = pico_args::Arguments::from_env();
+    let args = Args {
+        all: args.contains(["-a", "--all"]),
+        all_deps: args.contains("--all-dependencies"),
+        all_features: args.contains("--all-features"),
+        all_targets: args.contains("--all-targets"),
+        build_deps: args.contains("--build-dependencies"),
+        charset: args
+            .opt_value_from_str("--charset")?
+            .unwrap_or(Charset::Utf8),
+        color: args.opt_value_from_str("--color")?,
+        dev_deps: args.contains("--dev-dependencies"),
+        features: args.opt_value_from_str("--features")?,
+        forbid_only: args.contains(["-f", "--forbid-only"]),
+        format: args
+            .opt_value_from_str("--format")?
+            .unwrap_or("{p}".to_string()),
+        frozen: args.contains("--frozen"),
+        help: args.contains(["-h", "--help"]),
+        include_tests: args.contains("--include-tests"),
+        invert: args.contains(["-i", "--invert"]),
+        locked: args.contains("--locked"),
+        manifest_path: args.opt_value_from_str("--manifest-path")?,
+        no_default_features: args.contains("--no-default-features"),
+        no_indent: args.contains("--no-indent"),
+        offline: args.contains("--offline"),
+        package: args.opt_value_from_str("--manifest-path")?,
+        prefix_depth: args.contains("--prefix-depth"),
+        quiet: args.opt_value_from_str(["-q", "--quiet"])?,
+        target: args.opt_value_from_str("--target")?,
+        unstable_flags: args
+            .opt_value_from_str("-Z")?
+            .map(|s: String| s.split(' ').map(|s| s.to_owned()).collect())
+            .unwrap_or_else(|| Vec::new()),
+        verbose: match (
+            args.contains("-vv"),
+            args.contains(["-v", "--verbose"]),
+        ) {
+            (false, false) => 0,
+            (false, true) => 1,
+            (true, _) => 2,
+        },
+        version: args.contains(["-V", "--version"]),
+    };
+    Ok(args)
 }
 
 #[derive(Debug)]
@@ -194,6 +181,14 @@ impl fmt::Display for FormatError {
 fn real_main(args: &Args, config: &mut Config) -> CliResult {
     use cargo::core::shell::ColorChoice;
 
+    if args.version {
+        println!("cargo-geiger {}", VERSION.unwrap_or("unknown version"));
+        return Ok(());
+    }
+    if args.help {
+        println!("{}", HELP);
+        return Ok(());
+    }
     let target_dir = None; // Doesn't add any value for cargo-geiger.
     config.configure(
         args.verbose,
@@ -337,7 +332,7 @@ fn main() {
             cargo::exit_with_error(e.into(), &mut shell)
         }
     };
-    let Opts::Geiger(args) = Opts::from_args();
+    let args = parse_args().unwrap();
     if let Err(e) = real_main(&args, &mut config) {
         let mut shell = Shell::new();
         cargo::exit_with_error(e, &mut shell)
