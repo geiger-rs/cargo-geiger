@@ -11,17 +11,6 @@
 // TODO: Consider making this a lib.rs (again) and expose a full API, excluding
 // only the terminal output..? That API would be dependent on cargo.
 
-extern crate cargo;
-extern crate colored;
-extern crate console;
-extern crate env_logger;
-extern crate geiger;
-extern crate petgraph;
-extern crate structopt;
-extern crate walkdir;
-
-use self::walkdir::DirEntry;
-use self::walkdir::WalkDir;
 use crate::format::Pattern;
 use crate::Args;
 use cargo::core::compiler::CompileMode;
@@ -61,6 +50,8 @@ use std::path::PathBuf;
 use std::str::{self, FromStr};
 use std::sync::Arc;
 use std::sync::Mutex;
+use walkdir::DirEntry;
+use walkdir::WalkDir;
 
 // ---------- BEGIN: Public items ----------
 
