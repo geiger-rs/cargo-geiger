@@ -71,6 +71,9 @@ Roadmap
 Changelog
 ---------
 
+### 0.9.0 [unreleased]
+ - Replaced structopt & clap with [pico-args], to reduce compile times. [#77]
+
 ### 0.8.0
  - __Bugfix:__ Count all expressions in unsafe functions and nested unsafe
    scopes, in [geiger 0.4.1](geiger), [#72] & [#71].
@@ -175,5 +178,7 @@ Changelog
 [#71]: https://github.com/anderejd/cargo-geiger/issues/71
 [#72]: https://github.com/anderejd/cargo-geiger/pull/72
 [#76]: https://github.com/anderejd/cargo-geiger/pull/76
+[#77]: https://github.com/anderejd/cargo-geiger/pull/77
 [geiger]: https://crates.io/crates/geiger
+[pico-args]: https://crates.io/crates/pico-args
 
