@@ -72,7 +72,10 @@ Changelog
 ---------
 
 ### 0.9.0 [unreleased]
- - Replaced structopt & clap with [pico-args], to reduce compile times. [#77]
+ - __Breaking change__: Replaced structopt & clap with [pico-args], to reduce 
+   compile times [#77]. As a result the `-Z` flag now requires quotes around
+   its collection of sub arguments, other than that there should be no changes
+   to the CLI.
 
 ### 0.8.0
  - __Bugfix:__ Count all expressions in unsafe functions and nested unsafe
