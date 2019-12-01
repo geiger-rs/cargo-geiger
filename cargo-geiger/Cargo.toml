@@ -18,7 +18,7 @@ cargo = "0.40.0"
 colored = "1.9.0"
 console = "0.9.1"
 env_logger = "0.7.1"
-geiger = { path = "../geiger", version = "0.4.1" }
+geiger = { path = "../geiger", version = "0.4.2" }
 petgraph = "0.4.13"
 pico-args = "0.3.0"
 walkdir = "2.2.9"
