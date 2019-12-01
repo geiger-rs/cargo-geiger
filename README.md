@@ -71,7 +71,7 @@ Roadmap
 Changelog
 ---------
 
-### 0.9.0 [unreleased]
+### 0.9.0
  - __Breaking change__: Replaced structopt & clap with [pico-args], to reduce 
    compile times [#77]. As a result the `-Z` flag now requires quotes around
    its list of sub arguments, other than that there should be no changes to 
