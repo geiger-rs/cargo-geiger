@@ -292,7 +292,7 @@ pub fn run_scan_mode_default(
     );
     progress.clear();
     config.shell().status("Scanning", "done")?;
-    
+
     println!();
     println!("Metric output format: x/y");
     println!("    x = unsafe code used by the build");
@@ -410,7 +410,10 @@ pub fn run_scan_mode_default(
                     package_status.insert(id, detection_status);
                 }
                 let emoji_symbols = EmojiSymbols::new(pc.charset);
-                let detection_status = package_status.get(&id).unwrap_or_else(|| panic!("Expected to find package by id: {}", &id));
+                let detection_status =
+                    package_status.get(&id).unwrap_or_else(|| {
+                        panic!("Expected to find package by id: {}", &id)
+                    });
                 let icon = match detection_status {
                     DetectionStatus::NoneDetectedForbidsUnsafe => {
                         emoji_symbols.emoji(SymbolKind::Lock)
@@ -464,9 +467,10 @@ pub fn run_scan_mode_default(
     }
     println!();
     let total_detection_status = match (
-            total_packs_none_detected_forbids_unsafe > 0,
-            total_packs_none_detected_allows_unsafe > 0,
-            total_packs_unsafe_detected > 0) {
+        total_packs_none_detected_forbids_unsafe > 0,
+        total_packs_none_detected_allows_unsafe > 0,
+        total_packs_unsafe_detected > 0,
+    ) {
         (_, _, true) => DetectionStatus::UnsafeDetected,
         (true, false, false) => DetectionStatus::NoneDetectedForbidsUnsafe,
         _ => DetectionStatus::NoneDetectedAllowsUnsafe,
