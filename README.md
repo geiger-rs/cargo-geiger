@@ -185,7 +185,7 @@ Changelog
 [#72]: https://github.com/anderejd/cargo-geiger/pull/72
 [#76]: https://github.com/anderejd/cargo-geiger/pull/76
 [#77]: https://github.com/anderejd/cargo-geiger/pull/77
-[#70]: https://github.com/anderejd/cargo-geiger/issues/79
+[#79]: https://github.com/anderejd/cargo-geiger/issues/79
 [geiger]: https://crates.io/crates/geiger
 [pico-args]: https://crates.io/crates/pico-args
 
