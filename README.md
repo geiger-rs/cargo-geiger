@@ -71,6 +71,9 @@ Roadmap
 Changelog
 ---------
 
+### Unreleased
+ - __Bugfix__: [#79] Avoid counting the same crate multiple times.
+
 ### 0.9.0
  - __Breaking change__: Replaced structopt & clap with [pico-args], to reduce 
    compile times [#77]. As a result the `-Z` flag now requires quotes around
@@ -182,6 +185,7 @@ Changelog
 [#72]: https://github.com/anderejd/cargo-geiger/pull/72
 [#76]: https://github.com/anderejd/cargo-geiger/pull/76
 [#77]: https://github.com/anderejd/cargo-geiger/pull/77
+[#70]: https://github.com/anderejd/cargo-geiger/issues/79
 [geiger]: https://crates.io/crates/geiger
 [pico-args]: https://crates.io/crates/pico-args
 

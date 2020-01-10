@@ -292,7 +292,7 @@ pub fn run_scan_mode_default(
     );
     progress.clear();
     config.shell().status("Scanning", "done")?;
-
+    
     println!();
     println!("Metric output format: x/y");
     println!("    x = unsafe code used by the build");
@@ -340,10 +340,13 @@ pub fn run_scan_mode_default(
     );
     println!();
 
-    let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
+    let mut total_packs_none_detected_forbids_unsafe = 0;
+    let mut total_packs_none_detected_allows_unsafe = 0;
+    let mut total_packs_unsafe_detected = 0;
+    let mut package_status = HashMap::new();
     let mut total = CounterBlock::default();
     let mut total_unused = CounterBlock::default();
-    let mut total_detection_status = DetectionStatus::NoneDetectedForbidsUnsafe;
+    let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
     for tl in tree_lines {
         match tl {
             TextTreeLine::Package { id, tree_vines } => {
@@ -361,59 +364,53 @@ pub fn run_scan_mode_default(
                             &id
                         )
                     });
-                let unsafe_found = pack_metrics
-                    .rs_path_to_metrics
-                    .iter()
-                    .filter(|(k, _)| rs_files_used.contains(k.as_path()))
-                    .any(|(_, v)| v.metrics.counters.has_unsafe());
+                if !package_status.contains_key(&id) {
+                    let unsafe_found = pack_metrics
+                        .rs_path_to_metrics
+                        .iter()
+                        .filter(|(k, _)| rs_files_used.contains(k.as_path()))
+                        .any(|(_, v)| v.metrics.counters.has_unsafe());
 
-                // The crate level "forbids unsafe code" metric __used to__ only
-                // depend on entry point source files that were __used by the
-                // build__. This was too subtle in my opinion. For a crate to be
-                // classified as forbidding unsafe code, all entry point source
-                // files must declare `forbid(unsafe_code)`. Either a crate
-                // forbids all unsafe code or it allows it _to some degree_.
-                let crate_forbids_unsafe = pack_metrics
-                    .rs_path_to_metrics
-                    .iter()
-                    .filter(|(_, v)| v.is_crate_entry_point)
-                    .all(|(_, v)| v.metrics.forbids_unsafe);
+                    // The crate level "forbids unsafe code" metric __used to__ only
+                    // depend on entry point source files that were __used by the
+                    // build__. This was too subtle in my opinion. For a crate to be
+                    // classified as forbidding unsafe code, all entry point source
+                    // files must declare `forbid(unsafe_code)`. Either a crate
+                    // forbids all unsafe code or it allows it _to some degree_.
+                    let crate_forbids_unsafe = pack_metrics
+                        .rs_path_to_metrics
+                        .iter()
+                        .filter(|(_, v)| v.is_crate_entry_point)
+                        .all(|(_, v)| v.metrics.forbids_unsafe);
 
-                let detection_status =
-                    match (unsafe_found, crate_forbids_unsafe) {
-                        (false, true) => {
-                            DetectionStatus::NoneDetectedForbidsUnsafe
-                        }
-                        (false, false) => {
-                            DetectionStatus::NoneDetectedAllowsUnsafe
-                        }
-                        (true, _) => DetectionStatus::UnsafeDetected,
-                    };
-
-                for (k, v) in pack_metrics.rs_path_to_metrics.iter() {
-                    let target = if rs_files_used.contains(k) {
-                        &mut total
-                    } else {
-                        &mut total_unused
-                    };
-                    *target = target.clone() + v.metrics.counters.clone();
-                    match (&detection_status, &total_detection_status) {
-                        (DetectionStatus::UnsafeDetected, _) => {
-                            total_detection_status =
-                                DetectionStatus::UnsafeDetected;
-                        }
-                        (
-                            DetectionStatus::NoneDetectedAllowsUnsafe,
-                            DetectionStatus::NoneDetectedForbidsUnsafe,
-                        ) => {
-                            total_detection_status =
-                                DetectionStatus::NoneDetectedForbidsUnsafe;
-                        }
-                        (_, _) => (),
+                    for (k, v) in &pack_metrics.rs_path_to_metrics {
+                        //println!("{}", k.display());
+                        let target = if rs_files_used.contains(k) {
+                            &mut total
+                        } else {
+                            &mut total_unused
+                        };
+                        *target = target.clone() + v.metrics.counters.clone();
                     }
+                    let detection_status =
+                        match (unsafe_found, crate_forbids_unsafe) {
+                            (false, true) => {
+                                total_packs_none_detected_forbids_unsafe += 1;
+                                DetectionStatus::NoneDetectedForbidsUnsafe
+                            }
+                            (false, false) => {
+                                total_packs_none_detected_allows_unsafe += 1;
+                                DetectionStatus::NoneDetectedAllowsUnsafe
+                            }
+                            (true, _) => {
+                                total_packs_unsafe_detected += 1;
+                                DetectionStatus::UnsafeDetected
+                            }
+                        };
+                    package_status.insert(id, detection_status);
                 }
-
                 let emoji_symbols = EmojiSymbols::new(pc.charset);
+                let detection_status = package_status.get(&id).unwrap_or_else(|| panic!("Expected to find package by id: {}", &id));
                 let icon = match detection_status {
                     DetectionStatus::NoneDetectedForbidsUnsafe => {
                         emoji_symbols.emoji(SymbolKind::Lock)
@@ -466,6 +463,14 @@ pub fn run_scan_mode_default(
         }
     }
     println!();
+    let total_detection_status = match (
+            total_packs_none_detected_forbids_unsafe > 0,
+            total_packs_none_detected_allows_unsafe > 0,
+            total_packs_unsafe_detected > 0) {
+        (_, _, true) => DetectionStatus::UnsafeDetected,
+        (true, false, false) => DetectionStatus::NoneDetectedForbidsUnsafe,
+        _ => DetectionStatus::NoneDetectedAllowsUnsafe,
+    };
     println!(
         "{}",
         table_footer(total, total_unused, total_detection_status)
