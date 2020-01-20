@@ -15,6 +15,7 @@ use crate::format::Pattern;
 use crate::Args;
 use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
+use cargo::core::compiler::ProfileKind;
 use cargo::core::compiler::Unit;
 use cargo::core::dependency::Kind;
 use cargo::core::manifest::TargetKind;
@@ -29,9 +30,10 @@ use cargo::ops::CleanOptions;
 use cargo::ops::CompileOptions;
 use cargo::util::paths;
 use cargo::util::ProcessBuilder;
-use cargo::util::{self, important_paths, CargoResult, Cfg};
+use cargo::util::{self, important_paths, CargoResult};
 use cargo::CliResult;
 use cargo::Config;
+use cargo_platform::Cfg;
 use colored::Colorize;
 use geiger::find_unsafe_in_file;
 use geiger::Count;
@@ -106,7 +108,7 @@ pub struct Graph {
 
 /// TODO: Write proper documentation for this.
 /// This function seems to be looking up the active flags for conditional
-/// compilation (cargo::util::Cfg instances).
+/// compilation (cargo_platform::Cfg instances).
 pub fn get_cfgs(
     config: &Config,
     target: &Option<String>,
@@ -124,7 +126,9 @@ pub fn get_cfgs(
     let output = str::from_utf8(&output.stdout).unwrap();
     let lines = output.lines();
     Ok(Some(
-        lines.map(Cfg::from_str).collect::<CargoResult<Vec<_>>>()?,
+        lines
+            .map(|s| Cfg::from_str(s).map_err(|e| e.into()))
+            .collect::<CargoResult<Vec<_>>>()?,
     ))
 }
 
@@ -938,7 +942,8 @@ fn resolve_rs_file_deps(
         config: &config,
         spec: vec![],
         target: None,
-        release: false,
+        profile_specified: false,
+        profile_kind: ProfileKind::Dev,
         doc: false,
     };
     ops::clean(ws, &clean_opt)
