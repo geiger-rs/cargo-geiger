@@ -24,7 +24,7 @@ steps:
   # Windows.
   - script: |
       curl -sSf -o rustup-init.exe https://win.rustup.rs
-      rustup-init.exe -y --profile minimal --default-toolchain stable
+      rustup-init.exe -y --profile minimal
       set PATH=%PATH%;%USERPROFILE%\.cargo\bin
       echo "##vso[task.setvariable variable=PATH;]%PATH%;%USERPROFILE%\.cargo\bin"
     displayName: "Install Rust (Windows)"
