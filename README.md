@@ -72,7 +72,8 @@ Changelog
 ---------
 
 ### Unreleased
- - __Bugfix__: [#79] Avoid counting the same crate multiple times.
+ - __Bugfix__: Avoid counting the same crate multiple times. [#79]
+ - Upgraded cargo to 0.41. [#85]
 
 ### 0.9.0
  - __Breaking change__: Replaced structopt & clap with [pico-args], to reduce 
@@ -186,6 +187,7 @@ Changelog
 [#76]: https://github.com/anderejd/cargo-geiger/pull/76
 [#77]: https://github.com/anderejd/cargo-geiger/pull/77
 [#79]: https://github.com/anderejd/cargo-geiger/issues/79
+[#85]: https://github.com/anderejd/cargo-geiger/pull/85
 [geiger]: https://crates.io/crates/geiger
 [pico-args]: https://crates.io/crates/pico-args
 
