@@ -242,7 +242,12 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let target = if args.all_targets {
         None
     } else {
-        Some(args.target.as_ref().unwrap_or(&config_host).as_str())
+        Some(
+            args.target
+                .as_ref()
+                .map(|s| s.as_str())
+                .unwrap_or(&config_host),
+        )
     };
 
     let format = Pattern::try_build(&args.format).map_err(|e| {
