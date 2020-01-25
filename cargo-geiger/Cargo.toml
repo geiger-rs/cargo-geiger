@@ -8,7 +8,7 @@ license = "Apache-2.0/MIT"
 name = "cargo-geiger"
 readme = "README.md"
 repository = "https://github.com/anderejd/cargo-geiger"
-version = "0.9.0"
+version = "0.9.1"
 
 [badges]
 maintenance = { status = "experimental" }
@@ -19,7 +19,7 @@ cargo-platform = "0.1.0"
 colored = "1.9.2"
 console = "0.9.1"
 env_logger = "0.7.1"
-geiger = { path = "../geiger", version = "0.4.2" }
+geiger = { path = "../geiger", version = "0.4.3" }
 petgraph = "0.5.0"
 pico-args = "0.3.1"
 walkdir = "2.3.1"

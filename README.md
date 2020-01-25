@@ -71,9 +71,10 @@ Roadmap
 Changelog
 ---------
 
-### Unreleased
+### 0.9.1
  - __Bugfix__: Avoid counting the same crate multiple times. [#79]
  - Upgraded cargo to 0.41. [#85]
+ - Upgraded all dependencies.
 
 ### 0.9.0
  - __Breaking change__: Replaced structopt & clap with [pico-args], to reduce 
