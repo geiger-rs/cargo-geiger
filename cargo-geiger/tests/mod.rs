@@ -3,13 +3,13 @@
 
 use assert_cmd::prelude::*;
 use insta::assert_snapshot;
-use rstest::rstest_parametrize;
+use rstest::rstest;
 
 use std::env;
 use std::path::Path;
 use std::process::Command;
 
-#[rstest_parametrize(
+#[rstest(
     name,
     case("test1_package_with_no_deps"),
     case("test2_package_with_shallow_deps"),
