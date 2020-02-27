@@ -14,7 +14,7 @@ version = "0.9.1"
 maintenance = { status = "experimental" }
 
 [dependencies]
-cargo = "0.41.0"
+cargo = "0.42.0"
 cargo-platform = "0.1.0"
 colored = "1.9.2"
 console = "0.9.1"
