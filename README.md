@@ -72,7 +72,7 @@ Changelog
 ---------
 
 ### 0.10.0
- - Upgraded all dependencies.
+ - Upgraded all dependencies. [#98]
 
 ### 0.9.1
  - __Bugfix__: Avoid counting the same crate multiple times. [#79]
@@ -173,25 +173,26 @@ Changelog
  - Initial experimental versions.
  - Mostly README.md updates.
 
-[#9]: https://github.com/anderejd/cargo-geiger/pull/9
-[#28]: https://github.com/anderejd/cargo-geiger/issues/28
-[#29]: https://github.com/anderejd/cargo-geiger/issues/29
-[#30]: https://github.com/anderejd/cargo-geiger/issues/30
-[#33]: https://github.com/anderejd/cargo-geiger/issues/33
-[#38]: https://github.com/anderejd/cargo-geiger/issues/38
-[#40]: https://github.com/anderejd/cargo-geiger/issues/40
-[#46]: https://github.com/anderejd/cargo-geiger/issues/46
-[#52]: https://github.com/anderejd/cargo-geiger/issues/52
-[#57]: https://github.com/anderejd/cargo-geiger/issues/57
-[#59]: https://github.com/anderejd/cargo-geiger/issues/59
-[#66]: https://github.com/anderejd/cargo-geiger/issues/66
-[#70]: https://github.com/anderejd/cargo-geiger/pull/70
-[#71]: https://github.com/anderejd/cargo-geiger/issues/71
-[#72]: https://github.com/anderejd/cargo-geiger/pull/72
-[#76]: https://github.com/anderejd/cargo-geiger/pull/76
-[#77]: https://github.com/anderejd/cargo-geiger/pull/77
-[#79]: https://github.com/anderejd/cargo-geiger/issues/79
-[#85]: https://github.com/anderejd/cargo-geiger/pull/85
+[#9]: https://github.com/rust-secure-code/cargo-geiger/pull/9
+[#28]: https://github.com/rust-secure-code/cargo-geiger/issues/28
+[#29]: https://github.com/rust-secure-code/cargo-geiger/issues/29
+[#30]: https://github.com/rust-secure-code/cargo-geiger/issues/30
+[#33]: https://github.com/rust-secure-code/cargo-geiger/issues/33
+[#38]: https://github.com/rust-secure-code/cargo-geiger/issues/38
+[#40]: https://github.com/rust-secure-code/cargo-geiger/issues/40
+[#46]: https://github.com/rust-secure-code/cargo-geiger/issues/46
+[#52]: https://github.com/rust-secure-code/cargo-geiger/issues/52
+[#57]: https://github.com/rust-secure-code/cargo-geiger/issues/57
+[#59]: https://github.com/rust-secure-code/cargo-geiger/issues/59
+[#66]: https://github.com/rust-secure-code/cargo-geiger/issues/66
+[#70]: https://github.com/rust-secure-code/cargo-geiger/pull/70
+[#71]: https://github.com/rust-secure-code/cargo-geiger/issues/71
+[#72]: https://github.com/rust-secure-code/cargo-geiger/pull/72
+[#76]: https://github.com/rust-secure-code/cargo-geiger/pull/76
+[#77]: https://github.com/rust-secure-code/cargo-geiger/pull/77
+[#79]: https://github.com/rust-secure-code/cargo-geiger/issues/79
+[#85]: https://github.com/rust-secure-code/cargo-geiger/pull/85
+[#98]: https://github.com/rust-secure-code/cargo-geiger/pull/98
 [geiger]: https://crates.io/crates/geiger
 [pico-args]: https://crates.io/crates/pico-args
 
