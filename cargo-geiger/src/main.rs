@@ -193,12 +193,13 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     config.configure(
         args.verbose,
         args.quiet,
-        &args.color,
+        args.color.as_ref().map(|s| s.as_str()),
         args.frozen,
         args.locked,
         args.offline,
         &target_dir,
         &args.unstable_flags,
+        &[] // Som cargo API change, TODO: Look closer at this later.
     )?;
     let verbosity = if args.verbose == 0 {
         Verbosity::Normal

@@ -71,6 +71,9 @@ Roadmap
 Changelog
 ---------
 
+### 0.10.0
+ - Upgraded all dependencies.
+
 ### 0.9.1
  - __Bugfix__: Avoid counting the same crate multiple times. [#79]
  - Upgraded cargo to 0.41. [#85]

@@ -13,17 +13,17 @@
 
 use crate::format::Pattern;
 use crate::Args;
+use cargo::core::InternedString;
+use cargo::core::Target;
 use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
-use cargo::core::compiler::ProfileKind;
 use cargo::core::compiler::Unit;
-use cargo::core::dependency::Kind;
+use cargo::core::dependency::DepKind;
 use cargo::core::manifest::TargetKind;
 use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::ResolveOpts;
 use cargo::core::shell::Verbosity;
-use cargo::core::Target;
 use cargo::core::{Package, PackageId, PackageIdSpec, Resolve, Workspace};
 use cargo::ops;
 use cargo::ops::CleanOptions;
@@ -40,9 +40,9 @@ use geiger::Count;
 use geiger::CounterBlock;
 use geiger::IncludeTests;
 use geiger::RsFileMetrics;
+use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
-use petgraph::EdgeDirection;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
@@ -54,6 +54,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use walkdir::DirEntry;
 use walkdir::WalkDir;
+
 
 // ---------- BEGIN: Public items ----------
 
@@ -102,7 +103,7 @@ pub struct Node {
 }
 
 pub struct Graph {
-    graph: petgraph::Graph<Node, Kind>,
+    graph: petgraph::Graph<Node, DepKind>,
     nodes: HashMap<PackageId, NodeIndex>,
 }
 
@@ -575,23 +576,23 @@ fn format_package_name(pack: &Package, pat: &Pattern) -> String {
     )
 }
 
-fn get_kind_group_name(k: Kind) -> Option<&'static str> {
+fn get_kind_group_name(k: DepKind) -> Option<&'static str> {
     match k {
-        Kind::Normal => None,
-        Kind::Build => Some("[build-dependencies]"),
-        Kind::Development => Some("[dev-dependencies]"),
+        DepKind::Normal => None,
+        DepKind::Build => Some("[build-dependencies]"),
+        DepKind::Development => Some("[dev-dependencies]"),
     }
 }
 
 // ---------- END: Public items ----------
 
 impl ExtraDeps {
-    fn allows(&self, dep: Kind) -> bool {
+    fn allows(&self, dep: DepKind) -> bool {
         match (self, dep) {
-            (_, Kind::Normal) => true,
+            (_, DepKind::Normal) => true,
             (ExtraDeps::All, _) => true,
-            (ExtraDeps::Build, Kind::Build) => true,
-            (ExtraDeps::Dev, Kind::Development) => true,
+            (ExtraDeps::Build, DepKind::Build) => true,
+            (ExtraDeps::Dev, DepKind::Development) => true,
             _ => false,
         }
     }
@@ -943,7 +944,9 @@ fn resolve_rs_file_deps(
         spec: vec![],
         target: None,
         profile_specified: false,
-        profile_kind: ProfileKind::Dev,
+        // A temporary hack to get cargo 0.43 to build, TODO: look closer at the updated cargo API
+        // later.
+        requested_profile: InternedString::new("dev"),
         doc: false,
     };
     ops::clean(ws, &clean_opt)
@@ -1153,7 +1156,7 @@ enum TextTreeLine {
     Package { id: PackageId, tree_vines: String },
     /// There're extra dependencies comming and we should print a group header,
     /// eg. "[build-dependencies]".
-    ExtraDepsGroup { kind: Kind, tree_vines: String },
+    ExtraDepsGroup { kind: DepKind, tree_vines: String },
 }
 
 /// To print the returned TextTreeLines in order are expectged to produce a nice
@@ -1231,13 +1234,13 @@ fn walk_dependency_node(
             EdgeDirection::Outgoing => &graph.graph[edge.target()],
         };
         match *edge.weight() {
-            Kind::Normal => normal.push(dep),
-            Kind::Build => build.push(dep),
-            Kind::Development => development.push(dep),
+            DepKind::Normal => normal.push(dep),
+            DepKind::Build => build.push(dep),
+            DepKind::Development => development.push(dep),
         }
     }
     let mut normal_out = walk_dependency_kind(
-        Kind::Normal,
+        DepKind::Normal,
         &mut normal,
         graph,
         visited_deps,
@@ -1245,7 +1248,7 @@ fn walk_dependency_node(
         pc,
     );
     let mut build_out = walk_dependency_kind(
-        Kind::Build,
+        DepKind::Build,
         &mut build,
         graph,
         visited_deps,
@@ -1253,7 +1256,7 @@ fn walk_dependency_node(
         pc,
     );
     let mut dev_out = walk_dependency_kind(
-        Kind::Development,
+        DepKind::Development,
         &mut development,
         graph,
         visited_deps,
@@ -1267,7 +1270,7 @@ fn walk_dependency_node(
 }
 
 fn walk_dependency_kind(
-    kind: Kind,
+    kind: DepKind,
     deps: &mut Vec<&Node>,
     graph: &Graph,
     visited_deps: &mut HashSet<PackageId>,
@@ -1285,7 +1288,7 @@ fn walk_dependency_kind(
     let mut output = Vec::new();
     if let Prefix::Indent = pc.prefix {
         match kind {
-            Kind::Normal => (),
+            DepKind::Normal => (),
             _ => {
                 let mut tree_vines = String::new();
                 for &continues in &**levels_continue {

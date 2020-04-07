@@ -1,7 +1,7 @@
 [package]
 name = "geiger"
 description = "Some library parts of cargo-geiger, decoupled from cargo."
-version = "0.4.3"
+version = "0.4.4"
 edition = "2018"
 authors = ["anderejd <rajder@gmail.com>"]
 repository = "https://github.com/anderejd/cargo-geiger"
@@ -14,5 +14,5 @@ license = "Apache-2.0/MIT"
 maintenance = { status = "experimental" }
 
 [dependencies]
-syn = { version = "1.0.14", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
-proc-macro2 = "1.0.8"
+syn = { version = "1.0.17", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
+proc-macro2 = "1.0.10"
