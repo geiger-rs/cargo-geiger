@@ -11,6 +11,9 @@ For more details please see the `README.md` in [cargo-geiger].
 Changelog
 ---------
 
+### 0.4.4
+ - Updated dependencies, only patch version updates.
+
 ### 0.4.3
  - Updated dependencies.
 
