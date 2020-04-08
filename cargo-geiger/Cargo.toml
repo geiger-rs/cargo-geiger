@@ -25,8 +25,7 @@ pico-args = "0.3.1"
 walkdir = "2.3.1"
 
 [features]
-default = ["cargo-vendored-openssl"]
-cargo-vendored-openssl = ["cargo/vendored-openssl"]
+vendored-openssl = ["cargo/vendored-openssl"]
 
 [dev-dependencies]
 assert_cmd = "1.0.1"

@@ -11,13 +11,24 @@ This cargo plugin is based on the code from two other projects:
 <https://github.com/icefoxen/cargo-osha> and
 <https://github.com/sfackler/cargo-tree>.
 
+Installation
+------------
+
+Try to find and use a system-wide installed OpenSSL library:
+```
+cargo install cargo-geiger
+```
+
+Or, build and statically link OpenSSL as part of the cargo-geiger executable:
+```
+cargo install cargo-geiger --features vendored-openssl
+```
 
 Usage
 -----
 
-1. `cargo install cargo-geiger`
-2. Navigate to the same directory as the `Cargo.toml` you want to analyze.
-3. `cargo geiger`
+1. Navigate to the same directory as the `Cargo.toml` you want to analyze.
+2. `cargo geiger`
 
 
 Output example
