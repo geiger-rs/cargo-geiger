@@ -162,6 +162,7 @@ dependencies = [
  "miow",
  "num_cpus",
  "opener",
+ "openssl",
  "percent-encoding",
  "remove_dir_all",
  "rustc-workspace-hack",
@@ -185,7 +186,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-geiger"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "assert_cmd",
  "better-panic",
@@ -529,7 +530,7 @@ dependencies = [
 
 [[package]]
 name = "geiger"
-version = "0.4.3"
+version = "0.4.4"
 dependencies = [
  "proc-macro2",
  "syn",
@@ -879,6 +880,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77af24da69f9d9341038eba93a073b1fdaaa1b788221b00a69bce9e762cb32de"
 
 [[package]]
+name = "openssl-src"
+version = "111.8.1+1.1.1f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f04f0299a91de598dde58d2e99101895498dcf3d58896a3297798f28b27c8b72"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "openssl-sys"
 version = "0.9.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -887,6 +897,7 @@ dependencies = [
  "autocfg",
  "cc",
  "libc",
+ "openssl-src",
  "pkg-config",
  "vcpkg",
 ]
