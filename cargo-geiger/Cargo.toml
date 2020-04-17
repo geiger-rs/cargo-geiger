@@ -24,6 +24,9 @@ petgraph = "0.5.0"
 pico-args = "0.3.1"
 walkdir = "2.3.1"
 
+[features]
+vendored-openssl = ["cargo/vendored-openssl"]
+
 [dev-dependencies]
 assert_cmd = "1.0.1"
 better-panic = "0.2.0"
