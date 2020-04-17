@@ -82,6 +82,10 @@ Roadmap
 Changelog
 ---------
 
+### 0.10.1
+ - Expose the `cargo` crate feature: `vendored-openssl`. [#99]
+ - Upgraded all dependencies.
+
 ### 0.10.0
  - Upgraded all dependencies. [#98]
 
@@ -204,6 +208,7 @@ Changelog
 [#79]: https://github.com/rust-secure-code/cargo-geiger/issues/79
 [#85]: https://github.com/rust-secure-code/cargo-geiger/pull/85
 [#98]: https://github.com/rust-secure-code/cargo-geiger/pull/98
+[#99]: https://github.com/rust-secure-code/cargo-geiger/pull/99
 [geiger]: https://crates.io/crates/geiger
 [pico-args]: https://crates.io/crates/pico-args
 
