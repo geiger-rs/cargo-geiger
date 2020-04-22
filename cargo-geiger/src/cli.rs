@@ -13,8 +13,6 @@
 
 use crate::format::Pattern;
 use crate::Args;
-use cargo::core::InternedString;
-use cargo::core::Target;
 use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
 use cargo::core::compiler::Unit;
@@ -24,6 +22,8 @@ use cargo::core::package::PackageSet;
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::ResolveOpts;
 use cargo::core::shell::Verbosity;
+use cargo::core::InternedString;
+use cargo::core::Target;
 use cargo::core::{Package, PackageId, PackageIdSpec, Resolve, Workspace};
 use cargo::ops;
 use cargo::ops::CleanOptions;
@@ -40,9 +40,9 @@ use geiger::Count;
 use geiger::CounterBlock;
 use geiger::IncludeTests;
 use geiger::RsFileMetrics;
-use petgraph::EdgeDirection;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
+use petgraph::EdgeDirection;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
@@ -54,7 +54,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use walkdir::DirEntry;
 use walkdir::WalkDir;
-
 
 // ---------- BEGIN: Public items ----------
 

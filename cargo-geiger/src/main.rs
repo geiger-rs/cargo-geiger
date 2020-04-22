@@ -199,7 +199,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         args.offline,
         &target_dir,
         &args.unstable_flags,
-        &[] // Som cargo API change, TODO: Look closer at this later.
+        &[], // Some cargo API change, TODO: Look closer at this later.
     )?;
     let verbosity = if args.verbose == 0 {
         Verbosity::Normal
