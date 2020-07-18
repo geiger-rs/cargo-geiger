@@ -35,7 +35,7 @@ use std::path::PathBuf;
 
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
-const HELP: &'static str =
+const HELP: &str =
     "Detects usage of unsafe Rust in a Rust crate and its dependencies.
 
 USAGE:
@@ -132,7 +132,7 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
         forbid_only: args.contains(["-f", "--forbid-only"]),
         format: args
             .opt_value_from_str("--format")?
-            .unwrap_or("{p}".to_string()),
+            .unwrap_or_else(|| "{p}".to_string()),
         frozen: args.contains("--frozen"),
         help: args.contains(["-h", "--help"]),
         include_tests: args.contains("--include-tests"),
@@ -149,7 +149,7 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
         unstable_flags: args
             .opt_value_from_str("-Z")?
             .map(|s: String| s.split(' ').map(|s| s.to_owned()).collect())
-            .unwrap_or_else(|| Vec::new()),
+            .unwrap_or_else(Vec::new),
         verbose: match (
             args.contains("-vv"),
             args.contains(["-v", "--verbose"]),
@@ -192,8 +192,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let target_dir = None; // Doesn't add any value for cargo-geiger.
     config.configure(
         args.verbose,
-        args.quiet,
-        args.color.as_ref().map(|s| s.as_str()),
+        args.quiet.unwrap_or(false),
+        args.color.as_deref(),
         args.frozen,
         args.locked,
         args.offline,
@@ -244,9 +244,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         None
     } else {
         Some(
-            args.target
-                .as_ref()
-                .map(|s| s.as_str())
+            args.target.as_deref()
                 .unwrap_or(&config_host),
         )
     };
@@ -277,7 +275,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         &packages,
         package.package_id(),
         target,
-        cfgs.as_ref().map(|r| &**r),
+        cfgs.as_deref(),
         extra_deps,
     )?;
 

@@ -11,6 +11,7 @@
 // TODO: Consider making this a lib.rs (again) and expose a full API, excluding
 // only the terminal output..? That API would be dependent on cargo.
 
+use cargo::CliError;
 use crate::format::Pattern;
 use crate::Args;
 use cargo::core::compiler::CompileMode;
@@ -239,7 +240,7 @@ pub fn resolve<'a, 'cfg>(
     let resolve = ops::resolve_with_previous(
         registry,
         ws,
-        opts,
+        &opts,
         prev.as_ref(),
         None,
         &[PackageIdSpec::from_package_id(package_id)],
@@ -351,6 +352,7 @@ pub fn run_scan_mode_default(
     let mut total = CounterBlock::default();
     let mut total_unused = CounterBlock::default();
     let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
+    let mut warning_count = 0;
     for tl in tree_lines {
         match tl {
             TextTreeLine::Package { id, tree_vines } => {
@@ -358,17 +360,17 @@ pub fn run_scan_mode_default(
                     // TODO: Avoid panic, return Result.
                     panic!("Expected to find package by id: {}", id);
                 });
-                let pack_metrics = geiger_ctx
+                let pack_metrics = match geiger_ctx
                     .pack_id_to_metrics
-                    .get(&id)
-                    .unwrap_or_else(|| {
-                        // TODO: Avoid panic, return Result.
-                        panic!(
-                            "Failed to get unsafe counters for package: {}",
-                            &id
-                        )
-                    });
-                if !package_status.contains_key(&id) {
+                    .get(&id) {
+                        Some(m) => m,
+                        None => {
+                            eprintln!("WARNING: No metrics found for package: {}", id);
+                            warning_count += 1;
+                            continue;
+                        }
+                    };
+                package_status.entry(id).or_insert_with(|| {
                     let unsafe_found = pack_metrics
                         .rs_path_to_metrics
                         .iter()
@@ -396,23 +398,21 @@ pub fn run_scan_mode_default(
                         };
                         *target = target.clone() + v.metrics.counters.clone();
                     }
-                    let detection_status =
-                        match (unsafe_found, crate_forbids_unsafe) {
-                            (false, true) => {
-                                total_packs_none_detected_forbids_unsafe += 1;
-                                DetectionStatus::NoneDetectedForbidsUnsafe
-                            }
-                            (false, false) => {
-                                total_packs_none_detected_allows_unsafe += 1;
-                                DetectionStatus::NoneDetectedAllowsUnsafe
-                            }
-                            (true, _) => {
-                                total_packs_unsafe_detected += 1;
-                                DetectionStatus::UnsafeDetected
-                            }
-                        };
-                    package_status.insert(id, detection_status);
-                }
+                    match (unsafe_found, crate_forbids_unsafe) {
+                        (false, true) => {
+                            total_packs_none_detected_forbids_unsafe += 1;
+                            DetectionStatus::NoneDetectedForbidsUnsafe
+                        }
+                        (false, false) => {
+                            total_packs_none_detected_allows_unsafe += 1;
+                            DetectionStatus::NoneDetectedAllowsUnsafe
+                        }
+                        (true, _) => {
+                            total_packs_unsafe_detected += 1;
+                            DetectionStatus::UnsafeDetected
+                        }
+                    }
+                });
                 let emoji_symbols = EmojiSymbols::new(pc.charset);
                 let detection_status =
                     package_status.get(&id).unwrap_or_else(|| {
@@ -495,9 +495,14 @@ pub fn run_scan_mode_default(
         eprintln!(
             "WARNING: Dependency file was never scanned: {}",
             path.display()
-        )
+        );
+        warning_count += 1;
     }
-    Ok(())
+    if warning_count > 0 {
+        Err(CliError::new(anyhow::Error::new(FoundWarningsError { warning_count }), 1))
+    } else {
+        Ok(())
+    }
 }
 
 pub fn run_scan_mode_forbid_only(
@@ -634,6 +639,20 @@ impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
     }
 }
 
+#[derive(Debug)]
+struct FoundWarningsError {
+    pub warning_count: u64
+}
+
+impl Error for FoundWarningsError {}
+
+/// Forward Display to Debug.
+impl fmt::Display for FoundWarningsError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
 #[derive(Debug, Default)]
 struct RsFileMetricsWrapper {
     /// The information returned by the `geiger` crate for a `.rs` file.
@@ -664,7 +683,7 @@ struct GeigerContext {
 fn build_compile_options<'a>(
     args: &'a Args,
     config: &'a Config,
-) -> CompileOptions<'a> {
+) -> CompileOptions {
     let features = args
         .features
         .as_ref()
@@ -941,7 +960,7 @@ fn resolve_rs_file_deps(
     let clean_opt = CleanOptions {
         config: &config,
         spec: vec![],
-        target: None,
+        targets: vec![],
         profile_specified: false,
         // A temporary hack to get cargo 0.43 to build, TODO: look closer at the updated cargo API
         // later.

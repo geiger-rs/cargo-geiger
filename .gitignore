@@ -13,3 +13,4 @@
 
 /test_crates/**/target/
 .DS_Store
+.vscode/
