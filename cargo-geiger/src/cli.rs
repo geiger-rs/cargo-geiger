@@ -370,7 +370,7 @@ pub fn run_scan_mode_default(
                             continue;
                         }
                     };
-                if !package_status.contains_key(&id) {
+                package_status.entry(id).or_insert_with(|| {
                     let unsafe_found = pack_metrics
                         .rs_path_to_metrics
                         .iter()
@@ -398,23 +398,21 @@ pub fn run_scan_mode_default(
                         };
                         *target = target.clone() + v.metrics.counters.clone();
                     }
-                    let detection_status =
-                        match (unsafe_found, crate_forbids_unsafe) {
-                            (false, true) => {
-                                total_packs_none_detected_forbids_unsafe += 1;
-                                DetectionStatus::NoneDetectedForbidsUnsafe
-                            }
-                            (false, false) => {
-                                total_packs_none_detected_allows_unsafe += 1;
-                                DetectionStatus::NoneDetectedAllowsUnsafe
-                            }
-                            (true, _) => {
-                                total_packs_unsafe_detected += 1;
-                                DetectionStatus::UnsafeDetected
-                            }
-                        };
-                    package_status.insert(id, detection_status);
-                }
+                    match (unsafe_found, crate_forbids_unsafe) {
+                        (false, true) => {
+                            total_packs_none_detected_forbids_unsafe += 1;
+                            DetectionStatus::NoneDetectedForbidsUnsafe
+                        }
+                        (false, false) => {
+                            total_packs_none_detected_allows_unsafe += 1;
+                            DetectionStatus::NoneDetectedAllowsUnsafe
+                        }
+                        (true, _) => {
+                            total_packs_unsafe_detected += 1;
+                            DetectionStatus::UnsafeDetected
+                        }
+                    }
+                });
                 let emoji_symbols = EmojiSymbols::new(pc.charset);
                 let detection_status =
                     package_status.get(&id).unwrap_or_else(|| {
