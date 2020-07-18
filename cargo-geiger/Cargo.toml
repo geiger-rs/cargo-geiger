@@ -23,6 +23,7 @@ geiger = { path = "../geiger", version = "0.4.4" }
 petgraph = "0.5.0"
 pico-args = "0.3.1"
 walkdir = "2.3.1"
+anyhow = "1.0.31"
 
 [features]
 vendored-openssl = ["cargo/vendored-openssl"]

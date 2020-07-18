@@ -11,6 +11,7 @@
 // TODO: Consider making this a lib.rs (again) and expose a full API, excluding
 // only the terminal output..? That API would be dependent on cargo.
 
+use cargo::CliError;
 use crate::format::Pattern;
 use crate::Args;
 use cargo::core::compiler::CompileMode;
@@ -351,6 +352,7 @@ pub fn run_scan_mode_default(
     let mut total = CounterBlock::default();
     let mut total_unused = CounterBlock::default();
     let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
+    let mut warning_count = 0;
     for tl in tree_lines {
         match tl {
             TextTreeLine::Package { id, tree_vines } => {
@@ -358,16 +360,16 @@ pub fn run_scan_mode_default(
                     // TODO: Avoid panic, return Result.
                     panic!("Expected to find package by id: {}", id);
                 });
-                let pack_metrics = geiger_ctx
+                let pack_metrics = match geiger_ctx
                     .pack_id_to_metrics
-                    .get(&id)
-                    .unwrap_or_else(|| {
-                        // TODO: Avoid panic, return Result.
-                        panic!(
-                            "Failed to get unsafe counters for package: {}",
-                            &id
-                        )
-                    });
+                    .get(&id) {
+                        Some(m) => m,
+                        None => {
+                            eprintln!("WARNING: No metrics found for package: {}", id);
+                            warning_count += 1;
+                            continue;
+                        }
+                    };
                 if !package_status.contains_key(&id) {
                     let unsafe_found = pack_metrics
                         .rs_path_to_metrics
@@ -495,9 +497,14 @@ pub fn run_scan_mode_default(
         eprintln!(
             "WARNING: Dependency file was never scanned: {}",
             path.display()
-        )
+        );
+        warning_count += 1;
     }
-    Ok(())
+    if warning_count > 0 {
+        Err(CliError::new(anyhow::Error::new(FoundWarningsError { warning_count }), 1))
+    } else {
+        Ok(())
+    }
 }
 
 pub fn run_scan_mode_forbid_only(
@@ -631,6 +638,20 @@ impl fmt::Display for RsResolveError {
 impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
     fn from(e: PoisonError<CustomExecutorInnerContext>) -> Self {
         RsResolveError::InnerContextMutex(e.to_string())
+    }
+}
+
+#[derive(Debug)]
+struct FoundWarningsError {
+    pub warning_count: u64
+}
+
+impl Error for FoundWarningsError {}
+
+/// Forward Display to Debug.
+impl fmt::Display for FoundWarningsError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
     }
 }
 
