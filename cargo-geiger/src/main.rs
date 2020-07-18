@@ -192,7 +192,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let target_dir = None; // Doesn't add any value for cargo-geiger.
     config.configure(
         args.verbose,
-        args.quiet,
+        args.quiet.unwrap_or(false),
         args.color.as_deref(),
         args.frozen,
         args.locked,

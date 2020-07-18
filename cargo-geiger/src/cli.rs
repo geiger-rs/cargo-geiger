@@ -240,7 +240,7 @@ pub fn resolve<'a, 'cfg>(
     let resolve = ops::resolve_with_previous(
         registry,
         ws,
-        opts,
+        &opts,
         prev.as_ref(),
         None,
         &[PackageIdSpec::from_package_id(package_id)],
@@ -683,7 +683,7 @@ struct GeigerContext {
 fn build_compile_options<'a>(
     args: &'a Args,
     config: &'a Config,
-) -> CompileOptions<'a> {
+) -> CompileOptions {
     let features = args
         .features
         .as_ref()
@@ -960,7 +960,7 @@ fn resolve_rs_file_deps(
     let clean_opt = CleanOptions {
         config: &config,
         spec: vec![],
-        target: None,
+        targets: vec![],
         profile_specified: false,
         // A temporary hack to get cargo 0.43 to build, TODO: look closer at the updated cargo API
         // later.

@@ -82,6 +82,10 @@ Roadmap
 Changelog
 ---------
 
+### 0.10.2
+ - __Bugfix__: Avoid panic and log warnings on parse failure. [#105]
+ - Upgraded all dependencies.
+
 ### 0.10.1
  - Expose the `cargo` crate feature: `vendored-openssl`. [#99]
  - Upgraded all dependencies.
@@ -209,6 +213,7 @@ Changelog
 [#85]: https://github.com/rust-secure-code/cargo-geiger/pull/85
 [#98]: https://github.com/rust-secure-code/cargo-geiger/pull/98
 [#99]: https://github.com/rust-secure-code/cargo-geiger/pull/99
+[#105]: https://github.com/rust-secure-code/cargo-geiger/issues/105
 [geiger]: https://crates.io/crates/geiger
 [pico-args]: https://crates.io/crates/pico-args
 
