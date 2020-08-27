@@ -10,8 +10,8 @@ extern crate petgraph;
 
 mod cli;
 mod format;
+mod graph;
 
-use crate::cli::build_graph;
 use crate::cli::get_cfgs;
 use crate::cli::get_registry;
 use crate::cli::get_workspace;
@@ -19,10 +19,11 @@ use crate::cli::resolve;
 use crate::cli::run_scan_mode_default;
 use crate::cli::run_scan_mode_forbid_only;
 use crate::cli::Charset;
-use crate::cli::ExtraDeps;
 use crate::cli::Prefix;
 use crate::cli::PrintConfig;
 use crate::format::Pattern;
+use crate::graph::build_graph;
+use crate::graph::ExtraDeps;
 use cargo::core::shell::Shell;
 use cargo::core::shell::Verbosity;
 use cargo::util::errors::CliError;
