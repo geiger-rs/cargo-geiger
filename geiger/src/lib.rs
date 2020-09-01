@@ -102,6 +102,12 @@ impl Add for CounterBlock {
     }
 }
 
+pub enum DetectionStatus {
+    NoneDetectedForbidsUnsafe,
+    NoneDetectedAllowsUnsafe,
+    UnsafeDetected,
+}
+
 /// Scan result for a single `.rs` file.
 #[derive(Debug, Default)]
 pub struct RsFileMetrics {
