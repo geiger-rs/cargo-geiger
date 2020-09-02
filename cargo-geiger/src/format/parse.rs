@@ -1,8 +1,6 @@
 use std::iter;
 use std::str;
 
-// ---------- BEGIN: Public items ----------
-
 pub enum RawChunk<'a> {
     Text(&'a str),
     Argument(&'a str),
@@ -97,5 +95,3 @@ impl<'a> Iterator for Parser<'a> {
         }
     }
 }
-
-// ---------- END: Public items ----------

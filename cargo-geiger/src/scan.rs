@@ -24,8 +24,6 @@ use std::error::Error;
 use std::fmt;
 use std::path::PathBuf;
 
-// ---------- BEGIN: Public items ----------
-
 pub enum ScanMode {
     // The default scan mode, scan every .rs file.
     Full,
@@ -218,8 +216,6 @@ pub fn run_scan_mode_forbid_only(
 
     Ok(())
 }
-
-// ---------- END: Public items ----------
 
 #[derive(Debug)]
 struct FoundWarningsError {

@@ -14,8 +14,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 use walkdir::{DirEntry, WalkDir};
 
-// ---------- BEGIN: Public items ----------
-
 /// Provides information needed to scan for crate root
 /// `#![forbid(unsafe_code)]`.
 /// The wrapped PathBufs are canonicalized.
@@ -153,8 +151,6 @@ pub fn resolve_rs_file_deps(
     }
     Ok(hs)
 }
-
-// ---------- END: Public items ----------
 
 /// A cargo Executor to intercept all build tasks and store all ".rs" file
 /// paths for later scanning.

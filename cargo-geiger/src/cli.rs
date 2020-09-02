@@ -22,8 +22,6 @@ use cargo_platform::Cfg;
 use std::path::PathBuf;
 use std::str::{self, FromStr};
 
-// ---------- BEGIN: Public items ----------
-
 /// TODO: Write proper documentation for this.
 /// This function seems to be looking up the active flags for conditional
 /// compilation (cargo_platform::Cfg instances).
@@ -102,7 +100,5 @@ pub fn resolve<'a, 'cfg>(
     )?;
     Ok((packages, resolve))
 }
-
-// ---------- END: Public items ----------
 
 // TODO: Make a wrapper type for canonical paths and hide all mutable access.

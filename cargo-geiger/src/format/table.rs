@@ -1,15 +1,13 @@
 use crate::find::GeigerContext;
 use crate::format::print::{colorize, PrintConfig};
 use crate::format::tree::TextTreeLine;
-use crate::format::{get_kind_group_name, EmojiSymbols, SymbolKind};
+use crate::format::{CrateDetectionStatus, get_kind_group_name, EmojiSymbols, SymbolKind};
 use crate::rs_file::PackageMetrics;
 
 use cargo::core::package::PackageSet;
-use geiger::{Count, CounterBlock, DetectionStatus};
+use geiger::{Count, CounterBlock};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-
-// ---------- BEGIN: Public items ----------
 
 // TODO: use a table library, or factor the tableness out in a smarter way. This
 // is probably easier now when the tree formatting is separated from the tree
@@ -88,15 +86,15 @@ pub fn print_text_tree_lines_as_table(
                     match (unsafe_found, crate_forbids_unsafe) {
                         (false, true) => {
                             total_packs_none_detected_forbids_unsafe += 1;
-                            DetectionStatus::NoneDetectedForbidsUnsafe
+                            CrateDetectionStatus::NoneDetectedForbidsUnsafe
                         }
                         (false, false) => {
                             total_packs_none_detected_allows_unsafe += 1;
-                            DetectionStatus::NoneDetectedAllowsUnsafe
+                            CrateDetectionStatus::NoneDetectedAllowsUnsafe
                         }
                         (true, _) => {
                             total_packs_unsafe_detected += 1;
-                            DetectionStatus::UnsafeDetected
+                            CrateDetectionStatus::UnsafeDetected
                         }
                     }
                 });
@@ -106,13 +104,13 @@ pub fn print_text_tree_lines_as_table(
                         panic!("Expected to find package by id: {}", &id)
                     });
                 let icon = match detection_status {
-                    DetectionStatus::NoneDetectedForbidsUnsafe => {
+                    CrateDetectionStatus::NoneDetectedForbidsUnsafe => {
                         emoji_symbols.emoji(SymbolKind::Lock)
                     }
-                    DetectionStatus::NoneDetectedAllowsUnsafe => {
+                    CrateDetectionStatus::NoneDetectedAllowsUnsafe => {
                         emoji_symbols.emoji(SymbolKind::QuestionMark)
                     }
-                    DetectionStatus::UnsafeDetected => {
+                    CrateDetectionStatus::UnsafeDetected => {
                         emoji_symbols.emoji(SymbolKind::Rads)
                     }
                 };
@@ -165,9 +163,9 @@ pub fn print_text_tree_lines_as_table(
         total_packs_none_detected_allows_unsafe > 0,
         total_packs_unsafe_detected > 0,
     ) {
-        (_, _, true) => DetectionStatus::UnsafeDetected,
-        (true, false, false) => DetectionStatus::NoneDetectedForbidsUnsafe,
-        _ => DetectionStatus::NoneDetectedAllowsUnsafe,
+        (_, _, true) => CrateDetectionStatus::UnsafeDetected,
+        (true, false, false) => CrateDetectionStatus::NoneDetectedForbidsUnsafe,
+        _ => CrateDetectionStatus::NoneDetectedAllowsUnsafe,
     };
     println!(
         "{}",
@@ -177,12 +175,10 @@ pub fn print_text_tree_lines_as_table(
     warning_count
 }
 
-// ---------- END: Public items ----------
-
 fn table_footer(
     used: CounterBlock,
     not_used: CounterBlock,
-    status: DetectionStatus,
+    status: CrateDetectionStatus,
 ) -> colored::ColoredString {
     let fmt = |used: &Count, not_used: &Count| {
         format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)

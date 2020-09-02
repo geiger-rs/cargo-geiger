@@ -1,12 +1,9 @@
-use crate::format::{Charset, Pattern};
+use crate::format::{Charset, CrateDetectionStatus, Pattern};
 
 use cargo::core::shell::Verbosity;
 use colored::Colorize;
-use geiger::DetectionStatus;
 use geiger::IncludeTests;
 use petgraph::EdgeDirection;
-
-// ---------- BEGIN: Public items ----------
 
 #[derive(Clone, Copy)]
 pub enum Prefix {
@@ -34,13 +31,11 @@ pub struct PrintConfig<'a> {
 
 pub fn colorize(
     s: String,
-    detection_status: &DetectionStatus,
+    detection_status: &CrateDetectionStatus,
 ) -> colored::ColoredString {
     match detection_status {
-        DetectionStatus::NoneDetectedForbidsUnsafe => s.green(),
-        DetectionStatus::NoneDetectedAllowsUnsafe => s.normal(),
-        DetectionStatus::UnsafeDetected => s.red().bold(),
+        CrateDetectionStatus::NoneDetectedForbidsUnsafe => s.green(),
+        CrateDetectionStatus::NoneDetectedAllowsUnsafe => s.normal(),
+        CrateDetectionStatus::UnsafeDetected => s.red().bold(),
     }
 }
-
-// ---------- END: Public items ----------

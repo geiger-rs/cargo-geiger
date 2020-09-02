@@ -7,8 +7,6 @@ use petgraph::graph::NodeIndex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
-// ---------- BEGIN: Public items ----------
-
 pub enum ExtraDeps {
     All,
     Build,
@@ -84,8 +82,6 @@ pub fn build_graph<'a>(
 
     Ok(graph)
 }
-
-// ---------- END: Public items ----------
 
 struct GraphConfiguration<'a> {
     target: Option<&'a str>,

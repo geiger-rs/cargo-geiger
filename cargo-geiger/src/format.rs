@@ -13,8 +13,6 @@ use std::str::{self, FromStr};
 
 use self::parse::{Parser, RawChunk};
 
-// ---------- BEGIN: Public items ----------
-
 #[derive(Clone, Copy, PartialEq)]
 pub enum Charset {
     Utf8,
@@ -31,6 +29,12 @@ impl FromStr for Charset {
             _ => Err("invalid charset"),
         }
     }
+}
+
+pub enum CrateDetectionStatus {
+    NoneDetectedForbidsUnsafe,
+    NoneDetectedAllowsUnsafe,
+    UnsafeDetected,
 }
 
 pub struct Display<'a> {
@@ -149,8 +153,6 @@ pub fn get_kind_group_name(k: DepKind) -> Option<&'static str> {
         DepKind::Development => Some("[dev-dependencies]"),
     }
 }
-
-// ---------- END: Public items ----------
 
 enum Chunk {
     Raw(String),

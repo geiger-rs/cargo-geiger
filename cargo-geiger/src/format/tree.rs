@@ -3,8 +3,6 @@ use crate::format::Charset;
 use cargo::core::dependency::DepKind;
 use cargo::core::PackageId;
 
-// ---------- BEGIN: Public items ----------
-
 /// A step towards decoupling some parts of the table-tree printing from the
 /// dependency graph traversal.
 pub enum TextTreeLine {
@@ -28,8 +26,6 @@ pub fn get_tree_symbols(cs: Charset) -> TreeSymbols {
         Charset::Ascii => ASCII_TREE_SYMBOLS,
     }
 }
-
-// ---------- END: Public items ----------
 
 const ASCII_TREE_SYMBOLS: TreeSymbols = TreeSymbols {
     down: "|",

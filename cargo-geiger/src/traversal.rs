@@ -8,8 +8,6 @@ use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;
 use std::collections::HashSet;
 
-// ---------- BEGIN: Public items ----------
-
 /// To print the returned TextTreeLines in order are expected to produce a nice
 /// looking tree structure.
 ///
@@ -32,8 +30,6 @@ pub fn walk_dependency_tree(
         pc,
     )
 }
-
-// ---------- END: Public items ----------
 
 fn walk_dependency_kind(
     kind: DepKind,

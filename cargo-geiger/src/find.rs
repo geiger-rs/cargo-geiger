@@ -14,8 +14,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
-// ---------- BEGIN: Public items ----------
-
 /// Provides a more terse and searchable name for the wrapped generic
 /// collection.
 pub struct GeigerContext {
@@ -75,8 +73,6 @@ where
     }
     GeigerContext { pack_id_to_metrics }
 }
-
-// ---------- END: Public items ----------
 
 fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     let walker = WalkDir::new(dir).into_iter();
