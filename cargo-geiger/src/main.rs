@@ -9,23 +9,25 @@ extern crate colored;
 extern crate petgraph;
 
 mod cli;
+mod find;
 mod format;
 mod graph;
+mod rs_file;
+mod scan;
+mod traversal;
 
 use crate::cli::get_cfgs;
 use crate::cli::get_registry;
 use crate::cli::get_workspace;
 use crate::cli::resolve;
-use crate::cli::run_scan_mode_default;
-use crate::cli::run_scan_mode_forbid_only;
-use crate::cli::Charset;
-use crate::cli::Prefix;
-use crate::cli::PrintConfig;
-use crate::format::Pattern;
+use crate::format::print::Prefix;
+use crate::format::print::PrintConfig;
+use crate::format::{Charset, Pattern};
 use crate::graph::build_graph;
 use crate::graph::ExtraDeps;
-use cargo::core::shell::Shell;
-use cargo::core::shell::Verbosity;
+use crate::scan::{run_scan_mode_default, run_scan_mode_forbid_only};
+
+use cargo::core::shell::{Shell, Verbosity};
 use cargo::util::errors::CliError;
 use cargo::CliResult;
 use cargo::Config;
@@ -244,10 +246,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let target = if args.all_targets {
         None
     } else {
-        Some(
-            args.target.as_deref()
-                .unwrap_or(&config_host),
-        )
+        Some(args.target.as_deref().unwrap_or(&config_host))
     };
 
     let format = Pattern::try_build(&args.format).map_err(|e| {
