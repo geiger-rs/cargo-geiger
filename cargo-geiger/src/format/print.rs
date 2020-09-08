@@ -7,9 +7,9 @@ use petgraph::EdgeDirection;
 
 #[derive(Clone, Copy)]
 pub enum Prefix {
-    None,
-    Indent,
     Depth,
+    Indent,
+    None,
 }
 
 pub struct PrintConfig<'a> {
@@ -30,12 +30,43 @@ pub struct PrintConfig<'a> {
 }
 
 pub fn colorize(
-    s: String,
-    detection_status: &CrateDetectionStatus,
+    string: String,
+    crate_detection_status: &CrateDetectionStatus,
 ) -> colored::ColoredString {
-    match detection_status {
-        CrateDetectionStatus::NoneDetectedForbidsUnsafe => s.green(),
-        CrateDetectionStatus::NoneDetectedAllowsUnsafe => s.normal(),
-        CrateDetectionStatus::UnsafeDetected => s.red().bold(),
+    match crate_detection_status {
+        CrateDetectionStatus::NoneDetectedForbidsUnsafe => string.green(),
+        CrateDetectionStatus::NoneDetectedAllowsUnsafe => string.normal(),
+        CrateDetectionStatus::UnsafeDetected => string.red().bold(),
+    }
+}
+
+#[cfg(test)]
+mod print_tests {
+    use super::*;
+
+    #[test]
+    fn colorize_test() {
+        let string = String::from("string_value");
+
+        assert_eq!(
+            string.clone().green(),
+            colorize(
+                string.clone(),
+                &CrateDetectionStatus::NoneDetectedForbidsUnsafe
+            )
+        );
+
+        assert_eq!(
+            string.clone().normal(),
+            colorize(
+                string.clone(),
+                &CrateDetectionStatus::NoneDetectedAllowsUnsafe
+            )
+        );
+
+        assert_eq!(
+            string.clone().red().bold(),
+            colorize(string.clone(), &CrateDetectionStatus::UnsafeDetected)
+        );
     }
 }
