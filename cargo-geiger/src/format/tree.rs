@@ -8,11 +8,12 @@ use cargo::core::PackageId;
 pub enum TextTreeLine {
     /// A text line for a package
     Package { id: PackageId, tree_vines: String },
-    /// There're extra dependencies comming and we should print a group header,
+    /// There are extra dependencies coming and we should print a group header,
     /// eg. "[build-dependencies]".
     ExtraDepsGroup { kind: DepKind, tree_vines: String },
 }
 
+#[derive(Debug, PartialEq)]
 pub struct TreeSymbols {
     pub down: &'static str,
     pub tee: &'static str,
@@ -20,8 +21,8 @@ pub struct TreeSymbols {
     pub right: &'static str,
 }
 
-pub fn get_tree_symbols(cs: Charset) -> TreeSymbols {
-    match cs {
+pub fn get_tree_symbols(charset: Charset) -> TreeSymbols {
+    match charset {
         Charset::Utf8 => UTF8_TREE_SYMBOLS,
         Charset::Ascii => ASCII_TREE_SYMBOLS,
     }
@@ -40,3 +41,13 @@ const UTF8_TREE_SYMBOLS: TreeSymbols = TreeSymbols {
     ell: "└",
     right: "─",
 };
+
+#[cfg(test)]
+mod tree_tests {
+    use super::*;
+
+    #[test]
+    fn get_tree_symbols_test() {
+        assert_eq!(get_tree_symbols(Charset::Utf8), UTF8_TREE_SYMBOLS);
+    }
+}

@@ -31,13 +31,42 @@ pub fn walk_dependency_tree(
     )
 }
 
+fn construct_tree_vines_string(
+    levels_continue: &mut Vec<bool>,
+    print_config: &PrintConfig,
+) -> String {
+    let tree_symbols = get_tree_symbols(print_config.charset);
+
+    match print_config.prefix {
+        Prefix::Depth => format!("{} ", levels_continue.len()),
+        Prefix::Indent => {
+            let mut buf = String::new();
+            if let Some((&last_continues, rest)) = levels_continue.split_last()
+            {
+                for &continues in rest {
+                    let c = if continues { tree_symbols.down } else { " " };
+                    buf.push_str(&format!("{}   ", c));
+                }
+                let c = if last_continues {
+                    tree_symbols.tee
+                } else {
+                    tree_symbols.ell
+                };
+                buf.push_str(&format!("{0}{1}{1} ", c, tree_symbols.right));
+            }
+            buf
+        }
+        Prefix::None => "".into(),
+    }
+}
+
 fn walk_dependency_kind(
     kind: DepKind,
     deps: &mut Vec<&Node>,
     graph: &Graph,
     visited_deps: &mut HashSet<PackageId>,
     levels_continue: &mut Vec<bool>,
-    pc: &PrintConfig,
+    print_config: &PrintConfig,
 ) -> Vec<TextTreeLine> {
     if deps.is_empty() {
         return Vec::new();
@@ -46,9 +75,9 @@ fn walk_dependency_kind(
     // Resolve uses Hash data types internally but we want consistent output ordering
     deps.sort_by_key(|n| n.id);
 
-    let tree_symbols = get_tree_symbols(pc.charset);
+    let tree_symbols = get_tree_symbols(print_config.charset);
     let mut output = Vec::new();
-    if let Prefix::Indent = pc.prefix {
+    if let Prefix::Indent = print_config.prefix {
         match kind {
             DepKind::Normal => (),
             _ => {
@@ -70,7 +99,7 @@ fn walk_dependency_kind(
             graph,
             visited_deps,
             levels_continue,
-            pc,
+            print_config,
         ));
         levels_continue.pop();
     }
@@ -82,31 +111,10 @@ fn walk_dependency_node(
     graph: &Graph,
     visited_deps: &mut HashSet<PackageId>,
     levels_continue: &mut Vec<bool>,
-    pc: &PrintConfig,
+    print_config: &PrintConfig,
 ) -> Vec<TextTreeLine> {
-    let new = pc.all || visited_deps.insert(package.id);
-    let tree_symbols = get_tree_symbols(pc.charset);
-    let tree_vines = match pc.prefix {
-        Prefix::Depth => format!("{} ", levels_continue.len()),
-        Prefix::Indent => {
-            let mut buf = String::new();
-            if let Some((&last_continues, rest)) = levels_continue.split_last()
-            {
-                for &continues in rest {
-                    let c = if continues { tree_symbols.down } else { " " };
-                    buf.push_str(&format!("{}   ", c));
-                }
-                let c = if last_continues {
-                    tree_symbols.tee
-                } else {
-                    tree_symbols.ell
-                };
-                buf.push_str(&format!("{0}{1}{1} ", c, tree_symbols.right));
-            }
-            buf
-        }
-        Prefix::None => "".into(),
-    };
+    let new = print_config.all || visited_deps.insert(package.id);
+    let tree_vines = construct_tree_vines_string(levels_continue, print_config);
 
     let mut all_out = vec![TextTreeLine::Package {
         id: package.id,
@@ -122,9 +130,9 @@ fn walk_dependency_node(
     let mut development = vec![];
     for edge in graph
         .graph
-        .edges_directed(graph.nodes[&package.id], pc.direction)
+        .edges_directed(graph.nodes[&package.id], print_config.direction)
     {
-        let dep = match pc.direction {
+        let dep = match print_config.direction {
             EdgeDirection::Incoming => &graph.graph[edge.source()],
             EdgeDirection::Outgoing => &graph.graph[edge.target()],
         };
@@ -140,7 +148,7 @@ fn walk_dependency_node(
         graph,
         visited_deps,
         levels_continue,
-        pc,
+        print_config,
     );
     let mut build_out = walk_dependency_kind(
         DepKind::Build,
@@ -148,7 +156,7 @@ fn walk_dependency_node(
         graph,
         visited_deps,
         levels_continue,
-        pc,
+        print_config,
     );
     let mut dev_out = walk_dependency_kind(
         DepKind::Development,
@@ -156,10 +164,61 @@ fn walk_dependency_node(
         graph,
         visited_deps,
         levels_continue,
-        pc,
+        print_config,
     );
     all_out.append(&mut normal_out);
     all_out.append(&mut build_out);
     all_out.append(&mut dev_out);
     all_out
+}
+
+#[cfg(test)]
+mod traversal_tests {
+    use super::*;
+
+    use crate::format::{Charset, Pattern};
+
+    use cargo::core::shell::Verbosity;
+    use geiger::IncludeTests;
+    use petgraph::EdgeDirection;
+
+    #[test]
+    fn construct_tree_vines_test() {
+        let mut levels_continue = vec![true, false, true];
+        let pattern = Pattern::try_build("{p}").unwrap();
+
+        let print_config = construct_print_config(&pattern, Prefix::Depth);
+        let tree_vines_string =
+            construct_tree_vines_string(&mut levels_continue, &print_config);
+
+        assert_eq!(tree_vines_string, "3 ");
+
+        let print_config = construct_print_config(&pattern, Prefix::Indent);
+        let tree_vines_string =
+            construct_tree_vines_string(&mut levels_continue, &print_config);
+
+        assert_eq!(tree_vines_string, "|       |-- ");
+
+        let print_config = construct_print_config(&pattern, Prefix::None);
+        let tree_vines_string =
+            construct_tree_vines_string(&mut levels_continue, &print_config);
+
+        assert_eq!(tree_vines_string, "");
+    }
+
+    fn construct_print_config(
+        pattern: &Pattern,
+        prefix: Prefix,
+    ) -> PrintConfig {
+        PrintConfig {
+            all: false,
+            verbosity: Verbosity::Verbose,
+            direction: EdgeDirection::Outgoing,
+            prefix,
+            format: pattern,
+            charset: Charset::Ascii,
+            allow_partial_results: false,
+            include_tests: IncludeTests::Yes,
+        }
+    }
 }

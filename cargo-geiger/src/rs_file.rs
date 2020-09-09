@@ -4,6 +4,7 @@ use cargo::core::{InternedString, PackageId, Target, Workspace};
 use cargo::ops;
 use cargo::ops::{CleanOptions, CompileOptions};
 use cargo::util::{paths, CargoResult, ProcessBuilder};
+use cargo::Config;
 use geiger::RsFileMetrics;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -17,6 +18,7 @@ use walkdir::{DirEntry, WalkDir};
 /// Provides information needed to scan for crate root
 /// `#![forbid(unsafe_code)]`.
 /// The wrapped PathBufs are canonicalized.
+#[derive(Debug, PartialEq)]
 pub enum RsFile {
     /// Library entry point source file, usually src/lib.rs
     LibRoot(PathBuf),
@@ -79,14 +81,14 @@ pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
 /// Trigger a `cargo clean` + `cargo check` and listen to the cargo/rustc
 /// communication to figure out which source files were used by the build.
 pub fn resolve_rs_file_deps(
-    copt: &CompileOptions,
-    ws: &Workspace,
+    compile_options: &CompileOptions,
+    workspace: &Workspace,
 ) -> Result<HashSet<PathBuf>, RsResolveError> {
-    let config = ws.config();
+    let config = workspace.config();
     // Need to run a cargo clean to identify all new .d deps files.
     // TODO: Figure out how this can be avoided to improve performance, clean
     // Rust builds are __slow__.
-    let clean_opt = CleanOptions {
+    let clean_options = CleanOptions {
         config: &config,
         spec: vec![],
         targets: vec![],
@@ -96,60 +98,45 @@ pub fn resolve_rs_file_deps(
         requested_profile: InternedString::new("dev"),
         doc: false,
     };
-    ops::clean(ws, &clean_opt)
+
+    ops::clean(workspace, &clean_options)
         .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
+
     let inner_arc = Arc::new(Mutex::new(CustomExecutorInnerContext::default()));
     {
-        let cust_exec = CustomExecutor {
-            cwd: config.cwd().to_path_buf(),
-            inner_ctx: inner_arc.clone(),
-        };
-        let exec: Arc<dyn Executor> = Arc::new(cust_exec);
-        ops::compile_with_exec(ws, &copt, &exec)
-            .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
+        compile_with_exec(
+            compile_options,
+            config,
+            inner_arc.clone(),
+            workspace,
+        )?;
     }
-    let ws_root = ws.root().to_path_buf();
+
+    let workspace_root = workspace.root().to_path_buf();
     let inner_mutex =
         Arc::try_unwrap(inner_arc).map_err(|_| RsResolveError::ArcUnwrap())?;
     let (rs_files, out_dir_args) = {
         let ctx = inner_mutex.into_inner()?;
         (ctx.rs_file_args, ctx.out_dir_args)
     };
-    let mut hs = HashSet::<PathBuf>::new();
+    let mut path_buf_hash_set = HashSet::<PathBuf>::new();
     for out_dir in out_dir_args {
         // TODO: Figure out if the `.d` dep files are used by one or more rustc
         // calls. It could be useful to know which `.d` dep files belong to
         // which rustc call. That would allow associating each `.rs` file found
         // in each dep file with a PackageId.
-        for ent in WalkDir::new(&out_dir) {
-            let ent = ent.map_err(RsResolveError::Walkdir)?;
-            if !is_file_with_ext(&ent, "d") {
-                continue;
-            }
-            let deps = parse_rustc_dep_info(ent.path()).map_err(|e| {
-                RsResolveError::DepParse(
-                    e.to_string(),
-                    ent.path().to_path_buf(),
-                )
-            })?;
-            let canon_paths = deps
-                .into_iter()
-                .flat_map(|t| t.1)
-                .map(PathBuf::from)
-                .map(|pb| ws_root.join(pb))
-                .map(|pb| {
-                    pb.canonicalize().map_err(|e| RsResolveError::Io(e, pb))
-                });
-            for p in canon_paths {
-                hs.insert(p?);
-            }
-        }
+        add_dir_entries_to_path_buf_hash_set(
+            out_dir,
+            &mut path_buf_hash_set,
+            workspace_root.clone(),
+        )?;
     }
-    for pb in rs_files {
+    for path_buf in rs_files {
         // rs_files must already be canonicalized
-        hs.insert(pb);
+        path_buf_hash_set.insert(path_buf);
     }
-    Ok(hs)
+
+    Ok(path_buf_hash_set)
 }
 
 /// A cargo Executor to intercept all build tasks and store all ".rs" file
@@ -293,6 +280,52 @@ impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
     }
 }
 
+fn add_dir_entries_to_path_buf_hash_set(
+    out_dir: PathBuf,
+    path_buf_hash_set: &mut HashSet<PathBuf>,
+    workspace_root: PathBuf,
+) -> Result<(), RsResolveError> {
+    for entry in WalkDir::new(&out_dir) {
+        let entry = entry.map_err(RsResolveError::Walkdir)?;
+        if !is_file_with_ext(&entry, "d") {
+            continue;
+        }
+        let dependencies = parse_rustc_dep_info(entry.path()).map_err(|e| {
+            RsResolveError::DepParse(e.to_string(), entry.path().to_path_buf())
+        })?;
+        let canonical_paths = dependencies
+            .into_iter()
+            .flat_map(|t| t.1)
+            .map(PathBuf::from)
+            .map(|pb| workspace_root.join(pb))
+            .map(|pb| pb.canonicalize().map_err(|e| RsResolveError::Io(e, pb)));
+        for path_buf in canonical_paths {
+            path_buf_hash_set.insert(path_buf?);
+        }
+    }
+
+    Ok(())
+}
+
+fn compile_with_exec(
+    compile_options: &CompileOptions,
+    config: &Config,
+    inner_arc: Arc<Mutex<CustomExecutorInnerContext>>,
+    workspace: &Workspace,
+) -> Result<(), RsResolveError> {
+    let custom_executor = CustomExecutor {
+        cwd: config.cwd().to_path_buf(),
+        inner_ctx: inner_arc,
+    };
+
+    let custom_executor_arc: Arc<dyn Executor> = Arc::new(custom_executor);
+
+    ops::compile_with_exec(workspace, &compile_options, &custom_executor_arc)
+        .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
+
+    Ok(())
+}
+
 /// Copy-pasted (almost) from the private module cargo::core::compiler::fingerprint.
 ///
 /// TODO: Make a PR to the cargo project to expose this function or to expose
@@ -326,4 +359,76 @@ fn parse_rustc_dep_info(
             Ok((target.to_string(), ret))
         })
         .collect()
+}
+
+#[cfg(test)]
+mod rs_file_tests {
+    use super::*;
+
+    #[test]
+    fn into_rs_code_file_test() {
+        let path_buf = Path::new("test_path.ext").to_path_buf();
+
+        assert_eq!(
+            into_rs_code_file(&TargetKind::Lib(vec![]), path_buf.clone()),
+            RsFile::LibRoot(path_buf.clone())
+        );
+
+        assert_eq!(
+            into_rs_code_file(&TargetKind::Bin, path_buf.clone()),
+            RsFile::BinRoot(path_buf.clone())
+        );
+
+        assert_eq!(
+            into_rs_code_file(&TargetKind::Test, path_buf.clone()),
+            RsFile::Other(path_buf.clone())
+        );
+
+        assert_eq!(
+            into_rs_code_file(&TargetKind::Bench, path_buf.clone()),
+            RsFile::Other(path_buf.clone())
+        );
+
+        assert_eq!(
+            into_rs_code_file(
+                &TargetKind::ExampleLib(vec![]),
+                path_buf.clone()
+            ),
+            RsFile::Other(path_buf.clone())
+        );
+
+        assert_eq!(
+            into_rs_code_file(&TargetKind::ExampleBin, path_buf.clone()),
+            RsFile::Other(path_buf.clone())
+        );
+
+        assert_eq!(
+            into_rs_code_file(&TargetKind::CustomBuild, path_buf.clone()),
+            RsFile::CustomBuildRoot(path_buf.clone())
+        );
+    }
+
+    #[test]
+    fn is_file_with_ext_test() {
+        let config = Config::default().unwrap();
+        let cwd = config.cwd();
+
+        let walk_dir_rust_files = WalkDir::new(&cwd)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().to_str().unwrap().ends_with(".rs"));
+
+        for entry in walk_dir_rust_files {
+            assert_eq!(is_file_with_ext(&entry, "rs"), true);
+        }
+
+        let walk_dir_readme_files = WalkDir::new(&cwd)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().to_str().unwrap().contains("README"));
+
+        for entry in walk_dir_readme_files {
+            assert_eq!(is_file_with_ext(&entry, "rs"), false);
+        }
+    }
 }

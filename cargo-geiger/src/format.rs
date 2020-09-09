@@ -10,10 +10,11 @@ use colored::Colorize;
 use std::error::Error;
 use std::fmt;
 use std::str::{self, FromStr};
+use strum_macros::EnumIter;
 
 use self::parse::{Parser, RawChunk};
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Charset {
     Utf8,
     Ascii,
@@ -31,6 +32,7 @@ impl FromStr for Charset {
     }
 }
 
+#[derive(Debug, Clone, EnumIter, PartialEq)]
 pub enum CrateDetectionStatus {
     NoneDetectedForbidsUnsafe,
     NoneDetectedAllowsUnsafe,
@@ -106,6 +108,18 @@ impl EmojiSymbols {
 pub struct Pattern(Vec<Chunk>);
 
 impl Pattern {
+    pub fn display<'a>(
+        &'a self,
+        package: &'a PackageId,
+        metadata: &'a ManifestMetadata,
+    ) -> Display<'a> {
+        Display {
+            pattern: self,
+            package,
+            metadata,
+        }
+    }
+
     pub fn try_build(format: &str) -> Result<Pattern, Box<dyn Error>> {
         let mut chunks = vec![];
 
@@ -125,18 +139,6 @@ impl Pattern {
 
         Ok(Pattern(chunks))
     }
-
-    pub fn display<'a>(
-        &'a self,
-        package: &'a PackageId,
-        metadata: &'a ManifestMetadata,
-    ) -> Display<'a> {
-        Display {
-            pattern: self,
-            package,
-            metadata,
-        }
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -146,8 +148,8 @@ pub enum SymbolKind {
     Rads = 2,
 }
 
-pub fn get_kind_group_name(k: DepKind) -> Option<&'static str> {
-    match k {
+pub fn get_kind_group_name(dep_kind: DepKind) -> Option<&'static str> {
+    match dep_kind {
         DepKind::Normal => None,
         DepKind::Build => Some("[build-dependencies]"),
         DepKind::Development => Some("[dev-dependencies]"),
@@ -159,4 +161,33 @@ enum Chunk {
     Package,
     License,
     Repository,
+}
+
+#[cfg(test)]
+mod format_tests {
+    use super::*;
+
+    #[test]
+    fn charset_from_str_test() {
+        assert_eq!(Charset::from_str("utf8"), Ok(Charset::Utf8));
+
+        assert_eq!(Charset::from_str("ascii"), Ok(Charset::Ascii));
+
+        assert_eq!(Charset::from_str("invalid_str"), Err("invalid charset"));
+    }
+
+    #[test]
+    fn get_kind_group_name_test() {
+        assert_eq!(get_kind_group_name(DepKind::Normal), None);
+
+        assert_eq!(
+            get_kind_group_name(DepKind::Build),
+            Some("[build-dependencies]")
+        );
+
+        assert_eq!(
+            get_kind_group_name(DepKind::Development),
+            Some("[dev-dependencies]")
+        );
+    }
 }

@@ -1,6 +1,6 @@
 use cargo::core::dependency::DepKind;
 use cargo::core::package::PackageSet;
-use cargo::core::{PackageId, Resolve};
+use cargo::core::{Dependency, PackageId, Resolve};
 use cargo::util::CargoResult;
 use cargo_platform::Cfg;
 use petgraph::graph::NodeIndex;
@@ -69,10 +69,10 @@ pub fn build_graph<'a>(
         extra_deps,
     };
 
-    while let Some(pkg_id) = pending.pop() {
+    while let Some(package_id) = pending.pop() {
         add_package_dependencies_to_graph(
             resolve,
-            pkg_id,
+            package_id,
             packages,
             &graph_configuration,
             &mut graph,
@@ -89,6 +89,29 @@ struct GraphConfiguration<'a> {
     extra_deps: ExtraDeps,
 }
 
+fn add_graph_node_if_not_present_and_edge(
+    dependency: &Dependency,
+    dependency_package_id: PackageId,
+    graph: &mut Graph,
+    index: NodeIndex,
+    pending_packages: &mut Vec<PackageId>,
+) {
+    let dependency_index = match graph.nodes.entry(dependency_package_id) {
+        Entry::Occupied(e) => *e.get(),
+        Entry::Vacant(e) => {
+            pending_packages.push(dependency_package_id);
+            let node = Node {
+                id: dependency_package_id,
+                //pack: packages.get_one(dep_id)?,
+            };
+            *e.insert(graph.graph.add_node(node))
+        }
+    };
+    graph
+        .graph
+        .add_edge(index, dependency_index, dependency.kind());
+}
+
 #[doc(hidden)]
 fn add_package_dependencies_to_graph<'a>(
     resolve: &'a Resolve,
@@ -98,14 +121,15 @@ fn add_package_dependencies_to_graph<'a>(
     graph: &mut Graph,
     pending_packages: &mut Vec<PackageId>,
 ) -> CargoResult<()> {
-    let idx = graph.nodes[&package_id];
+    let index = graph.nodes[&package_id];
     let package = packages.get_one(package_id)?;
 
-    for raw_dep_id in resolve.deps_not_replaced(package_id) {
-        let it = package
+    for (raw_dependency_package_id, _) in resolve.deps_not_replaced(package_id)
+    {
+        let dependency_iterator = package
             .dependencies()
             .iter()
-            .filter(|d| d.matches_ignoring_source(raw_dep_id.0))
+            .filter(|d| d.matches_ignoring_source(raw_dependency_package_id))
             .filter(|d| graph_configuration.extra_deps.allows(d.kind()))
             .filter(|d| {
                 d.platform()
@@ -119,25 +143,45 @@ fn add_package_dependencies_to_graph<'a>(
                     })
                     .unwrap_or(true)
             });
-        let dep_id = match resolve.replacement(raw_dep_id.0) {
-            Some(id) => id,
-            None => raw_dep_id.0,
-        };
-        for dep in it {
-            let dep_idx = match graph.nodes.entry(dep_id) {
-                Entry::Occupied(e) => *e.get(),
-                Entry::Vacant(e) => {
-                    pending_packages.push(dep_id);
-                    let node = Node {
-                        id: dep_id,
-                        //pack: packages.get_one(dep_id)?,
-                    };
-                    *e.insert(graph.graph.add_node(node))
-                }
+
+        let dependency_package_id =
+            match resolve.replacement(raw_dependency_package_id) {
+                Some(id) => id,
+                None => raw_dependency_package_id,
             };
-            graph.graph.add_edge(idx, dep_idx, dep.kind());
+
+        for dependency in dependency_iterator {
+            add_graph_node_if_not_present_and_edge(
+                dependency,
+                dependency_package_id,
+                graph,
+                index,
+                pending_packages,
+            );
         }
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod graph_tests {
+    use super::*;
+
+    #[test]
+    fn extra_deps_allows_test() {
+        assert_eq!(ExtraDeps::All.allows(DepKind::Normal), true);
+        assert_eq!(ExtraDeps::Build.allows(DepKind::Normal), true);
+        assert_eq!(ExtraDeps::Dev.allows(DepKind::Normal), true);
+        assert_eq!(ExtraDeps::NoMore.allows(DepKind::Normal), true);
+
+        assert_eq!(ExtraDeps::All.allows(DepKind::Build), true);
+        assert_eq!(ExtraDeps::All.allows(DepKind::Development), true);
+
+        assert_eq!(ExtraDeps::Build.allows(DepKind::Build), true);
+        assert_eq!(ExtraDeps::Build.allows(DepKind::Development), false);
+
+        assert_eq!(ExtraDeps::Dev.allows(DepKind::Build), false);
+        assert_eq!(ExtraDeps::Dev.allows(DepKind::Development), true);
+    }
 }

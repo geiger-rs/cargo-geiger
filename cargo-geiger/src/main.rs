@@ -7,6 +7,8 @@
 extern crate cargo;
 extern crate colored;
 extern crate petgraph;
+extern crate strum;
+extern crate strum_macros;
 
 mod cli;
 mod find;
@@ -16,21 +18,15 @@ mod rs_file;
 mod scan;
 mod traversal;
 
-use crate::cli::get_cfgs;
-use crate::cli::get_registry;
-use crate::cli::get_workspace;
-use crate::cli::resolve;
-use crate::format::print::Prefix;
-use crate::format::print::PrintConfig;
+use crate::cli::{get_cfgs, get_registry, get_workspace, resolve};
+use crate::format::print::{Prefix, PrintConfig};
 use crate::format::{Charset, Pattern};
-use crate::graph::build_graph;
-use crate::graph::ExtraDeps;
+use crate::graph::{build_graph, ExtraDeps};
 use crate::scan::{run_scan_mode_default, run_scan_mode_forbid_only};
 
-use cargo::core::shell::{Shell, Verbosity};
+use cargo::core::shell::{ColorChoice, Shell, Verbosity};
 use cargo::util::errors::CliError;
-use cargo::CliResult;
-use cargo::Config;
+use cargo::{CliResult, Config};
 use geiger::IncludeTests;
 use petgraph::EdgeDirection;
 use std::fmt;
@@ -182,8 +178,6 @@ impl fmt::Display for FormatError {
 }
 
 fn real_main(args: &Args, config: &mut Config) -> CliResult {
-    use cargo::core::shell::ColorChoice;
-
     if args.version {
         println!("cargo-geiger {}", VERSION.unwrap_or("unknown version"));
         return Ok(());
@@ -301,7 +295,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     } else {
         IncludeTests::No
     };
-    let pc = PrintConfig {
+    let print_config = PrintConfig {
         all: args.all,
         verbosity,
         direction,
@@ -313,7 +307,13 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     };
 
     if args.forbid_only {
-        run_scan_mode_forbid_only(&config, &packages, root_pack_id, &graph, &pc)
+        run_scan_mode_forbid_only(
+            &config,
+            &packages,
+            root_pack_id,
+            &graph,
+            &print_config,
+        )
     } else {
         run_scan_mode_default(
             &config,
@@ -321,7 +321,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
             &packages,
             root_pack_id,
             &graph,
-            &pc,
+            &print_config,
             &args,
         )
     }

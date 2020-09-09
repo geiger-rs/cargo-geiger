@@ -102,3 +102,78 @@ pub fn resolve<'a, 'cfg>(
 }
 
 // TODO: Make a wrapper type for canonical paths and hide all mutable access.
+
+#[cfg(test)]
+mod cli_tests {
+    use super::*;
+
+    #[test]
+    fn get_cfgs_test() {
+        let config = Config::default().unwrap();
+
+        let target: Option<String> = None;
+
+        let root =
+            important_paths::find_root_manifest_for_wd(config.cwd()).unwrap();
+        let workspace = Workspace::new(&root, &config).unwrap();
+
+        let cfgs = get_cfgs(&config, &target, &workspace);
+
+        assert!(cfgs.is_ok());
+        let cfg_vec_option = cfgs.unwrap();
+        assert!(cfg_vec_option.is_some());
+        let cfg_vec = cfg_vec_option.unwrap();
+
+        let names: Vec<&Cfg> = cfg_vec
+            .iter()
+            .filter(|cfg| matches!(cfg, Cfg::Name(_)))
+            .collect();
+
+        let key_pairs: Vec<&Cfg> = cfg_vec
+            .iter()
+            .filter(|cfg| matches!(cfg, Cfg::KeyPair(_, _)))
+            .collect();
+
+        assert!(names.len() > 0);
+        assert!(key_pairs.len() > 0);
+    }
+
+    #[test]
+    fn get_workspace_test() {
+        let config = Config::default().unwrap();
+        let manifest_path: Option<PathBuf> = None;
+
+        let workspace_cargo_result = get_workspace(&config, manifest_path);
+        assert!(workspace_cargo_result.is_ok());
+        let workspace = workspace_cargo_result.unwrap();
+
+        let package_result = workspace.current();
+        assert!(package_result.is_ok());
+        let package = package_result.unwrap();
+
+        assert_eq!(package.package_id().name(), "cargo-geiger");
+    }
+
+    #[test]
+    fn get_registry_test() {
+        let config = Config::default().unwrap();
+        let workspace = Workspace::new(
+            &important_paths::find_root_manifest_for_wd(config.cwd()).unwrap(),
+            &config,
+        )
+        .unwrap();
+        let package = workspace.current().unwrap();
+
+        let registry_result = get_registry(&config, &package);
+
+        assert!(registry_result.is_ok());
+        let registry = registry_result.unwrap();
+
+        let package_ids = vec![package.package_id()];
+        let package_set_result = registry.get(&package_ids);
+        assert!(package_set_result.is_ok());
+        let package_set = package_set_result.unwrap();
+
+        assert_eq!(package_set.sources().len(), 1);
+    }
+}

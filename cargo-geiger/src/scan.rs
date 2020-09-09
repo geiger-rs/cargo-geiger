@@ -1,7 +1,7 @@
-use crate::find::find_unsafe_in_packages;
+use crate::find::{find_unsafe_in_packages, GeigerContext};
 use crate::format::print::PrintConfig;
 use crate::format::table::{
-    print_text_tree_lines_as_table, UNSAFE_COUNTERS_HEADER,
+    create_table_from_text_tree_lines, UNSAFE_COUNTERS_HEADER,
 };
 use crate::format::tree::TextTreeLine;
 use crate::format::{get_kind_group_name, EmojiSymbols, Pattern, SymbolKind};
@@ -36,109 +36,60 @@ pub enum ScanMode {
 
 pub fn run_scan_mode_default(
     config: &Config,
-    ws: &Workspace,
+    workspace: &Workspace,
     packages: &PackageSet,
     root_pack_id: PackageId,
     graph: &Graph,
-    pc: &PrintConfig,
+    print_config: &PrintConfig,
     args: &Args,
 ) -> CliResult {
-    let copt = build_compile_options(args, config);
-    let rs_files_used = resolve_rs_file_deps(&copt, &ws).unwrap();
-    if pc.verbosity == Verbosity::Verbose {
-        // Print all .rs files found through the .d files, in sorted order.
-        let mut paths = rs_files_used
-            .iter()
-            .map(std::borrow::ToOwned::to_owned)
-            .collect::<Vec<PathBuf>>();
-        paths.sort();
-        paths
-            .iter()
-            .for_each(|p| println!("Used by build (sorted): {}", p.display()));
+    let mut scan_output_lines = Vec::<String>::new();
+
+    let compile_options = build_compile_options(args, config);
+    let rs_files_used =
+        resolve_rs_file_deps(&compile_options, &workspace).unwrap();
+    if print_config.verbosity == Verbosity::Verbose {
+        let mut rs_files_used_lines =
+            construct_rs_files_used_lines(&rs_files_used);
+        scan_output_lines.append(&mut rs_files_used_lines);
     }
     let mut progress = cargo::util::Progress::new("Scanning", config);
-    let emoji_symbols = EmojiSymbols::new(pc.charset);
-    let geiger_ctx = find_unsafe_in_packages(
+    let emoji_symbols = EmojiSymbols::new(print_config.charset);
+    let geiger_context = find_unsafe_in_packages(
         &packages,
-        pc.allow_partial_results,
-        pc.include_tests,
+        print_config.allow_partial_results,
+        print_config.include_tests,
         ScanMode::Full,
         |i, count| -> CargoResult<()> { progress.tick(i, count) },
     );
     progress.clear();
     config.shell().status("Scanning", "done")?;
 
-    println!();
-    println!("Metric output format: x/y");
-    println!("    x = unsafe code used by the build");
-    println!("    y = total unsafe code found in the crate");
-    println!();
+    let mut output_key_lines =
+        construct_scan_mode_default_output_key_lines(&emoji_symbols);
+    scan_output_lines.append(&mut output_key_lines);
 
-    println!("Symbols: ");
-    let forbids = "No `unsafe` usage found, declares #![forbid(unsafe_code)]";
-    let unknown = "No `unsafe` usage found, missing #![forbid(unsafe_code)]";
-    let guilty = "`unsafe` usage found";
-
-    let shift_sequence = if emoji_symbols.will_output_emoji() {
-        "\r\x1B[7C" // The radiation icon's Unicode width is 2,
-                    // but by most terminals it seems to be rendered at width 1.
-    } else {
-        ""
-    };
-
-    println!(
-        "    {: <2} = {}",
-        emoji_symbols.emoji(SymbolKind::Lock),
-        forbids
-    );
-    println!(
-        "    {: <2} = {}",
-        emoji_symbols.emoji(SymbolKind::QuestionMark),
-        unknown
-    );
-    println!(
-        "    {: <2}{} = {}",
-        emoji_symbols.emoji(SymbolKind::Rads),
-        shift_sequence,
-        guilty
-    );
-    println!();
-
-    println!(
-        "{}",
-        UNSAFE_COUNTERS_HEADER
-            .iter()
-            .map(|s| s.to_owned())
-            .collect::<Vec<_>>()
-            .join(" ")
-            .bold()
-    );
-    println!();
-
-    let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
-    let mut warning_count = print_text_tree_lines_as_table(
-        &geiger_ctx,
-        packages,
-        pc,
-        &rs_files_used,
-        tree_lines,
-    );
-
-    println!();
-    let scanned_files = geiger_ctx
-        .pack_id_to_metrics
-        .iter()
-        .flat_map(|(_k, v)| v.rs_path_to_metrics.keys())
-        .collect::<HashSet<&PathBuf>>();
-    let used_but_not_scanned =
-        rs_files_used.iter().filter(|p| !scanned_files.contains(p));
-    for path in used_but_not_scanned {
-        eprintln!(
-            "WARNING: Dependency file was never scanned: {}",
-            path.display()
+    let tree_lines = walk_dependency_tree(root_pack_id, &graph, &print_config);
+    let (mut table_lines, mut warning_count) =
+        create_table_from_text_tree_lines(
+            &geiger_context,
+            packages,
+            print_config,
+            &rs_files_used,
+            tree_lines,
         );
-        warning_count += 1;
+    scan_output_lines.append(&mut table_lines);
+
+    for scan_output_line in scan_output_lines {
+        println!("{}", scan_output_line);
     }
+
+    list_files_used_but_not_scanned(
+        geiger_context,
+        &rs_files_used,
+        &mut warning_count,
+    );
+
     if warning_count > 0 {
         Err(CliError::new(
             anyhow::Error::new(FoundWarningsError { warning_count }),
@@ -154,39 +105,36 @@ pub fn run_scan_mode_forbid_only(
     packages: &PackageSet,
     root_pack_id: PackageId,
     graph: &Graph,
-    pc: &PrintConfig,
+    print_config: &PrintConfig,
 ) -> CliResult {
-    let emoji_symbols = EmojiSymbols::new(pc.charset);
+    let mut scan_output_lines = Vec::<String>::new();
+
+    let emoji_symbols = EmojiSymbols::new(print_config.charset);
+    let sym_lock = emoji_symbols.emoji(SymbolKind::Lock);
+    let sym_qmark = emoji_symbols.emoji(SymbolKind::QuestionMark);
+
     let mut progress = cargo::util::Progress::new("Scanning", config);
     let geiger_ctx = find_unsafe_in_packages(
         &packages,
-        pc.allow_partial_results,
-        pc.include_tests,
+        print_config.allow_partial_results,
+        print_config.include_tests,
         ScanMode::EntryPointsOnly,
         |i, count| -> CargoResult<()> { progress.tick(i, count) },
     );
     progress.clear();
     config.shell().status("Scanning", "done")?;
 
-    println!();
+    let mut output_key_lines =
+        construct_scan_mode_forbid_only_output_key_lines(&emoji_symbols);
 
-    println!("Symbols: ");
-    let forbids = "All entry point .rs files declare #![forbid(unsafe_code)].";
-    let unknown = "This crate may use unsafe code.";
+    scan_output_lines.append(&mut output_key_lines);
 
-    let sym_lock = emoji_symbols.emoji(SymbolKind::Lock);
-    let sym_qmark = emoji_symbols.emoji(SymbolKind::QuestionMark);
-
-    println!("    {: <2} = {}", sym_lock, forbids);
-    println!("    {: <2} = {}", sym_qmark, unknown);
-    println!();
-
-    let tree_lines = walk_dependency_tree(root_pack_id, &graph, &pc);
-    for tl in tree_lines {
-        match tl {
+    let tree_lines = walk_dependency_tree(root_pack_id, &graph, &print_config);
+    for tree_line in tree_lines {
+        match tree_line {
             TextTreeLine::Package { id, tree_vines } => {
-                let pack = packages.get_one(id).unwrap(); // FIXME
-                let name = format_package_name(pack, pc.format);
+                let package = packages.get_one(id).unwrap(); // FIXME
+                let name = format_package_name(package, print_config.format);
                 let pack_metrics = geiger_ctx.pack_id_to_metrics.get(&id);
                 let package_forbids_unsafe = match pack_metrics {
                     None => false, // no metrics available, .rs parsing failed?
@@ -200,7 +148,8 @@ pub fn run_scan_mode_forbid_only(
                 } else {
                     (&sym_qmark, name.red())
                 };
-                println!("{} {}{}", symbol, tree_vines, name);
+                scan_output_lines
+                    .push(format!("{} {}{}", symbol, tree_vines, name));
             }
             TextTreeLine::ExtraDepsGroup { kind, tree_vines } => {
                 let name = get_kind_group_name(kind);
@@ -209,9 +158,13 @@ pub fn run_scan_mode_forbid_only(
                 }
                 let name = name.unwrap();
                 // TODO: Fix the alignment on macOS (others too?)
-                println!("  {}{}", tree_vines, name);
+                scan_output_lines.push(format!("  {}{}", tree_vines, name));
             }
         }
+    }
+
+    for scan_output_line in scan_output_lines {
+        println!("{}", scan_output_line);
     }
 
     Ok(())
@@ -246,12 +199,12 @@ fn build_compile_options<'a>(
         .split(' ')
         .map(str::to_owned)
         .collect::<Vec<String>>();
-    let mut opt =
+    let mut compile_options =
         CompileOptions::new(&config, CompileMode::Check { test: false })
             .unwrap();
-    opt.features = features;
-    opt.all_features = args.all_features;
-    opt.no_default_features = args.no_default_features;
+    compile_options.features = features;
+    compile_options.all_features = args.all_features;
+    compile_options.no_default_features = args.no_default_features;
 
     // TODO: Investigate if this is relevant to cargo-geiger.
     //let mut bins = Vec::new();
@@ -274,12 +227,252 @@ fn build_compile_options<'a>(
     //     );
     // }
 
-    opt
+    compile_options
 }
 
-fn format_package_name(pack: &Package, pat: &Pattern) -> String {
+fn construct_rs_files_used_lines(
+    rs_files_used: &HashSet<PathBuf>,
+) -> Vec<String> {
+    // Print all .rs files found through the .d files, in sorted order.
+    let mut paths = rs_files_used
+        .iter()
+        .map(std::borrow::ToOwned::to_owned)
+        .collect::<Vec<PathBuf>>();
+
+    paths.sort();
+
+    paths
+        .iter()
+        .map(|p| format!("Used by build (sorted): {}", p.display()))
+        .collect::<Vec<String>>()
+}
+
+fn construct_scan_mode_default_output_key_lines(
+    emoji_symbols: &EmojiSymbols,
+) -> Vec<String> {
+    let mut output_key_lines = Vec::<String>::new();
+
+    output_key_lines.push(String::new());
+    output_key_lines.push(String::from("Metric output format: x/y"));
+    output_key_lines
+        .push(String::from("    x = unsafe code used by the build"));
+    output_key_lines
+        .push(String::from("    y = total unsafe code found in the crate"));
+    output_key_lines.push(String::new());
+
+    output_key_lines.push(String::from("Symbols: "));
+    let forbids = "No `unsafe` usage found, declares #![forbid(unsafe_code)]";
+    let unknown = "No `unsafe` usage found, missing #![forbid(unsafe_code)]";
+    let guilty = "`unsafe` usage found";
+
+    let shift_sequence = if emoji_symbols.will_output_emoji() {
+        "\r\x1B[7C" // The radiation icon's Unicode width is 2,
+                    // but by most terminals it seems to be rendered at width 1.
+    } else {
+        ""
+    };
+
+    output_key_lines.push(format!(
+        "    {: <2} = {}",
+        emoji_symbols.emoji(SymbolKind::Lock),
+        forbids
+    ));
+
+    output_key_lines.push(format!(
+        "    {: <2} = {}",
+        emoji_symbols.emoji(SymbolKind::QuestionMark),
+        unknown
+    ));
+
+    output_key_lines.push(format!(
+        "    {: <2}{} = {}",
+        emoji_symbols.emoji(SymbolKind::Rads),
+        shift_sequence,
+        guilty
+    ));
+
+    output_key_lines.push(String::new());
+
+    output_key_lines.push(format!(
+        "{}",
+        UNSAFE_COUNTERS_HEADER
+            .iter()
+            .map(|s| s.to_owned())
+            .collect::<Vec<_>>()
+            .join(" ")
+            .bold()
+    ));
+
+    output_key_lines.push(String::new());
+
+    output_key_lines
+}
+
+fn construct_scan_mode_forbid_only_output_key_lines(
+    emoji_symbols: &EmojiSymbols,
+) -> Vec<String> {
+    let mut output_key_lines = Vec::<String>::new();
+
+    output_key_lines.push(String::new());
+    output_key_lines.push(String::from("Symbols: "));
+
+    let forbids = "All entry point .rs files declare #![forbid(unsafe_code)].";
+    let unknown = "This crate may use unsafe code.";
+
+    output_key_lines.push(format!(
+        "    {: <2} = {}",
+        emoji_symbols.emoji(SymbolKind::Lock),
+        forbids
+    ));
+
+    output_key_lines.push(format!(
+        "    {: <2} = {}",
+        emoji_symbols.emoji(SymbolKind::QuestionMark),
+        unknown
+    ));
+
+    output_key_lines.push(String::new());
+
+    output_key_lines
+}
+
+fn format_package_name(package: &Package, pattern: &Pattern) -> String {
     format!(
         "{}",
-        pat.display(&pack.package_id(), pack.manifest().metadata())
+        pattern.display(&package.package_id(), package.manifest().metadata())
     )
+}
+
+fn list_files_used_but_not_scanned(
+    geiger_context: GeigerContext,
+    rs_files_used: &HashSet<PathBuf>,
+    warning_count: &mut u64,
+) {
+    let scanned_files = geiger_context
+        .pack_id_to_metrics
+        .iter()
+        .flat_map(|(_k, v)| v.rs_path_to_metrics.keys())
+        .collect::<HashSet<&PathBuf>>();
+    let used_but_not_scanned =
+        rs_files_used.iter().filter(|p| !scanned_files.contains(p));
+    for path in used_but_not_scanned {
+        eprintln!(
+            "WARNING: Dependency file was never scanned: {}",
+            path.display()
+        );
+        *warning_count += 1;
+    }
+}
+
+#[cfg(test)]
+mod scan_tests {
+    use super::*;
+
+    use crate::format::Charset;
+
+    use cargo::util::important_paths;
+
+    #[test]
+    fn build_compile_options_test() {
+        let args_all_features = rand::random();
+        let args_features = Some(String::from("unit test features"));
+        let args_no_default_features = rand::random();
+
+        let args = Args {
+            all: false,
+            all_deps: false,
+            all_features: args_all_features,
+            all_targets: false,
+            build_deps: false,
+            charset: Charset::Utf8,
+            color: None,
+            dev_deps: false,
+            features: args_features,
+            forbid_only: false,
+            format: "".to_string(),
+            frozen: false,
+            help: false,
+            include_tests: false,
+            invert: false,
+            locked: false,
+            manifest_path: None,
+            no_default_features: args_no_default_features,
+            no_indent: false,
+            offline: false,
+            package: None,
+            prefix_depth: false,
+            quiet: None,
+            target: None,
+            unstable_flags: vec![],
+            verbose: 0,
+            version: false,
+        };
+
+        let config = Config::default().unwrap();
+
+        let compile_options = build_compile_options(&args, &config);
+
+        assert_eq!(compile_options.all_features, args_all_features);
+        assert_eq!(compile_options.features, vec!["unit", "test", "features"]);
+        assert_eq!(
+            compile_options.no_default_features,
+            args_no_default_features
+        );
+    }
+
+    #[test]
+    fn construct_rs_files_used_lines_test() {
+        let mut rs_files_used = HashSet::<PathBuf>::new();
+
+        rs_files_used.insert(PathBuf::from("b/path.rs"));
+        rs_files_used.insert(PathBuf::from("a/path.rs"));
+        rs_files_used.insert(PathBuf::from("c/path.rs"));
+
+        let rs_files_used_lines = construct_rs_files_used_lines(&rs_files_used);
+
+        assert_eq!(
+            rs_files_used_lines,
+            vec![
+                String::from("Used by build (sorted): a/path.rs"),
+                String::from("Used by build (sorted): b/path.rs"),
+                String::from("Used by build (sorted): c/path.rs"),
+            ]
+        );
+    }
+
+    #[test]
+    fn construct_scan_mode_default_output_key_lines_test() {
+        let emoji_symbols = EmojiSymbols::new(Charset::Utf8);
+        let output_key_lines =
+            construct_scan_mode_default_output_key_lines(&emoji_symbols);
+
+        assert_eq!(output_key_lines.len(), 12);
+    }
+
+    #[test]
+    fn construct_scan_mode_forbid_only_output_key_lines_test() {
+        let emoji_symbols = EmojiSymbols::new(Charset::Utf8);
+        let output_key_lines =
+            construct_scan_mode_forbid_only_output_key_lines(&emoji_symbols);
+
+        assert_eq!(output_key_lines.len(), 5);
+    }
+
+    #[test]
+    fn format_package_name_test() {
+        let pattern = Pattern::try_build("{p}").unwrap();
+
+        let config = Config::default().unwrap();
+        let workspace = Workspace::new(
+            &important_paths::find_root_manifest_for_wd(config.cwd()).unwrap(),
+            &config,
+        )
+        .unwrap();
+
+        let package = workspace.current().unwrap();
+
+        let formatted_package_name = format_package_name(&package, &pattern);
+
+        assert_eq!(formatted_package_name, "cargo-geiger 0.10.2");
+    }
 }
