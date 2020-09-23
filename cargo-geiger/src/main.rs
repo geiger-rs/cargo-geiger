@@ -14,15 +14,16 @@ mod cli;
 mod find;
 mod format;
 mod graph;
+mod report;
 mod rs_file;
 mod scan;
 mod traversal;
 
 use crate::cli::{get_cfgs, get_registry, get_workspace, resolve};
-use crate::format::print::{Prefix, PrintConfig};
+use crate::format::print::{OutputFormat, Prefix, PrintConfig};
 use crate::format::{Charset, Pattern};
 use crate::graph::{build_graph, ExtraDeps};
-use crate::scan::{run_scan_mode_default, run_scan_mode_forbid_only};
+use crate::scan::{scan_unsafe, run_scan_mode_forbid_only};
 
 use cargo::core::shell::{ColorChoice, Shell, Verbosity};
 use cargo::util::errors::CliError;
@@ -60,6 +61,7 @@ OPTIONS:
                                   [default: utf8].
     --format <FORMAT>             Format string used for printing dependencies
                                   [default: {p}].
+    --json                        Output in JSON format.
     -v, --verbose                 Use verbose output (-vv very verbose/build.rs
                                   output).
     -q, --quiet                   No output printed to stdout other than the
@@ -112,6 +114,7 @@ pub struct Args {
     pub unstable_flags: Vec<String>,
     pub verbose: u32,
     pub version: bool,
+    pub output_format: Option<OutputFormat>,
 }
 
 fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
@@ -158,6 +161,11 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
             (true, _) => 2,
         },
         version: args.contains(["-V", "--version"]),
+        output_format: if args.contains("--json") {
+            Some(OutputFormat::Json)
+        } else {
+            None
+        }
     };
     Ok(args)
 }
@@ -304,6 +312,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         charset: args.charset,
         allow_partial_results,
         include_tests,
+        output_format: args.output_format,
     };
 
     if args.forbid_only {
@@ -315,7 +324,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
             &print_config,
         )
     } else {
-        run_scan_mode_default(
+        scan_unsafe(
             &config,
             &ws,
             &packages,

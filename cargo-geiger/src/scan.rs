@@ -1,16 +1,18 @@
-use crate::find::{find_unsafe_in_packages, GeigerContext};
-use crate::format::print::PrintConfig;
+use crate::find::{find_unsafe_in_packages, unsafe_stats, GeigerContext};
+use crate::format::print::{OutputFormat, PrintConfig};
 use crate::format::table::{
     create_table_from_text_tree_lines, UNSAFE_COUNTERS_HEADER,
 };
 use crate::format::tree::TextTreeLine;
 use crate::format::{get_kind_group_name, EmojiSymbols, Pattern, SymbolKind};
 use crate::graph::Graph;
+use crate::report::{ReportEntry, SafetyReport};
 use crate::rs_file::resolve_rs_file_deps;
 use crate::traversal::walk_dependency_tree;
 use crate::Args;
 
 use cargo::core::compiler::CompileMode;
+use cargo::core::dependency::DepKind;
 use cargo::core::package::PackageSet;
 use cargo::core::shell::Verbosity;
 use cargo::core::{Package, PackageId, Workspace};
@@ -19,6 +21,7 @@ use cargo::util::CargoResult;
 use cargo::Config;
 use cargo::{CliError, CliResult};
 use colored::Colorize;
+use petgraph::visit::EdgeRef;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
@@ -34,7 +37,59 @@ pub enum ScanMode {
     EntryPointsOnly,
 }
 
-pub fn run_scan_mode_default(
+struct ScanDetails {
+    rs_files_used: HashSet<PathBuf>,
+    geiger_context: GeigerContext,
+}
+
+
+fn scan(
+    config: &Config,
+    workspace: &Workspace,
+    packages: &PackageSet,
+    print_config: &PrintConfig,
+    args: &Args,
+) -> Result<ScanDetails, CliError> {
+    let compile_options = build_compile_options(args, config);
+    let rs_files_used =
+        resolve_rs_file_deps(&compile_options, workspace).unwrap();
+    let mut progress = cargo::util::Progress::new("Scanning", config);
+    let geiger_context = find_unsafe_in_packages(
+        packages,
+        print_config.allow_partial_results,
+        print_config.include_tests,
+        ScanMode::Full,
+        |i, count| -> CargoResult<()> { progress.tick(i, count) },
+    );
+    progress.clear();
+    config.shell().status("Scanning", "done")?;
+    Ok(ScanDetails {
+        rs_files_used,
+        geiger_context,
+    })
+}
+
+pub fn scan_unsafe(
+    config: &Config,
+    workspace: &Workspace,
+    packages: &PackageSet,
+    root_pack_id: PackageId,
+    graph: &Graph,
+    print_config: &PrintConfig,
+    args: &Args,
+) -> CliResult {
+    match args.output_format {
+        Some(format) => {
+            scan_to_report(config, workspace, packages, root_pack_id, graph, print_config, args,
+                format)
+        }
+        None => {
+            scan_to_table(config, workspace, packages, root_pack_id, graph, print_config, args)
+        }
+    }
+}
+
+pub fn scan_to_table(
     config: &Config,
     workspace: &Workspace,
     packages: &PackageSet,
@@ -44,27 +99,14 @@ pub fn run_scan_mode_default(
     args: &Args,
 ) -> CliResult {
     let mut scan_output_lines = Vec::<String>::new();
-
-    let compile_options = build_compile_options(args, config);
-    let rs_files_used =
-        resolve_rs_file_deps(&compile_options, &workspace).unwrap();
+    let ScanDetails { rs_files_used, geiger_context } =
+        scan(config, workspace, packages, print_config, args)?;
     if print_config.verbosity == Verbosity::Verbose {
         let mut rs_files_used_lines =
             construct_rs_files_used_lines(&rs_files_used);
         scan_output_lines.append(&mut rs_files_used_lines);
     }
-    let mut progress = cargo::util::Progress::new("Scanning", config);
     let emoji_symbols = EmojiSymbols::new(print_config.charset);
-    let geiger_context = find_unsafe_in_packages(
-        &packages,
-        print_config.allow_partial_results,
-        print_config.include_tests,
-        ScanMode::Full,
-        |i, count| -> CargoResult<()> { progress.tick(i, count) },
-    );
-    progress.clear();
-    config.shell().status("Scanning", "done")?;
-
     let mut output_key_lines =
         construct_scan_mode_default_output_key_lines(&emoji_symbols);
     scan_output_lines.append(&mut output_key_lines);
@@ -84,11 +126,14 @@ pub fn run_scan_mode_default(
         println!("{}", scan_output_line);
     }
 
-    list_files_used_but_not_scanned(
-        geiger_context,
-        &rs_files_used,
-        &mut warning_count,
-    );
+    let used_but_not_scanned = list_files_used_but_not_scanned(&geiger_context, &rs_files_used);
+    warning_count += used_but_not_scanned.len() as u64;
+    for path in &used_but_not_scanned {
+        eprintln!(
+            "WARNING: Dependency file was never scanned: {}",
+            path.display()
+        );
+    }
 
     if warning_count > 0 {
         Err(CliError::new(
@@ -98,6 +143,58 @@ pub fn run_scan_mode_default(
     } else {
         Ok(())
     }
+}
+
+pub fn scan_to_report(
+    config: &Config,
+    workspace: &Workspace,
+    packages: &PackageSet,
+    root_pack_id: PackageId,
+    graph: &Graph,
+    print_config: &PrintConfig,
+    args: &Args,
+    output_format: OutputFormat,
+) -> CliResult {
+    let ScanDetails { rs_files_used, geiger_context } =
+        scan(config, workspace, packages, print_config, args)?;
+    let mut report = SafetyReport::default();
+    let mut visited = HashSet::new();
+    let mut ids = vec![root_pack_id];
+    while let Some(id) = ids.pop() {
+        let index = *graph.nodes.get(&id).expect("Package ID should be in the dependency graph");
+        let mut package = crate::report::PackageInfo::new(id);
+        for edge in graph.graph.edges(index) {
+            let dep = graph.graph[edge.target()].id;
+            if visited.insert(dep) {
+                ids.push(dep);
+            }
+            match edge.weight() {
+                DepKind::Normal => package.dependencies.push(dep),
+                DepKind::Development => package.dev_dependencies.push(dep),
+                DepKind::Build => package.build_dependencies.push(dep),
+            }
+        }
+        let pack_metrics = match geiger_context.pack_id_to_metrics.get(&id) {
+            Some(m) => m,
+            None => {
+                eprintln!("WARNING: No metrics found for package: {}", id);
+                continue;
+            }
+        };
+        let unsafety = unsafe_stats(pack_metrics, &rs_files_used);
+        let entry = ReportEntry {
+            package,
+            unsafety,
+        };
+        report.packages.push(entry);
+    }
+    report.used_but_not_scanned_files =
+        list_files_used_but_not_scanned(&geiger_context, &rs_files_used);
+    let s = match output_format {
+        OutputFormat::Json => serde_json::to_string(&report).unwrap(),
+    };
+    println!("{}", s);
+    Ok(())
 }
 
 pub fn run_scan_mode_forbid_only(
@@ -344,24 +441,15 @@ fn format_package_name(package: &Package, pattern: &Pattern) -> String {
 }
 
 fn list_files_used_but_not_scanned(
-    geiger_context: GeigerContext,
+    geiger_context: &GeigerContext,
     rs_files_used: &HashSet<PathBuf>,
-    warning_count: &mut u64,
-) {
+) -> Vec<PathBuf> {
     let scanned_files = geiger_context
         .pack_id_to_metrics
         .iter()
         .flat_map(|(_k, v)| v.rs_path_to_metrics.keys())
         .collect::<HashSet<&PathBuf>>();
-    let used_but_not_scanned =
-        rs_files_used.iter().filter(|p| !scanned_files.contains(p));
-    for path in used_but_not_scanned {
-        eprintln!(
-            "WARNING: Dependency file was never scanned: {}",
-            path.display()
-        );
-        *warning_count += 1;
-    }
+    rs_files_used.iter().cloned().filter(|p| !scanned_files.contains(p)).collect()
 }
 
 #[cfg(test)]
@@ -406,6 +494,7 @@ mod scan_tests {
             unstable_flags: vec![],
             verbose: 0,
             version: false,
+            output_format: None,
         };
 
         let config = Config::default().unwrap();

@@ -1,9 +1,9 @@
 use cargo::core::compiler::{CompileMode, Executor, Unit};
 use cargo::core::manifest::TargetKind;
-use cargo::core::{InternedString, PackageId, Target, Workspace};
+use cargo::core::{PackageId, Target, Workspace};
 use cargo::ops;
 use cargo::ops::{CleanOptions, CompileOptions};
-use cargo::util::{paths, CargoResult, ProcessBuilder};
+use cargo::util::{interning::InternedString, paths, CargoResult, ProcessBuilder};
 use cargo::Config;
 use geiger::RsFileMetrics;
 use std::collections::{HashMap, HashSet};
@@ -159,7 +159,7 @@ impl Executor for CustomExecutor {
     /// this package.
     fn exec(
         &self,
-        cmd: ProcessBuilder,
+        cmd: &ProcessBuilder,
         _id: PackageId,
         _target: &Target,
         _mode: CompileMode,

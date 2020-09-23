@@ -7,15 +7,13 @@
 #![forbid(unsafe_code)]
 #![forbid(warnings)]
 
-extern crate proc_macro2;
-extern crate syn;
-
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
 use std::io;
 use std::io::Read;
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 use std::path::Path;
 use std::path::PathBuf;
 use std::string::FromUtf8Error;
@@ -38,7 +36,7 @@ impl fmt::Display for ScanFileError {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Count {
     /// Number of safe items
     pub safe: u64,
@@ -69,7 +67,7 @@ impl Add for Count {
 }
 
 /// Unsafe usage metrics collection.
-#[derive(Debug, Default, Clone)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct CounterBlock {
     pub functions: Count,
     pub exprs: Count,
@@ -99,6 +97,12 @@ impl Add for CounterBlock {
             item_traits: self.item_traits + other.item_traits,
             methods: self.methods + other.methods,
         }
+    }
+}
+
+impl AddAssign for CounterBlock {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = self.clone() + rhs;
     }
 }
 
