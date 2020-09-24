@@ -6,8 +6,8 @@ use crate::format::table::{
 use crate::format::tree::TextTreeLine;
 use crate::format::{get_kind_group_name, EmojiSymbols, Pattern, SymbolKind};
 use crate::graph::Graph;
-use crate::report::{QuickReportEntry, QuickSafetyReport, ReportEntry, SafetyReport};
-use crate::rs_file::resolve_rs_file_deps;
+use crate::report::{PackageInfo, QuickReportEntry, QuickSafetyReport, ReportEntry, SafetyReport};
+use crate::rs_file::{resolve_rs_file_deps, PackageMetrics};
 use crate::traversal::walk_dependency_tree;
 use crate::Args;
 
@@ -165,25 +165,7 @@ fn scan_to_report(
     let ScanDetails { rs_files_used, geiger_context } =
         scan(config, workspace, packages, print_config, args)?;
     let mut report = SafetyReport::default();
-    let mut visited = HashSet::new();
-    let mut ids = vec![root_pack_id];
-    while let Some(id) = ids.pop() {
-        let index = *graph.nodes.get(&id).expect("Package ID should be in the dependency graph");
-        let mut package = crate::report::PackageInfo::new(id);
-        for edge in graph.graph.edges(index) {
-            let dep = graph.graph[edge.target()].id;
-            if visited.insert(dep) {
-                ids.push(dep);
-            }
-            package.push_dependency(dep, *edge.weight());
-        }
-        let pack_metrics = match geiger_context.pack_id_to_metrics.get(&id) {
-            Some(m) => m,
-            None => {
-                eprintln!("WARNING: No metrics found for package: {}", id);
-                continue;
-            }
-        };
+    for (package, pack_metrics) in package_metrics(&geiger_context, graph, root_pack_id) {
         let unsafety = unsafe_stats(pack_metrics, &rs_files_used);
         let entry = ReportEntry {
             package,
@@ -287,27 +269,9 @@ fn scan_forbid_to_report(
     print_config: &PrintConfig,
     output_format: OutputFormat,
 ) -> CliResult {
-    let geiger_ctx = find_unsafe(ScanMode::EntryPointsOnly, config, packages, print_config)?;
+    let geiger_context = find_unsafe(ScanMode::EntryPointsOnly, config, packages, print_config)?;
     let mut report = QuickSafetyReport::default();
-    let mut visited = HashSet::new();
-    let mut ids = vec![root_pack_id];
-    while let Some(id) = ids.pop() {
-        let index = *graph.nodes.get(&id).expect("Package ID should be in the dependency graph");
-        let mut package = crate::report::PackageInfo::new(id);
-        for edge in graph.graph.edges(index) {
-            let dep = graph.graph[edge.target()].id;
-            if visited.insert(dep) {
-                ids.push(dep);
-            }
-            package.push_dependency(dep, *edge.weight());
-        }
-        let pack_metrics = match geiger_ctx.pack_id_to_metrics.get(&id) {
-            Some(m) => m,
-            None => {
-                eprintln!("WARNING: No metrics found for package: {}", id);
-                continue;
-            }
-        };
+    for (package, pack_metrics) in package_metrics(&geiger_context, graph, root_pack_id) {
         let forbids_unsafe = pack_metrics
             .rs_path_to_metrics
             .iter()
@@ -508,6 +472,33 @@ fn list_files_used_but_not_scanned(
         .flat_map(|(_k, v)| v.rs_path_to_metrics.keys())
         .collect::<HashSet<&PathBuf>>();
     rs_files_used.iter().cloned().filter(|p| !scanned_files.contains(p)).collect()
+}
+
+fn package_metrics<'a>(
+    geiger_context: &'a GeigerContext,
+    graph: &'a Graph,
+    root_id: PackageId,
+) -> impl Iterator<Item = (PackageInfo, &'a PackageMetrics)> {
+    let root_index = graph.nodes[&root_id];
+    let mut indices = vec![root_index];
+    let mut visited = HashSet::new();
+    std::iter::from_fn(move || loop {
+        let i = indices.pop()?;
+        let id = graph.graph[i].id;
+        let mut package = PackageInfo::new(id);
+        for edge in graph.graph.edges(i) {
+            let dep_index = edge.target();
+            if visited.insert(dep_index) {
+                indices.push(dep_index);
+            }
+            let dep = graph.graph[dep_index].id;
+            package.push_dependency(dep, *edge.weight());
+        }
+        match geiger_context.pack_id_to_metrics.get(&id) {
+            Some(m) => break Some((package, m)),
+            None => eprintln!("WARNING: No metrics found for package: {}", id),
+        }
+    })
 }
 
 #[cfg(test)]
