@@ -1,4 +1,7 @@
-use cargo::core::PackageId;
+use cargo::core::{
+    dependency::DepKind,
+    PackageId,
+};
 use geiger::CounterBlock;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -32,11 +35,30 @@ impl PackageInfo {
             build_dependencies: Vec::new(),
         }
     }
+
+    pub fn push_dependency(&mut self, dep: PackageId, kind: DepKind) {
+        match kind {
+            DepKind::Normal => self.dependencies.push(dep),
+            DepKind::Development => self.dev_dependencies.push(dep),
+            DepKind::Build => self.build_dependencies.push(dep),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct UnsafeInfo {
     pub used: CounterBlock,
     pub unused: CounterBlock,
+    pub forbids_unsafe: bool,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct QuickSafetyReport {
+    pub packages: Vec<QuickReportEntry>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct QuickReportEntry {
+    pub package: PackageInfo,
     pub forbids_unsafe: bool,
 }

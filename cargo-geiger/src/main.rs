@@ -23,7 +23,7 @@ use crate::cli::{get_cfgs, get_registry, get_workspace, resolve};
 use crate::format::print::{OutputFormat, Prefix, PrintConfig};
 use crate::format::{Charset, Pattern};
 use crate::graph::{build_graph, ExtraDeps};
-use crate::scan::{scan_unsafe, run_scan_mode_forbid_only};
+use crate::scan::{scan_forbid_unsafe, scan_unsafe};
 
 use cargo::core::shell::{ColorChoice, Shell, Verbosity};
 use cargo::util::errors::CliError;
@@ -316,12 +316,13 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     };
 
     if args.forbid_only {
-        run_scan_mode_forbid_only(
+        scan_forbid_unsafe(
             &config,
             &packages,
             root_pack_id,
             &graph,
             &print_config,
+            &args,
         )
     } else {
         scan_unsafe(

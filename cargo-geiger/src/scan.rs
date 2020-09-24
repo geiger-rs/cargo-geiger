@@ -6,13 +6,12 @@ use crate::format::table::{
 use crate::format::tree::TextTreeLine;
 use crate::format::{get_kind_group_name, EmojiSymbols, Pattern, SymbolKind};
 use crate::graph::Graph;
-use crate::report::{ReportEntry, SafetyReport};
+use crate::report::{QuickReportEntry, QuickSafetyReport, ReportEntry, SafetyReport};
 use crate::rs_file::resolve_rs_file_deps;
 use crate::traversal::walk_dependency_tree;
 use crate::Args;
 
 use cargo::core::compiler::CompileMode;
-use cargo::core::dependency::DepKind;
 use cargo::core::package::PackageSet;
 use cargo::core::shell::Verbosity;
 use cargo::core::{Package, PackageId, Workspace};
@@ -42,6 +41,24 @@ struct ScanDetails {
     geiger_context: GeigerContext,
 }
 
+fn find_unsafe(
+    mode: ScanMode,
+    config: &Config,
+    packages: &PackageSet,
+    print_config: &PrintConfig,
+) -> Result<GeigerContext, CliError> {
+    let mut progress = cargo::util::Progress::new("Scanning", config);
+    let geiger_context = find_unsafe_in_packages(
+        packages,
+        print_config.allow_partial_results,
+        print_config.include_tests,
+        mode,
+        |i, count| -> CargoResult<()> { progress.tick(i, count) },
+    );
+    progress.clear();
+    config.shell().status("Scanning", "done")?;
+    Ok(geiger_context)
+}
 
 fn scan(
     config: &Config,
@@ -51,18 +68,8 @@ fn scan(
     args: &Args,
 ) -> Result<ScanDetails, CliError> {
     let compile_options = build_compile_options(args, config);
-    let rs_files_used =
-        resolve_rs_file_deps(&compile_options, workspace).unwrap();
-    let mut progress = cargo::util::Progress::new("Scanning", config);
-    let geiger_context = find_unsafe_in_packages(
-        packages,
-        print_config.allow_partial_results,
-        print_config.include_tests,
-        ScanMode::Full,
-        |i, count| -> CargoResult<()> { progress.tick(i, count) },
-    );
-    progress.clear();
-    config.shell().status("Scanning", "done")?;
+    let rs_files_used = resolve_rs_file_deps(&compile_options, workspace).unwrap();
+    let geiger_context = find_unsafe(ScanMode::Full, config, packages, print_config)?;
     Ok(ScanDetails {
         rs_files_used,
         geiger_context,
@@ -89,7 +96,7 @@ pub fn scan_unsafe(
     }
 }
 
-pub fn scan_to_table(
+fn scan_to_table(
     config: &Config,
     workspace: &Workspace,
     packages: &PackageSet,
@@ -145,7 +152,7 @@ pub fn scan_to_table(
     }
 }
 
-pub fn scan_to_report(
+fn scan_to_report(
     config: &Config,
     workspace: &Workspace,
     packages: &PackageSet,
@@ -168,11 +175,7 @@ pub fn scan_to_report(
             if visited.insert(dep) {
                 ids.push(dep);
             }
-            match edge.weight() {
-                DepKind::Normal => package.dependencies.push(dep),
-                DepKind::Development => package.dev_dependencies.push(dep),
-                DepKind::Build => package.build_dependencies.push(dep),
-            }
+            package.push_dependency(dep, *edge.weight());
         }
         let pack_metrics = match geiger_context.pack_id_to_metrics.get(&id) {
             Some(m) => m,
@@ -197,7 +200,25 @@ pub fn scan_to_report(
     Ok(())
 }
 
-pub fn run_scan_mode_forbid_only(
+pub fn scan_forbid_unsafe(
+    config: &Config,
+    packages: &PackageSet,
+    root_pack_id: PackageId,
+    graph: &Graph,
+    print_config: &PrintConfig,
+    args: &Args,
+) -> CliResult {
+    match args.output_format {
+        Some(format) => {
+            scan_forbid_to_report(config, packages, root_pack_id, graph, print_config, format)
+        }
+        None => {
+            scan_forbid_to_table(config, packages, root_pack_id, graph, print_config)
+        }
+    }
+}
+
+fn scan_forbid_to_table(
     config: &Config,
     packages: &PackageSet,
     root_pack_id: PackageId,
@@ -210,16 +231,7 @@ pub fn run_scan_mode_forbid_only(
     let sym_lock = emoji_symbols.emoji(SymbolKind::Lock);
     let sym_qmark = emoji_symbols.emoji(SymbolKind::QuestionMark);
 
-    let mut progress = cargo::util::Progress::new("Scanning", config);
-    let geiger_ctx = find_unsafe_in_packages(
-        &packages,
-        print_config.allow_partial_results,
-        print_config.include_tests,
-        ScanMode::EntryPointsOnly,
-        |i, count| -> CargoResult<()> { progress.tick(i, count) },
-    );
-    progress.clear();
-    config.shell().status("Scanning", "done")?;
+    let geiger_ctx = find_unsafe(ScanMode::EntryPointsOnly, config, packages, print_config)?;
 
     let mut output_key_lines =
         construct_scan_mode_forbid_only_output_key_lines(&emoji_symbols);
@@ -264,6 +276,52 @@ pub fn run_scan_mode_forbid_only(
         println!("{}", scan_output_line);
     }
 
+    Ok(())
+}
+
+fn scan_forbid_to_report(
+    config: &Config,
+    packages: &PackageSet,
+    root_pack_id: PackageId,
+    graph: &Graph,
+    print_config: &PrintConfig,
+    output_format: OutputFormat,
+) -> CliResult {
+    let geiger_ctx = find_unsafe(ScanMode::EntryPointsOnly, config, packages, print_config)?;
+    let mut report = QuickSafetyReport::default();
+    let mut visited = HashSet::new();
+    let mut ids = vec![root_pack_id];
+    while let Some(id) = ids.pop() {
+        let index = *graph.nodes.get(&id).expect("Package ID should be in the dependency graph");
+        let mut package = crate::report::PackageInfo::new(id);
+        for edge in graph.graph.edges(index) {
+            let dep = graph.graph[edge.target()].id;
+            if visited.insert(dep) {
+                ids.push(dep);
+            }
+            package.push_dependency(dep, *edge.weight());
+        }
+        let pack_metrics = match geiger_ctx.pack_id_to_metrics.get(&id) {
+            Some(m) => m,
+            None => {
+                eprintln!("WARNING: No metrics found for package: {}", id);
+                continue;
+            }
+        };
+        let forbids_unsafe = pack_metrics
+            .rs_path_to_metrics
+            .iter()
+            .all(|(_, v)| v.metrics.forbids_unsafe);
+        let entry = QuickReportEntry {
+            package,
+            forbids_unsafe,
+        };
+        report.packages.push(entry);
+    }
+    let s = match output_format {
+        OutputFormat::Json => serde_json::to_string(&report).unwrap(),
+    };
+    println!("{}", s);
     Ok(())
 }
 
