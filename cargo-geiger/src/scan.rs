@@ -166,6 +166,13 @@ fn scan_to_report(
         scan(config, workspace, packages, print_config, args)?;
     let mut report = SafetyReport::default();
     for (package, pack_metrics) in package_metrics(&geiger_context, graph, root_pack_id) {
+        let pack_metrics = match pack_metrics {
+            Some(m) => m,
+            None => {
+                report.packages_without_metrics.push(package.id);
+                continue;
+            }
+        };
         let unsafety = unsafe_stats(pack_metrics, &rs_files_used);
         let entry = ReportEntry {
             package,
@@ -272,6 +279,13 @@ fn scan_forbid_to_report(
     let geiger_context = find_unsafe(ScanMode::EntryPointsOnly, config, packages, print_config)?;
     let mut report = QuickSafetyReport::default();
     for (package, pack_metrics) in package_metrics(&geiger_context, graph, root_pack_id) {
+        let pack_metrics = match pack_metrics {
+            Some(m) => m,
+            None => {
+                report.packages_without_metrics.push(package.id);
+                continue;
+            }
+        };
         let forbids_unsafe = pack_metrics
             .rs_path_to_metrics
             .iter()
@@ -478,11 +492,11 @@ fn package_metrics<'a>(
     geiger_context: &'a GeigerContext,
     graph: &'a Graph,
     root_id: PackageId,
-) -> impl Iterator<Item = (PackageInfo, &'a PackageMetrics)> {
+) -> impl Iterator<Item = (PackageInfo, Option<&'a PackageMetrics>)> {
     let root_index = graph.nodes[&root_id];
     let mut indices = vec![root_index];
     let mut visited = HashSet::new();
-    std::iter::from_fn(move || loop {
+    std::iter::from_fn(move || {
         let i = indices.pop()?;
         let id = graph.graph[i].id;
         let mut package = PackageInfo::new(id);
@@ -495,8 +509,11 @@ fn package_metrics<'a>(
             package.push_dependency(dep, *edge.weight());
         }
         match geiger_context.pack_id_to_metrics.get(&id) {
-            Some(m) => break Some((package, m)),
-            None => eprintln!("WARNING: No metrics found for package: {}", id),
+            Some(m) => Some((package, Some(m))),
+            None => {
+                eprintln!("WARNING: No metrics found for package: {}", id);
+                Some((package, None))
+            }
         }
     })
 }

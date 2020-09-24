@@ -9,6 +9,7 @@ use std::path::PathBuf;
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SafetyReport {
     pub packages: Vec<ReportEntry>,
+    pub packages_without_metrics: Vec<PackageId>,
     pub used_but_not_scanned_files: Vec<PathBuf>,
 }
 
@@ -55,6 +56,7 @@ pub struct UnsafeInfo {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct QuickSafetyReport {
     pub packages: Vec<QuickReportEntry>,
+    pub packages_without_metrics: Vec<PackageId>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
