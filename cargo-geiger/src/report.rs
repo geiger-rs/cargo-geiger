@@ -46,7 +46,7 @@ impl PackageInfo {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct UnsafeInfo {
     pub used: CounterBlock,
     pub unused: CounterBlock,

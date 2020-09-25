@@ -36,7 +36,7 @@ impl fmt::Display for ScanFileError {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct Count {
     /// Number of safe items
     pub safe: u64,
@@ -67,7 +67,7 @@ impl Add for Count {
 }
 
 /// Unsafe usage metrics collection.
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct CounterBlock {
     pub functions: Count,
     pub exprs: Count,

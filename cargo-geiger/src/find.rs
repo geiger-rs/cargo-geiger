@@ -168,3 +168,123 @@ pub fn unsafe_stats(
         forbids_unsafe,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        find::unsafe_stats,
+        report::UnsafeInfo,
+        rs_file::{PackageMetrics, RsFileMetricsWrapper},
+    };
+    use geiger::Count;
+    use std::{
+        collections::HashSet,
+        path::PathBuf,
+    };
+
+    #[test]
+    fn unsafe_stats_from_nothing_are_empty() {
+        let stats = unsafe_stats(&Default::default(), &Default::default());
+        let expected = UnsafeInfo { forbids_unsafe: true, ..Default::default() };
+        assert_eq!(stats, expected);
+    }
+
+    #[test]
+    fn unsafe_stats_report_forbid_unsafe_as_true_if_all_entry_points_forbid_unsafe() {
+        let metrics = metrics_from_iter(vec![
+            (
+                "foo.rs",
+                MetricsBuilder::default().forbids_unsafe(true).is_entry_point(true).build(),
+            ),
+        ]);
+        let stats = unsafe_stats(&metrics, &set_of_paths(&["foo.rs"]));
+        assert!(stats.forbids_unsafe)
+    }
+
+    #[test]
+    fn unsafe_stats_report_forbid_unsafe_as_false_if_one_entry_point_allows_unsafe() {
+        let metrics = metrics_from_iter(vec![
+            (
+                "foo.rs",
+                MetricsBuilder::default().forbids_unsafe(true).is_entry_point(true).build(),
+            ),
+            (
+                "bar.rs",
+                MetricsBuilder::default().forbids_unsafe(false).is_entry_point(true).build(),
+            ),
+        ]);
+        let stats = unsafe_stats(&metrics, &set_of_paths(&["foo.rs", "bar.rs"]));
+        assert!(!stats.forbids_unsafe)
+    }
+
+    #[test]
+    fn unsafe_stats_accumulate_counters() {
+        let metrics = metrics_from_iter(vec![
+            (
+                "foo.rs",
+                MetricsBuilder::default().functions(2, 1).build(),
+            ),
+            (
+                "bar.rs",
+                MetricsBuilder::default().functions(5, 3).build(),
+            ),
+            (
+                "baz.rs",
+                MetricsBuilder::default().functions(20, 10).build(),
+            ),
+            (
+                "quux.rs",
+                MetricsBuilder::default().functions(200, 100).build(),
+            ),
+        ]);
+        let stats = unsafe_stats(&metrics, &set_of_paths(&["foo.rs", "bar.rs"]));
+        assert_eq!(stats.used.functions.safe, 7);
+        assert_eq!(stats.used.functions.unsafe_, 4);
+        assert_eq!(stats.unused.functions.safe, 220);
+        assert_eq!(stats.unused.functions.unsafe_, 110);
+    }
+
+    fn metrics_from_iter<I, P>(it: I) -> PackageMetrics
+    where
+        I: IntoIterator<Item = (P, RsFileMetricsWrapper)>,
+        P: Into<PathBuf>,
+    {
+        PackageMetrics {
+            rs_path_to_metrics: it.into_iter().map(|(p, m)| (p.into(), m)).collect(),
+        }
+    }
+
+    fn set_of_paths<I>(it: I) -> HashSet<PathBuf>
+    where
+        I: IntoIterator,
+        I::Item: Into<PathBuf>,
+    {
+        it.into_iter().map(Into::into).collect()
+    }
+
+    #[derive(Default)]
+    struct MetricsBuilder {
+        inner: RsFileMetricsWrapper,
+    }
+
+    impl MetricsBuilder {
+        fn forbids_unsafe(mut self, yes: bool) -> Self {
+            self.inner.metrics.forbids_unsafe = yes;
+            self
+        }
+
+        fn functions(mut self, safe: u64, unsafe_: u64) -> Self {
+            self.inner.metrics.counters.functions = Count { safe, unsafe_ };
+            self
+        }
+
+        fn is_entry_point(mut self, yes: bool) -> Self {
+            self.inner.is_crate_entry_point = yes;
+            self
+        }
+
+        fn build(self) -> RsFileMetricsWrapper {
+            self.inner
+        }
+    }
+}

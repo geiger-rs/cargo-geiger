@@ -483,7 +483,7 @@ fn list_files_used_but_not_scanned(
     let scanned_files = geiger_context
         .pack_id_to_metrics
         .iter()
-        .flat_map(|(_k, v)| v.rs_path_to_metrics.keys())
+        .flat_map(|(_, v)| v.rs_path_to_metrics.keys())
         .collect::<HashSet<&PathBuf>>();
     rs_files_used.iter().cloned().filter(|p| !scanned_files.contains(p)).collect()
 }
