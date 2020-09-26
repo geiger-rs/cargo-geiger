@@ -82,6 +82,9 @@ Roadmap
 Changelog
 ---------
 
+### 0.11.0
+ - TODO: Prepare release.
+
 ### 0.10.2
  - __Bugfix__: Avoid panic and log warnings on parse failure. [#105]
  - Upgraded all dependencies.
