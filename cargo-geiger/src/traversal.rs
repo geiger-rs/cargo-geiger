@@ -219,6 +219,7 @@ mod traversal_tests {
             charset: Charset::Ascii,
             allow_partial_results: false,
             include_tests: IncludeTests::Yes,
+            output_format: None,
         }
     }
 }

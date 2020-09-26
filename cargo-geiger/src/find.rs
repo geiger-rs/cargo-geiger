@@ -1,3 +1,4 @@
+use crate::report::UnsafeInfo;
 use crate::rs_file::{
     into_rs_code_file, is_file_with_ext, PackageMetrics, RsFile,
     RsFileMetricsWrapper,
@@ -8,8 +9,8 @@ use cargo::core::package::PackageSet;
 use cargo::core::{Package, PackageId};
 use cargo::util::CargoResult;
 use geiger::find_unsafe_in_file;
-use geiger::IncludeTests;
-use std::collections::HashMap;
+use geiger::{CounterBlock, IncludeTests};
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::path::PathBuf;
 use walkdir::WalkDir;
@@ -132,4 +133,158 @@ fn find_rs_files_in_packages<'a>(
             .into_iter()
             .map(move |path| (pack.package_id(), path))
     })
+}
+
+pub fn unsafe_stats(
+    pack_metrics: &PackageMetrics,
+    rs_files_used: &HashSet<PathBuf>,
+) -> UnsafeInfo {
+    // The crate level "forbids unsafe code" metric __used to__ only
+    // depend on entry point source files that were __used by the
+    // build__. This was too subtle in my opinion. For a crate to be
+    // classified as forbidding unsafe code, all entry point source
+    // files must declare `forbid(unsafe_code)`. Either a crate
+    // forbids all unsafe code or it allows it _to some degree_.
+    let forbids_unsafe = pack_metrics
+        .rs_path_to_metrics
+        .iter()
+        .filter(|(_, v)| v.is_crate_entry_point)
+        .all(|(_, v)| v.metrics.forbids_unsafe);
+
+    let mut used = CounterBlock::default();
+    let mut unused = CounterBlock::default();
+
+    for (path_buf, rs_file_metrics_wrapper) in &pack_metrics.rs_path_to_metrics {
+        let target = if rs_files_used.contains(path_buf) {
+            &mut used
+        } else {
+            &mut unused
+        };
+        *target += rs_file_metrics_wrapper.metrics.counters.clone();
+    }
+    UnsafeInfo {
+        used,
+        unused,
+        forbids_unsafe,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        find::unsafe_stats,
+        report::UnsafeInfo,
+        rs_file::{PackageMetrics, RsFileMetricsWrapper},
+    };
+    use geiger::Count;
+    use std::{
+        collections::HashSet,
+        path::PathBuf,
+    };
+
+    #[test]
+    fn unsafe_stats_from_nothing_are_empty() {
+        let stats = unsafe_stats(&Default::default(), &Default::default());
+        let expected = UnsafeInfo { forbids_unsafe: true, ..Default::default() };
+        assert_eq!(stats, expected);
+    }
+
+    #[test]
+    fn unsafe_stats_report_forbid_unsafe_as_true_if_all_entry_points_forbid_unsafe() {
+        let metrics = metrics_from_iter(vec![
+            (
+                "foo.rs",
+                MetricsBuilder::default().forbids_unsafe(true).is_entry_point(true).build(),
+            ),
+        ]);
+        let stats = unsafe_stats(&metrics, &set_of_paths(&["foo.rs"]));
+        assert!(stats.forbids_unsafe)
+    }
+
+    #[test]
+    fn unsafe_stats_report_forbid_unsafe_as_false_if_one_entry_point_allows_unsafe() {
+        let metrics = metrics_from_iter(vec![
+            (
+                "foo.rs",
+                MetricsBuilder::default().forbids_unsafe(true).is_entry_point(true).build(),
+            ),
+            (
+                "bar.rs",
+                MetricsBuilder::default().forbids_unsafe(false).is_entry_point(true).build(),
+            ),
+        ]);
+        let stats = unsafe_stats(&metrics, &set_of_paths(&["foo.rs", "bar.rs"]));
+        assert!(!stats.forbids_unsafe)
+    }
+
+    #[test]
+    fn unsafe_stats_accumulate_counters() {
+        let metrics = metrics_from_iter(vec![
+            (
+                "foo.rs",
+                MetricsBuilder::default().functions(2, 1).build(),
+            ),
+            (
+                "bar.rs",
+                MetricsBuilder::default().functions(5, 3).build(),
+            ),
+            (
+                "baz.rs",
+                MetricsBuilder::default().functions(20, 10).build(),
+            ),
+            (
+                "quux.rs",
+                MetricsBuilder::default().functions(200, 100).build(),
+            ),
+        ]);
+        let stats = unsafe_stats(&metrics, &set_of_paths(&["foo.rs", "bar.rs"]));
+        assert_eq!(stats.used.functions.safe, 7);
+        assert_eq!(stats.used.functions.unsafe_, 4);
+        assert_eq!(stats.unused.functions.safe, 220);
+        assert_eq!(stats.unused.functions.unsafe_, 110);
+    }
+
+    fn metrics_from_iter<I, P>(it: I) -> PackageMetrics
+    where
+        I: IntoIterator<Item = (P, RsFileMetricsWrapper)>,
+        P: Into<PathBuf>,
+    {
+        PackageMetrics {
+            rs_path_to_metrics: it.into_iter().map(|(p, m)| (p.into(), m)).collect(),
+        }
+    }
+
+    fn set_of_paths<I>(it: I) -> HashSet<PathBuf>
+    where
+        I: IntoIterator,
+        I::Item: Into<PathBuf>,
+    {
+        it.into_iter().map(Into::into).collect()
+    }
+
+    #[derive(Default)]
+    struct MetricsBuilder {
+        inner: RsFileMetricsWrapper,
+    }
+
+    impl MetricsBuilder {
+        fn forbids_unsafe(mut self, yes: bool) -> Self {
+            self.inner.metrics.forbids_unsafe = yes;
+            self
+        }
+
+        fn functions(mut self, safe: u64, unsafe_: u64) -> Self {
+            self.inner.metrics.counters.functions = Count { safe, unsafe_ };
+            self
+        }
+
+        fn is_entry_point(mut self, yes: bool) -> Self {
+            self.inner.is_crate_entry_point = yes;
+            self
+        }
+
+        fn build(self) -> RsFileMetricsWrapper {
+            self.inner
+        }
+    }
 }

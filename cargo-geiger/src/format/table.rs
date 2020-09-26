@@ -1,14 +1,13 @@
-use crate::find::GeigerContext;
+use crate::find::{unsafe_stats, GeigerContext};
 use crate::format::print::{colorize, PrintConfig};
 use crate::format::tree::TextTreeLine;
 use crate::format::{
     get_kind_group_name, CrateDetectionStatus, EmojiSymbols, SymbolKind,
 };
-use crate::rs_file::PackageMetrics;
 
 use cargo::core::package::PackageSet;
 use geiger::{Count, CounterBlock};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 // TODO: use a table library, or factor the tableness out in a smarter way. This
@@ -31,86 +30,49 @@ pub fn create_table_from_text_tree_lines(
     text_tree_lines: Vec<TextTreeLine>,
 ) -> (Vec<String>, u64) {
     let mut table_lines = Vec::<String>::new();
-
     let mut total_package_counts = TotalPackageCounts::new();
-
-    let mut package_status = HashMap::new();
     let mut warning_count = 0;
-
+    let mut visited = HashSet::new();
+    let emoji_symbols = EmojiSymbols::new(print_config.charset);
     for text_tree_line in text_tree_lines {
         match text_tree_line {
             TextTreeLine::Package { id, tree_vines } => {
+                let package_is_new = visited.insert(id);
                 let pack = package_set.get_one(id).unwrap_or_else(|_| {
                     // TODO: Avoid panic, return Result.
                     panic!("Expected to find package by id: {}", id);
                 });
-                let pack_metrics =
-                    match geiger_context.pack_id_to_metrics.get(&id) {
-                        Some(m) => m,
-                        None => {
-                            eprintln!(
-                                "WARNING: No metrics found for package: {}",
-                                id
-                            );
-                            warning_count += 1;
-                            continue;
-                        }
-                    };
-                package_status.entry(id).or_insert_with(|| {
-                    let unsafe_found = pack_metrics
-                        .rs_path_to_metrics
-                        .iter()
-                        .filter(|(k, _)| rs_files_used.contains(k.as_path()))
-                        .any(|(_, v)| v.metrics.counters.has_unsafe());
-
-                    // The crate level "forbids unsafe code" metric __used to__ only
-                    // depend on entry point source files that were __used by the
-                    // build__. This was too subtle in my opinion. For a crate to be
-                    // classified as forbidding unsafe code, all entry point source
-                    // files must declare `forbid(unsafe_code)`. Either a crate
-                    // forbids all unsafe code or it allows it _to some degree_.
-                    let crate_forbids_unsafe = pack_metrics
-                        .rs_path_to_metrics
-                        .iter()
-                        .filter(|(_, v)| v.is_crate_entry_point)
-                        .all(|(_, v)| v.metrics.forbids_unsafe);
-
-                    for (path_buf, rs_file_metrics_wrapper) in
-                        &pack_metrics.rs_path_to_metrics
-                    {
-                        let target = if rs_files_used.contains(path_buf) {
-                            &mut total_package_counts.total_counter_block
-                        } else {
-                            &mut total_package_counts.total_unused_counter_block
-                        };
-                        *target = target.clone()
-                            + rs_file_metrics_wrapper.metrics.counters.clone();
+                let pack_metrics = match geiger_context.pack_id_to_metrics.get(&id) {
+                    Some(m) => m,
+                    None => {
+                        warning_count += package_is_new as u64;
+                        eprintln!("WARNING: No metrics found for package: {}", id);
+                        continue;
                     }
-
-                    match (unsafe_found, crate_forbids_unsafe) {
-                        (false, true) => {
-                            total_package_counts
-                                .none_detected_forbids_unsafe += 1;
-                            CrateDetectionStatus::NoneDetectedForbidsUnsafe
-                        }
-                        (false, false) => {
-                            total_package_counts.none_detected_allows_unsafe +=
-                                1;
-                            CrateDetectionStatus::NoneDetectedAllowsUnsafe
-                        }
-                        (true, _) => {
-                            total_package_counts.unsafe_detected += 1;
-                            CrateDetectionStatus::UnsafeDetected
-                        }
+                };
+                let unsafety = unsafe_stats(pack_metrics, rs_files_used);
+                if package_is_new {
+                    total_package_counts.total_counter_block += unsafety.used.clone();
+                    total_package_counts.total_unused_counter_block += unsafety.unused.clone();
+                }
+                let unsafe_found = unsafety.used.has_unsafe();
+                let crate_forbids_unsafe = unsafety.forbids_unsafe;
+                let total_inc = package_is_new as i32;
+                let crate_detection_status = match (unsafe_found, crate_forbids_unsafe) {
+                    (false, true) => {
+                        total_package_counts.none_detected_forbids_unsafe += total_inc;
+                        CrateDetectionStatus::NoneDetectedForbidsUnsafe
                     }
-                });
+                    (false, false) => {
+                        total_package_counts.none_detected_allows_unsafe += total_inc;
+                        CrateDetectionStatus::NoneDetectedAllowsUnsafe
+                    }
+                    (true, _) => {
+                        total_package_counts.unsafe_detected += total_inc;
+                        CrateDetectionStatus::UnsafeDetected
+                    }
+                };
 
-                let emoji_symbols = EmojiSymbols::new(print_config.charset);
-
-                let crate_detection_status =
-                    package_status.get(&id).unwrap_or_else(|| {
-                        panic!("Expected to find package by id: {}", &id)
-                    });
                 let icon = match crate_detection_status {
                     CrateDetectionStatus::NoneDetectedForbidsUnsafe => {
                         emoji_symbols.emoji(SymbolKind::Lock)
@@ -133,7 +95,7 @@ pub fn create_table_from_text_tree_lines(
                     &crate_detection_status,
                 );
                 let unsafe_info = colorize(
-                    table_row(&pack_metrics, &rs_files_used),
+                    table_row(&unsafety.used, &unsafety.unused),
                     &crate_detection_status,
                 );
 
@@ -248,18 +210,10 @@ fn table_footer(
     colorize(output, &status)
 }
 
-fn table_row(pms: &PackageMetrics, rs_files_used: &HashSet<PathBuf>) -> String {
-    let mut used = CounterBlock::default();
-    let mut not_used = CounterBlock::default();
-    for (path_buf, rs_file_metrics_wrapper) in pms.rs_path_to_metrics.iter() {
-        let target = if rs_files_used.contains(path_buf) {
-            &mut used
-        } else {
-            &mut not_used
-        };
-        *target =
-            target.clone() + rs_file_metrics_wrapper.metrics.counters.clone();
-    }
+fn table_row(
+    used: &CounterBlock,
+    not_used: &CounterBlock,
+) -> String {
     let fmt = |used: &Count, not_used: &Count| {
         format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
     };
@@ -289,7 +243,7 @@ fn table_row_empty() -> String {
 mod table_tests {
     use super::*;
 
-    use crate::rs_file::RsFileMetricsWrapper;
+    use crate::rs_file::{PackageMetrics, RsFileMetricsWrapper};
 
     use geiger::RsFileMetrics;
     use std::collections::HashMap;
@@ -339,7 +293,6 @@ mod table_tests {
         );
 
         let package_metrics = PackageMetrics { rs_path_to_metrics };
-
         let rs_files_used: HashSet<PathBuf> = [
             Path::new("package_1_path").to_path_buf(),
             Path::new("package_3_path").to_path_buf(),
@@ -347,8 +300,9 @@ mod table_tests {
         .iter()
         .cloned()
         .collect();
+        let unsafety = unsafe_stats(&package_metrics, &rs_files_used);
 
-        let table_row = table_row(&package_metrics, &rs_files_used);
+        let table_row = table_row(&unsafety.used, &unsafety.unused);
         assert_eq!(table_row, "4/6        8/12         12/18  16/24   20/30  ");
     }
 

@@ -12,6 +12,11 @@ pub enum Prefix {
     None,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OutputFormat {
+    Json,
+}
+
 pub struct PrintConfig<'a> {
     /// Don't truncate dependencies that have already been displayed.
     pub all: bool,
@@ -27,6 +32,7 @@ pub struct PrintConfig<'a> {
     pub charset: Charset,
     pub allow_partial_results: bool,
     pub include_tests: IncludeTests,
+    pub output_format: Option<OutputFormat>,
 }
 
 pub fn colorize(
