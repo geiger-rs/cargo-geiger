@@ -107,7 +107,7 @@ pub struct Args {
     pub offline: bool,
     pub package: Option<String>,
     pub prefix_depth: bool,
-    pub quiet: Option<bool>,
+    pub quiet: bool,
     pub target: Option<String>,
     pub unstable_flags: Vec<String>,
     pub verbose: u32,
@@ -143,7 +143,7 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
         offline: args.contains("--offline"),
         package: args.opt_value_from_str("--manifest-path")?,
         prefix_depth: args.contains("--prefix-depth"),
-        quiet: args.opt_value_from_str(["-q", "--quiet"])?,
+        quiet: args.contains(["-q", "--quiet"]),
         target: args.opt_value_from_str("--target")?,
         unstable_flags: args
             .opt_value_from_str("-Z")?
@@ -189,7 +189,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let target_dir = None; // Doesn't add any value for cargo-geiger.
     config.configure(
         args.verbose,
-        args.quiet.unwrap_or(false),
+        args.quiet,
         args.color.as_deref(),
         args.frozen,
         args.locked,

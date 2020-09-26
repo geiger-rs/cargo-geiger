@@ -401,7 +401,7 @@ mod scan_tests {
             offline: false,
             package: None,
             prefix_depth: false,
-            quiet: None,
+            quiet: false,
             target: None,
             unstable_flags: vec![],
             verbose: 0,

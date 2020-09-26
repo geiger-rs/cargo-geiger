@@ -30,7 +30,7 @@ fn test_package(name: &str) {
         .unwrap()
         .arg("geiger")
         .arg("--color=never")
-        .arg("--quiet=true")
+        .arg("--quiet")
         .arg("--charset=ascii")
         .arg("--all-targets")
         .arg("--all-features")
