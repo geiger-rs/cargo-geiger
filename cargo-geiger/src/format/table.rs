@@ -309,7 +309,7 @@ mod table_tests {
     #[test]
     fn table_row_empty_test() {
         let empty_table_row = table_row_empty();
-        assert_eq!(empty_table_row.len(), 50);
+        assert_eq!(empty_table_row.len(), 51);
     }
 
     #[test]
