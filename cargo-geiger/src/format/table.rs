@@ -228,15 +228,15 @@ fn table_row(
 }
 
 fn table_row_empty() -> String {
-    " ".repeat(
-        UNSAFE_COUNTERS_HEADER
-            .iter()
-            .take(5)
-            .map(|s| s.len())
-            .sum::<usize>()
-            + UNSAFE_COUNTERS_HEADER.len()
-            + 1,
-    )
+    let headers_but_last = &UNSAFE_COUNTERS_HEADER[..UNSAFE_COUNTERS_HEADER.len() - 1];
+    let n = headers_but_last
+        .iter()
+        .map(|s| s.len())
+        .sum::<usize>()
+        + headers_but_last.len() // Space after each column
+        + 2 // Unsafety symbol width
+        + 1; // Space after symbol
+    " ".repeat(n)
 }
 
 #[cfg(test)]
@@ -309,7 +309,7 @@ mod table_tests {
     #[test]
     fn table_row_empty_test() {
         let empty_table_row = table_row_empty();
-        assert_eq!(empty_table_row.len(), 50);
+        assert_eq!(empty_table_row.len(), 51);
     }
 
     #[test]
