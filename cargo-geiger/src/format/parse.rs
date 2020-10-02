@@ -1,11 +1,6 @@
-use std::iter;
-use std::str;
+use crate::format::RawChunk;
 
-pub enum RawChunk<'a> {
-    Text(&'a str),
-    Argument(&'a str),
-    Error(&'static str),
-}
+use std::{iter, str};
 
 pub struct Parser<'a> {
     s: &'a str,

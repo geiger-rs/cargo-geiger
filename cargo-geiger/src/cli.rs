@@ -28,9 +28,10 @@ use std::str::{self, FromStr};
 pub fn get_cfgs(
     config: &Config,
     target: &Option<String>,
-    ws: &Workspace,
+    workspace: &Workspace,
 ) -> CargoResult<Option<Vec<Cfg>>> {
-    let mut process = util::process(&config.load_global_rustc(Some(ws))?.path);
+    let mut process =
+        util::process(&config.load_global_rustc(Some(workspace))?.path);
     process.arg("--print=cfg").env_remove("RUST_LOG");
     if let Some(ref s) = *target {
         process.arg("--target").arg(s);
@@ -48,6 +49,15 @@ pub fn get_cfgs(
     ))
 }
 
+pub fn get_registry<'a>(
+    config: &'a Config,
+    package: &Package,
+) -> CargoResult<PackageRegistry<'a>> {
+    let mut registry = PackageRegistry::new(config)?;
+    registry.add_sources(Some(package.package_id().source_id()))?;
+    Ok(registry)
+}
+
 pub fn get_workspace(
     config: &Config,
     manifest_path: Option<PathBuf>,
@@ -59,19 +69,10 @@ pub fn get_workspace(
     Workspace::new(&root, config)
 }
 
-pub fn get_registry<'a>(
-    config: &'a Config,
-    package: &Package,
-) -> CargoResult<PackageRegistry<'a>> {
-    let mut registry = PackageRegistry::new(config)?;
-    registry.add_sources(Some(package.package_id().source_id()))?;
-    Ok(registry)
-}
-
 pub fn resolve<'a, 'cfg>(
     package_id: PackageId,
     registry: &mut PackageRegistry<'cfg>,
-    ws: &'a Workspace<'cfg>,
+    workspace: &'a Workspace<'cfg>,
     features: &[String],
     all_features: bool,
     no_default_features: bool,
@@ -84,10 +85,10 @@ pub fn resolve<'a, 'cfg>(
         all_features,
         uses_default_features,
     );
-    let prev = ops::load_pkg_lockfile(ws)?;
+    let prev = ops::load_pkg_lockfile(workspace)?;
     let resolve = ops::resolve_with_previous(
         registry,
-        ws,
+        workspace,
         &opts,
         prev.as_ref(),
         None,
@@ -96,7 +97,7 @@ pub fn resolve<'a, 'cfg>(
     )?;
     let packages = ops::get_resolved_packages(
         &resolve,
-        PackageRegistry::new(ws.config())?,
+        PackageRegistry::new(workspace.config())?,
     )?;
     Ok((packages, resolve))
 }
@@ -139,22 +140,6 @@ mod cli_tests {
     }
 
     #[test]
-    fn get_workspace_test() {
-        let config = Config::default().unwrap();
-        let manifest_path: Option<PathBuf> = None;
-
-        let workspace_cargo_result = get_workspace(&config, manifest_path);
-        assert!(workspace_cargo_result.is_ok());
-        let workspace = workspace_cargo_result.unwrap();
-
-        let package_result = workspace.current();
-        assert!(package_result.is_ok());
-        let package = package_result.unwrap();
-
-        assert_eq!(package.package_id().name(), "cargo-geiger");
-    }
-
-    #[test]
     fn get_registry_test() {
         let config = Config::default().unwrap();
         let workspace = Workspace::new(
@@ -175,5 +160,21 @@ mod cli_tests {
         let package_set = package_set_result.unwrap();
 
         assert_eq!(package_set.sources().len(), 1);
+    }
+
+    #[test]
+    fn get_workspace_test() {
+        let config = Config::default().unwrap();
+        let manifest_path: Option<PathBuf> = None;
+
+        let workspace_cargo_result = get_workspace(&config, manifest_path);
+        assert!(workspace_cargo_result.is_ok());
+        let workspace = workspace_cargo_result.unwrap();
+
+        let package_result = workspace.current();
+        assert!(package_result.is_ok());
+        let package = package_result.unwrap();
+
+        assert_eq!(package.package_id().name(), "cargo-geiger");
     }
 }

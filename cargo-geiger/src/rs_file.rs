@@ -3,7 +3,9 @@ use cargo::core::manifest::TargetKind;
 use cargo::core::{PackageId, Target, Workspace};
 use cargo::ops;
 use cargo::ops::{CleanOptions, CompileOptions};
-use cargo::util::{interning::InternedString, paths, CargoResult, ProcessBuilder};
+use cargo::util::{
+    interning::InternedString, paths, CargoResult, ProcessBuilder,
+};
 use cargo::Config;
 use geiger::RsFileMetrics;
 use std::collections::{HashMap, HashSet};
@@ -218,10 +220,10 @@ impl Executor for CustomExecutor {
 
 #[derive(Debug)]
 enum CustomExecutorError {
-    OutDirKeyMissing(String),
-    OutDirValueMissing(String),
     InnerContextMutex(String),
     Io(io::Error, PathBuf),
+    OutDirKeyMissing(String),
+    OutDirValueMissing(String),
 }
 
 impl Error for CustomExecutorError {}
@@ -245,24 +247,24 @@ struct CustomExecutorInnerContext {
 
 #[derive(Debug)]
 pub enum RsResolveError {
-    Walkdir(walkdir::Error),
-
-    /// Like io::Error but with the related path.
-    Io(io::Error, PathBuf),
+    /// This should not happen unless incorrect assumptions have been made in
+    /// cargo-geiger about how the cargo API works.
+    ArcUnwrap(),
 
     /// Would like cargo::Error here, but it's private, why?
     /// This is still way better than a panic though.
     Cargo(String),
 
-    /// This should not happen unless incorrect assumptions have been made in
-    /// cargo-geiger about how the cargo API works.
-    ArcUnwrap(),
+    /// Failed to parse a .dep file.
+    DepParse(String, PathBuf),
 
     /// Failed to get the inner context out of the mutex.
     InnerContextMutex(String),
 
-    /// Failed to parse a .dep file.
-    DepParse(String, PathBuf),
+    /// Like io::Error but with the related path.
+    Io(io::Error, PathBuf),
+
+    Walkdir(walkdir::Error),
 }
 
 impl Error for RsResolveError {}

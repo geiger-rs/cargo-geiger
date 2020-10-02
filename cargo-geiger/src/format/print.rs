@@ -1,4 +1,5 @@
-use crate::format::{Charset, CrateDetectionStatus, Pattern};
+use crate::format::pattern::Pattern;
+use crate::format::{Charset, CrateDetectionStatus};
 
 use cargo::core::shell::Verbosity;
 use colored::Colorize;
