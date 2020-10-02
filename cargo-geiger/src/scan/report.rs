@@ -1,23 +1,7 @@
-use cargo::core::{
-    dependency::DepKind,
-    PackageId,
-};
+use cargo::core::{dependency::DepKind, PackageId};
 use geiger::CounterBlock;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct SafetyReport {
-    pub packages: Vec<ReportEntry>,
-    pub packages_without_metrics: Vec<PackageId>,
-    pub used_but_not_scanned_files: Vec<PathBuf>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct ReportEntry {
-    pub package: PackageInfo,
-    pub unsafety: UnsafeInfo,
-}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PackageInfo {
@@ -46,10 +30,9 @@ impl PackageInfo {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct UnsafeInfo {
-    pub used: CounterBlock,
-    pub unused: CounterBlock,
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct QuickReportEntry {
+    pub package: PackageInfo,
     pub forbids_unsafe: bool,
 }
 
@@ -60,7 +43,21 @@ pub struct QuickSafetyReport {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct QuickReportEntry {
+pub struct ReportEntry {
     pub package: PackageInfo,
+    pub unsafety: UnsafeInfo,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct SafetyReport {
+    pub packages: Vec<ReportEntry>,
+    pub packages_without_metrics: Vec<PackageId>,
+    pub used_but_not_scanned_files: Vec<PathBuf>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub struct UnsafeInfo {
+    pub used: CounterBlock,
+    pub unused: CounterBlock,
     pub forbids_unsafe: bool,
 }

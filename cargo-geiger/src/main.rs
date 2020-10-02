@@ -10,180 +10,31 @@ extern crate petgraph;
 extern crate strum;
 extern crate strum_macros;
 
+mod args;
 mod cli;
-mod find;
 mod format;
 mod graph;
-mod report;
 mod rs_file;
 mod scan;
-mod traversal;
+mod tree;
 
+use crate::args::{Args, HELP};
 use crate::cli::{get_cfgs, get_registry, get_workspace, resolve};
-use crate::format::print::{OutputFormat, Prefix, PrintConfig};
-use crate::format::{Charset, Pattern};
+use crate::format::pattern::Pattern;
+use crate::format::print::{Prefix, PrintConfig};
+use crate::format::FormatError;
 use crate::graph::{build_graph, ExtraDeps};
-use crate::scan::{scan_forbid_unsafe, scan_unsafe};
+use crate::scan::default::scan_unsafe;
+use crate::scan::forbid::scan_forbid_unsafe;
+use crate::scan::ScanParameters;
 
 use cargo::core::shell::{ColorChoice, Shell, Verbosity};
 use cargo::util::errors::CliError;
 use cargo::{CliResult, Config};
 use geiger::IncludeTests;
 use petgraph::EdgeDirection;
-use std::fmt;
-use std::path::PathBuf;
 
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
-
-const HELP: &str =
-    "Detects usage of unsafe Rust in a Rust crate and its dependencies.
-
-USAGE:
-    cargo geiger [OPTIONS]
-
-OPTIONS:
-    -p, --package <SPEC>          Package to be used as the root of the tree.
-        --features <FEATURES>     Space-separated list of features to activate.
-        --all-features            Activate all available features.
-        --no-default-features     Do not activate the `default` feature.
-        --target <TARGET>         Set the target triple.
-        --all-targets             Return dependencies for all targets. By
-                                  default only the host target is matched.
-        --manifest-path <PATH>    Path to Cargo.toml.
-    -i, --invert                  Invert the tree direction.
-        --no-indent               Display the dependencies as a list (rather
-                                  than a tree).
-        --prefix-depth            Display the dependencies as a list (rather
-                                  than a tree), but prefixed with the depth.
-    -a, --all                     Don't truncate dependencies that have already
-                                  been displayed.
-        --charset <CHARSET>       Character set to use in output: utf8, ascii
-                                  [default: utf8].
-    --format <FORMAT>             Format string used for printing dependencies
-                                  [default: {p}].
-    --json                        Output in JSON format.
-    -v, --verbose                 Use verbose output (-vv very verbose/build.rs
-                                  output).
-    -q, --quiet                   No output printed to stdout other than the
-                                  tree.
-        --color <WHEN>            Coloring: auto, always, never.
-        --frozen                  Require Cargo.lock and cache are up to date.
-        --locked                  Require Cargo.lock is up to date.
-        --offline                 Run without accessing the network.
-    -Z \"<FLAG>...\"                Unstable (nightly-only) flags to Cargo.
-        --include-tests           Count unsafe usage in tests..
-        --build-dependencies      Also analyze build dependencies.
-        --dev-dependencies        Also analyze dev dependencies.
-        --all-dependencies        Analyze all dependencies, including build and
-                                  dev.
-        --forbid-only             Don't build or clean anything, only scan
-                                  entry point .rs source files for.
-                                  forbid(unsafe_code) flags. This is
-                                  significantly faster than the default
-                                  scanning mode. TODO: Add ability to combine
-                                  this with a whitelist for use in CI.
-    -h, --help                    Prints help information.
-    -V, --version                 Prints version information.
-";
-
-pub struct Args {
-    pub all: bool,
-    pub all_deps: bool,
-    pub all_features: bool,
-    pub all_targets: bool,
-    pub build_deps: bool,
-    pub charset: Charset,
-    pub color: Option<String>,
-    pub dev_deps: bool,
-    pub features: Option<String>,
-    pub forbid_only: bool,
-    pub format: String,
-    pub frozen: bool,
-    pub help: bool,
-    pub include_tests: bool,
-    pub invert: bool,
-    pub locked: bool,
-    pub manifest_path: Option<PathBuf>,
-    pub no_default_features: bool,
-    pub no_indent: bool,
-    pub offline: bool,
-    pub package: Option<String>,
-    pub prefix_depth: bool,
-    pub quiet: bool,
-    pub target: Option<String>,
-    pub unstable_flags: Vec<String>,
-    pub verbose: u32,
-    pub version: bool,
-    pub output_format: Option<OutputFormat>,
-}
-
-fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
-    let mut args = pico_args::Arguments::from_env();
-    let args = Args {
-        all: args.contains(["-a", "--all"]),
-        all_deps: args.contains("--all-dependencies"),
-        all_features: args.contains("--all-features"),
-        all_targets: args.contains("--all-targets"),
-        build_deps: args.contains("--build-dependencies"),
-        charset: args
-            .opt_value_from_str("--charset")?
-            .unwrap_or(Charset::Utf8),
-        color: args.opt_value_from_str("--color")?,
-        dev_deps: args.contains("--dev-dependencies"),
-        features: args.opt_value_from_str("--features")?,
-        forbid_only: args.contains(["-f", "--forbid-only"]),
-        format: args
-            .opt_value_from_str("--format")?
-            .unwrap_or_else(|| "{p}".to_string()),
-        frozen: args.contains("--frozen"),
-        help: args.contains(["-h", "--help"]),
-        include_tests: args.contains("--include-tests"),
-        invert: args.contains(["-i", "--invert"]),
-        locked: args.contains("--locked"),
-        manifest_path: args.opt_value_from_str("--manifest-path")?,
-        no_default_features: args.contains("--no-default-features"),
-        no_indent: args.contains("--no-indent"),
-        offline: args.contains("--offline"),
-        package: args.opt_value_from_str("--manifest-path")?,
-        prefix_depth: args.contains("--prefix-depth"),
-        quiet: args.contains(["-q", "--quiet"]),
-        target: args.opt_value_from_str("--target")?,
-        unstable_flags: args
-            .opt_value_from_str("-Z")?
-            .map(|s: String| s.split(' ').map(|s| s.to_owned()).collect())
-            .unwrap_or_else(Vec::new),
-        verbose: match (
-            args.contains("-vv"),
-            args.contains(["-v", "--verbose"]),
-        ) {
-            (false, false) => 0,
-            (false, true) => 1,
-            (true, _) => 2,
-        },
-        version: args.contains(["-V", "--version"]),
-        output_format: if args.contains("--json") {
-            Some(OutputFormat::Json)
-        } else {
-            None
-        }
-    };
-    Ok(args)
-}
-
-#[derive(Debug)]
-struct FormatError {
-    message: String,
-}
-
-impl std::error::Error for FormatError {}
-
-/// Forward Display to Debug, probably good enough for programmer facing error
-/// messages.
-impl fmt::Display for FormatError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
-}
 
 fn real_main(args: &Args, config: &mut Config) -> CliResult {
     if args.version {
@@ -217,8 +68,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         ColorChoice::CargoAuto => {}
     }
 
-    let ws = get_workspace(config, args.manifest_path.clone())?;
-    let package = ws.current()?;
+    let workspace = get_workspace(config, args.manifest_path.clone())?;
+    let package = workspace.current()?;
     let mut registry = get_registry(config, &package)?;
     let features = args
         .features
@@ -231,20 +82,20 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let (packages, resolve) = resolve(
         package.package_id(),
         &mut registry,
-        &ws,
+        &workspace,
         &features,
         args.all_features,
         args.no_default_features,
     )?;
-    let ids = packages.package_ids().collect::<Vec<_>>();
-    let packages = registry.get(&ids)?;
+    let package_ids = packages.package_ids().collect::<Vec<_>>();
+    let packages = registry.get(&package_ids)?;
 
     let root_pack_id = match args.package {
         Some(ref pkg) => resolve.query(pkg)?,
         None => package.package_id(),
     };
 
-    let config_host = config.load_global_rustc(Some(&ws))?.host;
+    let config_host = config.load_global_rustc(Some(&workspace))?.host;
     let target = if args.all_targets {
         None
     } else {
@@ -271,7 +122,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         ExtraDeps::NoMore
     };
 
-    let cfgs = get_cfgs(config, &args.target, &ws)?;
+    let cfgs = get_cfgs(config, &args.target, &workspace)?;
     let graph = build_graph(
         &resolve,
         &packages,
@@ -315,24 +166,21 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         output_format: args.output_format,
     };
 
+    let scan_parameters = ScanParameters {
+        args: &args,
+        config: &config,
+        print_config: &print_config,
+    };
+
     if args.forbid_only {
-        scan_forbid_unsafe(
-            &config,
-            &packages,
-            root_pack_id,
-            &graph,
-            &print_config,
-            &args,
-        )
+        scan_forbid_unsafe(&packages, root_pack_id, &graph, &scan_parameters)
     } else {
         scan_unsafe(
-            &config,
-            &ws,
+            &workspace,
             &packages,
             root_pack_id,
             &graph,
-            &print_config,
-            &args,
+            &scan_parameters,
         )
     }
 }
@@ -346,7 +194,7 @@ fn main() {
             cargo::exit_with_error(e.into(), &mut shell)
         }
     };
-    let args = parse_args().unwrap();
+    let args = Args::parse_args().unwrap();
     if let Err(e) = real_main(&args, &mut config) {
         let mut shell = Shell::new();
         cargo::exit_with_error(e, &mut shell)

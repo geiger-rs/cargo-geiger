@@ -1,3 +1,6 @@
+pub mod traversal;
+
+use crate::format::print::{Prefix, PrintConfig};
 use crate::format::Charset;
 
 use cargo::core::dependency::DepKind;
@@ -19,6 +22,35 @@ pub struct TreeSymbols {
     pub tee: &'static str,
     pub ell: &'static str,
     pub right: &'static str,
+}
+
+fn construct_tree_vines_string(
+    levels_continue: &mut Vec<bool>,
+    print_config: &PrintConfig,
+) -> String {
+    let tree_symbols = get_tree_symbols(print_config.charset);
+
+    match print_config.prefix {
+        Prefix::Depth => format!("{} ", levels_continue.len()),
+        Prefix::Indent => {
+            let mut buffer = String::new();
+            if let Some((&last_continues, rest)) = levels_continue.split_last()
+            {
+                for &continues in rest {
+                    let c = if continues { tree_symbols.down } else { " " };
+                    buffer.push_str(&format!("{}   ", c));
+                }
+                let c = if last_continues {
+                    tree_symbols.tee
+                } else {
+                    tree_symbols.ell
+                };
+                buffer.push_str(&format!("{0}{1}{1} ", c, tree_symbols.right));
+            }
+            buffer
+        }
+        Prefix::None => "".into(),
+    }
 }
 
 pub fn get_tree_symbols(charset: Charset) -> TreeSymbols {
@@ -49,5 +81,6 @@ mod tree_tests {
     #[test]
     fn get_tree_symbols_test() {
         assert_eq!(get_tree_symbols(Charset::Utf8), UTF8_TREE_SYMBOLS);
+        assert_eq!(get_tree_symbols(Charset::Ascii), ASCII_TREE_SYMBOLS)
     }
 }

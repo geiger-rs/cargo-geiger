@@ -1,14 +1,16 @@
 use crate::format::print::{Prefix, PrintConfig};
-use crate::format::tree::{get_tree_symbols, TextTreeLine};
 use crate::graph::{Graph, Node};
+use crate::tree::{get_tree_symbols, TextTreeLine};
+
+use super::construct_tree_vines_string;
 
 use cargo::core::dependency::DepKind;
 use cargo::core::PackageId;
 use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-/// To print the returned TextTreeLines in order are expected to produce a nice
+/// Printing the returned TextTreeLines in order is expected to produce a nice
 /// looking tree structure.
 ///
 /// TODO: Return a impl Iterator<Item = TextTreeLine ... >
@@ -17,7 +19,7 @@ use std::collections::HashSet;
 pub fn walk_dependency_tree(
     root_pack_id: PackageId,
     graph: &Graph,
-    pc: &PrintConfig,
+    print_config: &PrintConfig,
 ) -> Vec<TextTreeLine> {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
@@ -27,37 +29,8 @@ pub fn walk_dependency_tree(
         graph,
         &mut visited_deps,
         &mut levels_continue,
-        pc,
+        print_config,
     )
-}
-
-fn construct_tree_vines_string(
-    levels_continue: &mut Vec<bool>,
-    print_config: &PrintConfig,
-) -> String {
-    let tree_symbols = get_tree_symbols(print_config.charset);
-
-    match print_config.prefix {
-        Prefix::Depth => format!("{} ", levels_continue.len()),
-        Prefix::Indent => {
-            let mut buf = String::new();
-            if let Some((&last_continues, rest)) = levels_continue.split_last()
-            {
-                for &continues in rest {
-                    let c = if continues { tree_symbols.down } else { " " };
-                    buf.push_str(&format!("{}   ", c));
-                }
-                let c = if last_continues {
-                    tree_symbols.tee
-                } else {
-                    tree_symbols.ell
-                };
-                buf.push_str(&format!("{0}{1}{1} ", c, tree_symbols.right));
-            }
-            buf
-        }
-        Prefix::None => "".into(),
-    }
 }
 
 fn walk_dependency_kind(
@@ -125,9 +98,15 @@ fn walk_dependency_node(
         return all_out;
     }
 
-    let mut normal = vec![];
-    let mut build = vec![];
-    let mut development = vec![];
+    let mut dependency_type_nodes: HashMap<DepKind, Vec<&Node>> = [
+        (DepKind::Build, vec![]),
+        (DepKind::Development, vec![]),
+        (DepKind::Normal, vec![]),
+    ]
+    .iter()
+    .cloned()
+    .collect();
+
     for edge in graph
         .graph
         .edges_directed(graph.nodes[&package.id], print_config.direction)
@@ -136,39 +115,26 @@ fn walk_dependency_node(
             EdgeDirection::Incoming => &graph.graph[edge.source()],
             EdgeDirection::Outgoing => &graph.graph[edge.target()],
         };
-        match *edge.weight() {
-            DepKind::Normal => normal.push(dep),
-            DepKind::Build => build.push(dep),
-            DepKind::Development => development.push(dep),
-        }
+
+        dependency_type_nodes
+            .get_mut(edge.weight())
+            .unwrap()
+            .push(dep);
     }
-    let mut normal_out = walk_dependency_kind(
-        DepKind::Normal,
-        &mut normal,
-        graph,
-        visited_deps,
-        levels_continue,
-        print_config,
-    );
-    let mut build_out = walk_dependency_kind(
-        DepKind::Build,
-        &mut build,
-        graph,
-        visited_deps,
-        levels_continue,
-        print_config,
-    );
-    let mut dev_out = walk_dependency_kind(
-        DepKind::Development,
-        &mut development,
-        graph,
-        visited_deps,
-        levels_continue,
-        print_config,
-    );
-    all_out.append(&mut normal_out);
-    all_out.append(&mut build_out);
-    all_out.append(&mut dev_out);
+
+    for (dep_kind, nodes) in dependency_type_nodes.iter_mut() {
+        let mut dep_kind_out = walk_dependency_kind(
+            *dep_kind,
+            nodes,
+            graph,
+            visited_deps,
+            levels_continue,
+            print_config,
+        );
+
+        all_out.append(&mut dep_kind_out);
+    }
+
     all_out
 }
 
@@ -176,7 +142,8 @@ fn walk_dependency_node(
 mod traversal_tests {
     use super::*;
 
-    use crate::format::{Charset, Pattern};
+    use crate::format::pattern::Pattern;
+    use crate::format::Charset;
 
     use cargo::core::shell::Verbosity;
     use geiger::IncludeTests;
