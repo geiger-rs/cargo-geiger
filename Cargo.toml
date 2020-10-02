@@ -10,5 +10,6 @@ exclude = [
 ]
 members = [
     "cargo-geiger",
+    "cargo-geiger-serde",
     "geiger",
 ]
