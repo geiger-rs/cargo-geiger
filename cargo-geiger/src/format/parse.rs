@@ -15,6 +15,10 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn argument(&mut self) -> RawChunk<'a> {
+        RawChunk::Argument(self.name())
+    }
+
     fn consume(&mut self, ch: char) -> bool {
         match self.it.peek() {
             Some(&(_, c)) if c == ch => {
@@ -23,10 +27,6 @@ impl<'a> Parser<'a> {
             }
             _ => false,
         }
-    }
-
-    fn argument(&mut self) -> RawChunk<'a> {
-        RawChunk::Argument(self.name())
     }
 
     fn name(&mut self) -> &'a str {

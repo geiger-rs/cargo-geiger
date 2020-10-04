@@ -1,18 +1,19 @@
-pub mod default;
-pub mod forbid;
-
+mod default;
 mod find;
+mod forbid;
 mod report;
 
 use crate::args::Args;
 use crate::format::print::PrintConfig;
 use crate::graph::Graph;
-use crate::rs_file::PackageMetrics;
+use crate::rs_file::RsFileMetricsWrapper;
 
+use default::scan_unsafe;
+use forbid::scan_forbid_unsafe;
 use report::{PackageInfo, UnsafeInfo};
 
-use cargo::core::PackageId;
-use cargo::Config;
+use cargo::core::{PackageId, PackageSet, Workspace};
+use cargo::{CliResult, Config};
 use geiger::CounterBlock;
 use petgraph::visit::EdgeRef;
 use std::collections::{HashMap, HashSet};
@@ -22,6 +23,12 @@ use std::path::PathBuf;
 /// collection.
 pub struct GeigerContext {
     pub pack_id_to_metrics: HashMap<PackageId, PackageMetrics>,
+}
+
+#[derive(Debug, Default)]
+pub struct PackageMetrics {
+    /// The key is the canonicalized path to the rs source file.
+    pub rs_path_to_metrics: HashMap<PathBuf, RsFileMetricsWrapper>,
 }
 
 pub enum ScanMode {
@@ -37,7 +44,76 @@ pub enum ScanMode {
 pub struct ScanParameters<'a> {
     pub args: &'a Args,
     pub config: &'a Config,
-    pub print_config: &'a PrintConfig<'a>,
+    pub print_config: &'a PrintConfig,
+}
+
+pub fn scan(
+    args: &Args,
+    config: &Config,
+    graph: &Graph,
+    package_set: &PackageSet,
+    root_package_id: PackageId,
+    workspace: &Workspace,
+) -> CliResult {
+    let print_config = PrintConfig::new(args)?;
+
+    let scan_parameters = ScanParameters {
+        args: &args,
+        config: &config,
+        print_config: &print_config,
+    };
+
+    if args.forbid_only {
+        scan_forbid_unsafe(
+            package_set,
+            root_package_id,
+            &graph,
+            &scan_parameters,
+        )
+    } else {
+        scan_unsafe(
+            workspace,
+            package_set,
+            root_package_id,
+            &graph,
+            &scan_parameters,
+        )
+    }
+}
+
+pub fn unsafe_stats(
+    pack_metrics: &PackageMetrics,
+    rs_files_used: &HashSet<PathBuf>,
+) -> UnsafeInfo {
+    // The crate level "forbids unsafe code" metric __used to__ only
+    // depend on entry point source files that were __used by the
+    // build__. This was too subtle in my opinion. For a crate to be
+    // classified as forbidding unsafe code, all entry point source
+    // files must declare `forbid(unsafe_code)`. Either a crate
+    // forbids all unsafe code or it allows it _to some degree_.
+    let forbids_unsafe = pack_metrics
+        .rs_path_to_metrics
+        .iter()
+        .filter(|(_, v)| v.is_crate_entry_point)
+        .all(|(_, v)| v.metrics.forbids_unsafe);
+
+    let mut used = CounterBlock::default();
+    let mut unused = CounterBlock::default();
+
+    for (path_buf, rs_file_metrics_wrapper) in &pack_metrics.rs_path_to_metrics
+    {
+        let target = if rs_files_used.contains(path_buf) {
+            &mut used
+        } else {
+            &mut unused
+        };
+        *target += rs_file_metrics_wrapper.metrics.counters.clone();
+    }
+    UnsafeInfo {
+        used,
+        unused,
+        forbids_unsafe,
+    }
 }
 
 struct ScanDetails {
@@ -108,48 +184,13 @@ fn package_metrics<'a>(
     })
 }
 
-pub fn unsafe_stats(
-    pack_metrics: &PackageMetrics,
-    rs_files_used: &HashSet<PathBuf>,
-) -> UnsafeInfo {
-    // The crate level "forbids unsafe code" metric __used to__ only
-    // depend on entry point source files that were __used by the
-    // build__. This was too subtle in my opinion. For a crate to be
-    // classified as forbidding unsafe code, all entry point source
-    // files must declare `forbid(unsafe_code)`. Either a crate
-    // forbids all unsafe code or it allows it _to some degree_.
-    let forbids_unsafe = pack_metrics
-        .rs_path_to_metrics
-        .iter()
-        .filter(|(_, v)| v.is_crate_entry_point)
-        .all(|(_, v)| v.metrics.forbids_unsafe);
-
-    let mut used = CounterBlock::default();
-    let mut unused = CounterBlock::default();
-
-    for (path_buf, rs_file_metrics_wrapper) in &pack_metrics.rs_path_to_metrics
-    {
-        let target = if rs_files_used.contains(path_buf) {
-            &mut used
-        } else {
-            &mut unused
-        };
-        *target += rs_file_metrics_wrapper.metrics.counters.clone();
-    }
-    UnsafeInfo {
-        used,
-        unused,
-        forbids_unsafe,
-    }
-}
-
 #[cfg(test)]
 mod scan_tests {
     use super::*;
 
     use crate::{
-        rs_file::{PackageMetrics, RsFileMetricsWrapper},
-        scan::report::UnsafeInfo,
+        rs_file::RsFileMetricsWrapper,
+        scan::{report::UnsafeInfo, PackageMetrics},
     };
 
     use geiger::Count;

@@ -1,8 +1,8 @@
 use crate::format::print::PrintConfig;
 use crate::rs_file::{
-    into_rs_code_file, is_file_with_ext, PackageMetrics, RsFile,
-    RsFileMetricsWrapper,
+    into_rs_code_file, is_file_with_ext, RsFile, RsFileMetricsWrapper,
 };
+use crate::scan::PackageMetrics;
 
 use super::{GeigerContext, ScanMode};
 

@@ -78,9 +78,54 @@ const UTF8_TREE_SYMBOLS: TreeSymbols = TreeSymbols {
 mod tree_tests {
     use super::*;
 
+    use crate::format::pattern::Pattern;
+    use crate::format::Charset;
+
+    use cargo::core::shell::Verbosity;
+    use geiger::IncludeTests;
+    use petgraph::EdgeDirection;
+
+    #[test]
+    fn construct_tree_vines_string_test() {
+        let mut levels_continue = vec![true, false, true];
+
+        let print_config = construct_print_config(Prefix::Depth);
+        let tree_vines_string =
+            construct_tree_vines_string(&mut levels_continue, &print_config);
+
+        assert_eq!(tree_vines_string, "3 ");
+
+        let print_config = construct_print_config(Prefix::Indent);
+        let tree_vines_string =
+            construct_tree_vines_string(&mut levels_continue, &print_config);
+
+        assert_eq!(tree_vines_string, "|       |-- ");
+
+        let print_config = construct_print_config(Prefix::None);
+        let tree_vines_string =
+            construct_tree_vines_string(&mut levels_continue, &print_config);
+
+        assert_eq!(tree_vines_string, "");
+    }
+
     #[test]
     fn get_tree_symbols_test() {
         assert_eq!(get_tree_symbols(Charset::Utf8), UTF8_TREE_SYMBOLS);
         assert_eq!(get_tree_symbols(Charset::Ascii), ASCII_TREE_SYMBOLS)
+    }
+
+    fn construct_print_config(prefix: Prefix) -> PrintConfig {
+        let pattern = Pattern::try_build("{p}").unwrap();
+        PrintConfig {
+            all: false,
+            verbosity: Verbosity::Verbose,
+            direction: EdgeDirection::Outgoing,
+            prefix,
+            format: pattern,
+            charset: Charset::Ascii,
+            allow_partial_results: false,
+            include_tests: IncludeTests::Yes,
+            output_format: None,
+        }
     }
 }

@@ -249,7 +249,8 @@ fn table_row_empty() -> String {
 mod table_tests {
     use super::*;
 
-    use crate::rs_file::{PackageMetrics, RsFileMetricsWrapper};
+    use crate::rs_file::RsFileMetricsWrapper;
+    use crate::scan::PackageMetrics;
 
     use geiger::RsFileMetrics;
     use std::collections::HashMap;

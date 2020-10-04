@@ -1,7 +1,12 @@
+use crate::args::Args;
+use crate::cli::get_cfgs;
+
 use cargo::core::dependency::DepKind;
 use cargo::core::package::PackageSet;
-use cargo::core::{Dependency, PackageId, Resolve};
+use cargo::core::{Dependency, PackageId, Resolve, Workspace};
+use cargo::util::interning::InternedString;
 use cargo::util::CargoResult;
+use cargo::Config;
 use cargo_platform::Cfg;
 use petgraph::graph::NodeIndex;
 use std::collections::hash_map::Entry;
@@ -44,39 +49,45 @@ pub struct Node {
 // simple to move this and the dependency graph structure out to a library.
 /// Function to build a graph of packages dependencies
 pub fn build_graph<'a>(
+    args: &Args,
+    config: &Config,
     resolve: &'a Resolve,
-    packages: &'a PackageSet,
-    root: PackageId,
-    target: Option<&str>,
-    cfgs: Option<&[Cfg]>,
-    extra_deps: ExtraDeps,
+    package_set: &'a PackageSet,
+    root_package_id: PackageId,
+    workspace: &Workspace,
 ) -> CargoResult<Graph> {
+    let config_host = config.load_global_rustc(Some(&workspace))?.host;
+    let (extra_deps, target) = build_graph_prerequisites(args, &config_host)?;
+    let cfgs = get_cfgs(config, &args.target, &workspace)?;
+
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
         nodes: HashMap::new(),
     };
     let node = Node {
-        id: root,
+        id: root_package_id,
         //pack: packages.get_one(root)?,
     };
-    graph.nodes.insert(root, graph.graph.add_node(node));
+    graph
+        .nodes
+        .insert(root_package_id, graph.graph.add_node(node));
 
-    let mut pending = vec![root];
+    let mut pending_packages = vec![root_package_id];
 
     let graph_configuration = GraphConfiguration {
         target,
-        cfgs,
+        cfgs: cfgs.as_deref(),
         extra_deps,
     };
 
-    while let Some(package_id) = pending.pop() {
+    while let Some(package_id) = pending_packages.pop() {
         add_package_dependencies_to_graph(
             resolve,
             package_id,
-            packages,
+            package_set,
             &graph_configuration,
             &mut graph,
-            &mut pending,
+            &mut pending_packages,
         )?;
     }
 
@@ -116,13 +127,13 @@ fn add_graph_node_if_not_present_and_edge(
 fn add_package_dependencies_to_graph<'a>(
     resolve: &'a Resolve,
     package_id: PackageId,
-    packages: &'a PackageSet,
+    package_set: &'a PackageSet,
     graph_configuration: &GraphConfiguration,
     graph: &mut Graph,
     pending_packages: &mut Vec<PackageId>,
 ) -> CargoResult<()> {
     let index = graph.nodes[&package_id];
-    let package = packages.get_one(package_id)?;
+    let package = package_set.get_one(package_id)?;
 
     for (raw_dependency_package_id, _) in resolve.deps_not_replaced(package_id)
     {
@@ -162,6 +173,29 @@ fn add_package_dependencies_to_graph<'a>(
     }
 
     Ok(())
+}
+
+fn build_graph_prerequisites<'a>(
+    args: &'a Args,
+    config_host: &'a InternedString,
+) -> CargoResult<(ExtraDeps, Option<&'a str>)> {
+    let extra_deps = if args.all_deps {
+        ExtraDeps::All
+    } else if args.build_deps {
+        ExtraDeps::Build
+    } else if args.dev_deps {
+        ExtraDeps::Dev
+    } else {
+        ExtraDeps::NoMore
+    };
+
+    let target = if args.all_targets {
+        None
+    } else {
+        Some(args.target.as_deref().unwrap_or(&config_host))
+    };
+
+    Ok((extra_deps, target))
 }
 
 #[cfg(test)]
