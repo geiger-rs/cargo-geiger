@@ -33,6 +33,38 @@ pub fn walk_dependency_tree(
     )
 }
 
+fn construct_dependency_type_nodes_hashmap<'a>(
+    graph: &'a Graph,
+    package: &Node,
+    print_config: &PrintConfig,
+) -> HashMap<DepKind, Vec<&'a Node>> {
+    let mut dependency_type_nodes: HashMap<DepKind, Vec<&Node>> = [
+        (DepKind::Build, vec![]),
+        (DepKind::Development, vec![]),
+        (DepKind::Normal, vec![]),
+    ]
+    .iter()
+    .cloned()
+    .collect();
+
+    for edge in graph
+        .graph
+        .edges_directed(graph.nodes[&package.id], print_config.direction)
+    {
+        let dependency = match print_config.direction {
+            EdgeDirection::Incoming => &graph.graph[edge.source()],
+            EdgeDirection::Outgoing => &graph.graph[edge.target()],
+        };
+
+        dependency_type_nodes
+            .get_mut(edge.weight())
+            .unwrap()
+            .push(dependency);
+    }
+
+    dependency_type_nodes
+}
+
 fn walk_dependency_kind(
     kind: DepKind,
     deps: &mut Vec<&Node>,
@@ -64,9 +96,9 @@ fn walk_dependency_kind(
         }
     }
 
-    let mut it = deps.iter().peekable();
-    while let Some(dependency) = it.next() {
-        levels_continue.push(it.peek().is_some());
+    let mut node_iterator = deps.iter().peekable();
+    while let Some(dependency) = node_iterator.next() {
+        levels_continue.push(node_iterator.peek().is_some());
         output.append(&mut walk_dependency_node(
             dependency,
             graph,
@@ -89,38 +121,17 @@ fn walk_dependency_node(
     let new = print_config.all || visited_deps.insert(package.id);
     let tree_vines = construct_tree_vines_string(levels_continue, print_config);
 
-    let mut all_out = vec![TextTreeLine::Package {
+    let mut all_out_text_tree_lines = vec![TextTreeLine::Package {
         id: package.id,
         tree_vines,
     }];
 
     if !new {
-        return all_out;
+        return all_out_text_tree_lines;
     }
 
-    let mut dependency_type_nodes: HashMap<DepKind, Vec<&Node>> = [
-        (DepKind::Build, vec![]),
-        (DepKind::Development, vec![]),
-        (DepKind::Normal, vec![]),
-    ]
-    .iter()
-    .cloned()
-    .collect();
-
-    for edge in graph
-        .graph
-        .edges_directed(graph.nodes[&package.id], print_config.direction)
-    {
-        let dep = match print_config.direction {
-            EdgeDirection::Incoming => &graph.graph[edge.source()],
-            EdgeDirection::Outgoing => &graph.graph[edge.target()],
-        };
-
-        dependency_type_nodes
-            .get_mut(edge.weight())
-            .unwrap()
-            .push(dep);
-    }
+    let mut dependency_type_nodes =
+        construct_dependency_type_nodes_hashmap(graph, package, print_config);
 
     for (dep_kind, nodes) in dependency_type_nodes.iter_mut() {
         let mut dep_kind_out = walk_dependency_kind(
@@ -132,61 +143,8 @@ fn walk_dependency_node(
             print_config,
         );
 
-        all_out.append(&mut dep_kind_out);
+        all_out_text_tree_lines.append(&mut dep_kind_out);
     }
 
-    all_out
-}
-
-#[cfg(test)]
-mod traversal_tests {
-    use super::*;
-
-    use crate::format::pattern::Pattern;
-    use crate::format::Charset;
-
-    use cargo::core::shell::Verbosity;
-    use geiger::IncludeTests;
-    use petgraph::EdgeDirection;
-
-    #[test]
-    fn construct_tree_vines_test() {
-        let mut levels_continue = vec![true, false, true];
-        let pattern = Pattern::try_build("{p}").unwrap();
-
-        let print_config = construct_print_config(&pattern, Prefix::Depth);
-        let tree_vines_string =
-            construct_tree_vines_string(&mut levels_continue, &print_config);
-
-        assert_eq!(tree_vines_string, "3 ");
-
-        let print_config = construct_print_config(&pattern, Prefix::Indent);
-        let tree_vines_string =
-            construct_tree_vines_string(&mut levels_continue, &print_config);
-
-        assert_eq!(tree_vines_string, "|       |-- ");
-
-        let print_config = construct_print_config(&pattern, Prefix::None);
-        let tree_vines_string =
-            construct_tree_vines_string(&mut levels_continue, &print_config);
-
-        assert_eq!(tree_vines_string, "");
-    }
-
-    fn construct_print_config(
-        pattern: &Pattern,
-        prefix: Prefix,
-    ) -> PrintConfig {
-        PrintConfig {
-            all: false,
-            verbosity: Verbosity::Verbose,
-            direction: EdgeDirection::Outgoing,
-            prefix,
-            format: pattern,
-            charset: Charset::Ascii,
-            allow_partial_results: false,
-            include_tests: IncludeTests::Yes,
-            output_format: None,
-        }
-    }
+    all_out_text_tree_lines
 }

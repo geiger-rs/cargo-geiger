@@ -1,7 +1,9 @@
+use crate::args::Args;
 use crate::format::pattern::Pattern;
-use crate::format::{Charset, CrateDetectionStatus};
+use crate::format::{Charset, CrateDetectionStatus, FormatError};
 
 use cargo::core::shell::Verbosity;
+use cargo::util::errors::CliError;
 use colored::Colorize;
 use geiger::IncludeTests;
 use petgraph::EdgeDirection;
@@ -18,22 +20,77 @@ pub enum OutputFormat {
     Json,
 }
 
-pub struct PrintConfig<'a> {
+pub struct PrintConfig {
     /// Don't truncate dependencies that have already been displayed.
     pub all: bool,
 
-    pub verbosity: Verbosity,
+    pub allow_partial_results: bool,
+    pub charset: Charset,
     pub direction: EdgeDirection,
-    pub prefix: Prefix,
 
     // Is anyone using this? This is a carry-over from cargo-tree.
     // TODO: Open a github issue to discuss deprecation.
-    pub format: &'a Pattern,
+    pub format: Pattern,
 
-    pub charset: Charset,
-    pub allow_partial_results: bool,
     pub include_tests: IncludeTests,
+    pub prefix: Prefix,
     pub output_format: Option<OutputFormat>,
+    pub verbosity: Verbosity,
+}
+
+impl PrintConfig {
+    pub fn new(args: &Args) -> Result<Self, CliError> {
+        // TODO: Add command line flag for this and make it default to false?
+        let allow_partial_results = true;
+
+        let direction = if args.invert {
+            EdgeDirection::Incoming
+        } else {
+            EdgeDirection::Outgoing
+        };
+
+        let format = Pattern::try_build(&args.format).map_err(|e| {
+            CliError::new(
+                (FormatError {
+                    message: e.to_string(),
+                })
+                .into(),
+                1,
+            )
+        })?;
+
+        let include_tests = if args.include_tests {
+            IncludeTests::Yes
+        } else {
+            IncludeTests::No
+        };
+
+        let prefix = if args.prefix_depth {
+            Prefix::Depth
+        } else if args.no_indent {
+            Prefix::None
+        } else {
+            Prefix::Indent
+        };
+
+        let verbosity = if args.verbose == 0 {
+            Verbosity::Normal
+        } else {
+            Verbosity::Verbose
+        };
+
+        Ok(PrintConfig {
+            all: args.all,
+            allow_partial_results,
+            charset: args.charset,
+            direction,
+            format,
+            include_tests,
+            output_format: args.output_format,
+            prefix,
+            verbosity,
+        })
+    }
 }
 
 pub fn colorize(
