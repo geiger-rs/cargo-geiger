@@ -14,6 +14,6 @@ license = "Apache-2.0/MIT"
 maintenance = { status = "experimental" }
 
 [dependencies]
-serde = { version = "1.0.116", features = ["derive"] }
+cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.1.0" }
 syn = { version = "1.0.34", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
 proc-macro2 = "1.0.18"

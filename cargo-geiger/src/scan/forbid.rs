@@ -4,13 +4,13 @@ use crate::format::print::{OutputFormat, PrintConfig};
 use crate::graph::Graph;
 
 use super::find::find_unsafe;
-use super::report::{QuickReportEntry, QuickSafetyReport};
 use super::{package_metrics, ScanMode, ScanParameters};
 
 use table::scan_forbid_to_table;
 
 use cargo::core::{PackageId, PackageSet};
 use cargo::{CliResult, Config};
+use cargo_geiger_serde::{QuickReportEntry, QuickSafetyReport};
 
 pub fn scan_forbid_unsafe(
     package_set: &PackageSet,

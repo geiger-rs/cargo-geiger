@@ -6,7 +6,6 @@ use crate::graph::Graph;
 use crate::rs_file::resolve_rs_file_deps;
 
 use super::find::find_unsafe;
-use super::report::{ReportEntry, SafetyReport};
 use super::{
     list_files_used_but_not_scanned, package_metrics, unsafe_stats,
     ScanDetails, ScanMode, ScanParameters,
@@ -18,6 +17,7 @@ use cargo::core::compiler::CompileMode;
 use cargo::core::{PackageId, PackageSet, Workspace};
 use cargo::ops::CompileOptions;
 use cargo::{CliError, CliResult, Config};
+use cargo_geiger_serde::{ReportEntry, SafetyReport};
 
 pub fn scan_unsafe(
     workspace: &Workspace,

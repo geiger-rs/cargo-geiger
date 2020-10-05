@@ -192,6 +192,7 @@ dependencies = [
  "assert_cmd",
  "better-panic",
  "cargo",
+ "cargo-geiger-serde",
  "cargo-platform",
  "colored",
  "console 0.11.3",
@@ -213,6 +214,11 @@ dependencies = [
 [[package]]
 name = "cargo-geiger-serde"
 version = "0.1.0"
+dependencies = [
+ "semver 0.10.0",
+ "serde",
+ "url",
+]
 
 [[package]]
 name = "cargo-platform"
@@ -523,8 +529,8 @@ dependencies = [
 name = "geiger"
 version = "0.4.5"
 dependencies = [
+ "cargo-geiger-serde",
  "proc-macro2",
- "serde",
  "syn",
 ]
 
@@ -1448,6 +1454,7 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]
