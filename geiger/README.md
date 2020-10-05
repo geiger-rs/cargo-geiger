@@ -46,11 +46,11 @@ Changelog
 ### 0.1.0
  - Parts of `cargo-geiger` has been moved to this crate.
 
-[#52]: https://github.com/anderejd/cargo-geiger/pull/52
-[#55]: https://github.com/anderejd/cargo-geiger/pull/55
-[#57]: https://github.com/anderejd/cargo-geiger/pull/57
-[#71]: https://github.com/anderejd/cargo-geiger/issues/71
-[#72]: https://github.com/anderejd/cargo-geiger/pull/72
+[#52]: https://github.com/rust-secure-code/cargo-geiger/pull/52
+[#55]: https://github.com/rust-secure-code/cargo-geiger/pull/55
+[#57]: https://github.com/rust-secure-code/cargo-geiger/pull/57
+[#71]: https://github.com/rust-secure-code/cargo-geiger/issues/71
+[#72]: https://github.com/rust-secure-code/cargo-geiger/pull/72
 [cargo-geiger]: https://crates.io/crates/cargo-geiger
 [cargo]: https://crates.io/crates/cargo
 

@@ -59,7 +59,7 @@ impl Executor for CustomExecutor {
 
         // This can be different from the cwd used to launch the wrapping cargo
         // plugin. Discovered while fixing
-        // https://github.com/anderejd/cargo-geiger/issues/19
+        // https://github.com/rust-secure-code/cargo-geiger/issues/19
         let cwd = cmd
             .get_cwd()
             .map(PathBuf::from)
