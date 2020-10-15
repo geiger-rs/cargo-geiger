@@ -13,6 +13,4 @@ pub enum Source {
         url: Url,
     },
     Path(Url),
-    LocalRegistry(Url),
-    Directory(Url),
 }
