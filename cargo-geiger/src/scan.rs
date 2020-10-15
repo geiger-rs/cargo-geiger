@@ -171,7 +171,7 @@ fn package_metrics<'a>(
                 indices.push(dep_index);
             }
             let dep = from_cargo_package_id(graph.graph[dep_index].id);
-            package.push_dependency(dep, from_cargo_dependency_kind(*edge.weight()));
+            package.add_dependency(dep, from_cargo_dependency_kind(*edge.weight()));
         }
         match geiger_context.pack_id_to_metrics.get(&id) {
             Some(m) => Some((package, Some(m))),

@@ -1,6 +1,7 @@
 use crate::PackageId;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::{HashMap, HashSet},
     ops::{Add, AddAssign},
     path::PathBuf,
 };
@@ -9,27 +10,30 @@ use std::{
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct PackageInfo {
     pub id: PackageId,
-    pub dependencies: Vec<PackageId>,
-    pub dev_dependencies: Vec<PackageId>,
-    pub build_dependencies: Vec<PackageId>,
+    #[serde(serialize_with = "set_serde::serialize")]
+    pub dependencies: HashSet<PackageId>,
+    #[serde(serialize_with = "set_serde::serialize")]
+    pub dev_dependencies: HashSet<PackageId>,
+    #[serde(serialize_with = "set_serde::serialize")]
+    pub build_dependencies: HashSet<PackageId>,
 }
 
 impl PackageInfo {
     pub fn new(id: PackageId) -> Self {
         PackageInfo {
             id,
-            dependencies: Vec::new(),
-            dev_dependencies: Vec::new(),
-            build_dependencies: Vec::new(),
+            dependencies: Default::default(),
+            dev_dependencies: Default::default(),
+            build_dependencies: Default::default(),
         }
     }
 
-    pub fn push_dependency(&mut self, dep: PackageId, kind: DependencyKind) {
+    pub fn add_dependency(&mut self, dep: PackageId, kind: DependencyKind) {
         match kind {
-            DependencyKind::Normal => self.dependencies.push(dep),
-            DependencyKind::Development => self.dev_dependencies.push(dep),
-            DependencyKind::Build => self.build_dependencies.push(dep),
-        }
+            DependencyKind::Normal => self.dependencies.insert(dep),
+            DependencyKind::Development => self.dev_dependencies.insert(dep),
+            DependencyKind::Build => self.build_dependencies.insert(dep),
+        };
     }
 }
 
@@ -45,9 +49,11 @@ pub struct QuickReportEntry {
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct QuickSafetyReport {
     /// Packages that were scanned successfully
-    pub packages: Vec<QuickReportEntry>,
+    #[serde(with = "entry_serde")]
+    pub packages: HashMap<PackageId, QuickReportEntry>,
     /// Packages that were not scanned successfully
-    pub packages_without_metrics: Vec<PackageId>,
+    #[serde(serialize_with = "set_serde::serialize")]
+    pub packages_without_metrics: HashSet<PackageId>,
 }
 
 /// Entry of the report generated from scanning for the use of `unsafe`
@@ -61,9 +67,12 @@ pub struct ReportEntry {
 /// Report generated from scanning for the use of `unsafe`
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct SafetyReport {
-    pub packages: Vec<ReportEntry>,
-    pub packages_without_metrics: Vec<PackageId>,
-    pub used_but_not_scanned_files: Vec<PathBuf>,
+    #[serde(with = "entry_serde")]
+    pub packages: HashMap<PackageId, ReportEntry>,
+    #[serde(serialize_with = "set_serde::serialize")]
+    pub packages_without_metrics: HashSet<PackageId>,
+    #[serde(serialize_with = "set_serde::serialize")]
+    pub used_but_not_scanned_files: HashSet<PathBuf>,
 }
 
 /// Unsafety usage in a package
@@ -162,5 +171,108 @@ impl Add for CounterBlock {
 impl AddAssign for CounterBlock {
     fn add_assign(&mut self, rhs: Self) {
         *self = self.clone() + rhs;
+    }
+}
+
+trait Entry {
+    fn package_id(&self) -> &PackageId;
+}
+
+impl Entry for ReportEntry {
+    fn package_id(&self) -> &PackageId {
+        &self.package.id
+    }
+}
+
+impl Entry for QuickReportEntry {
+    fn package_id(&self) -> &PackageId {
+        &self.package.id
+    }
+}
+
+mod entry_serde {
+    use crate::PackageId;
+    use serde::{
+        ser::SerializeSeq,
+        Deserialize, Deserializer, Serialize, Serializer,
+    };
+    use std::{
+        collections::HashMap,
+        fmt,
+        marker::PhantomData,
+    };
+
+    pub(super) fn serialize<T, S>(
+        map: &HashMap<PackageId, T>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        T: Serialize + super::Entry,
+        S: Serializer,
+    {
+        let mut values = map.values().collect::<Vec<_>>();
+        values.sort_by(|a, b| a.package_id().cmp(b.package_id()));
+        let mut seq = serializer.serialize_seq(Some(values.len()))?;
+        for value in values {
+            seq.serialize_element(value)?;
+        }
+        seq.end()
+    }
+
+    pub(super) fn deserialize<'de, T, D>(deserializer: D) -> Result<HashMap<PackageId, T>, D::Error>
+    where
+        T: Deserialize<'de> + super::Entry,
+        D: Deserializer<'de>,
+    {
+        struct Visitor<U>(PhantomData<fn() -> U>);
+
+        impl<'d, U> serde::de::Visitor<'d> for Visitor<U>
+        where
+            U: Deserialize<'d> + super::Entry,
+        {
+            type Value = HashMap<PackageId, U>;
+
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("a sequence")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'d>,
+            {
+                let mut map = HashMap::new();
+                while let Some(item) = seq.next_element::<U>()? {
+                    map.insert(item.package_id().clone(), item);
+                }
+                Ok(map)
+            }
+        }
+
+        deserializer.deserialize_seq(Visitor(PhantomData))
+    }
+}
+
+mod set_serde {
+    use serde::{
+        ser::SerializeSeq,
+        Serialize, Serializer,
+    };
+    use std::collections::HashSet;
+
+    pub(super) fn serialize<T, S>(
+        set: &HashSet<T>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        T: Serialize + Ord,
+        S: Serializer,
+    {
+        let mut values = set.iter().collect::<Vec<_>>();
+        values.sort_by(|a, b| a.cmp(b));
+        let mut seq = serializer.serialize_seq(Some(values.len()))?;
+        for value in values {
+            seq.serialize_element(value)?;
+        }
+        seq.end()
     }
 }

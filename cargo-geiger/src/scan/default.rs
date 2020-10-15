@@ -131,16 +131,16 @@ fn scan_to_report(
         let pack_metrics = match pack_metrics {
             Some(m) => m,
             None => {
-                report.packages_without_metrics.push(package.id);
+                report.packages_without_metrics.insert(package.id);
                 continue;
             }
         };
         let unsafety = unsafe_stats(pack_metrics, &rs_files_used);
         let entry = ReportEntry { package, unsafety };
-        report.packages.push(entry);
+        report.packages.insert(entry.package.id.clone(), entry);
     }
     report.used_but_not_scanned_files =
-        list_files_used_but_not_scanned(&geiger_context, &rs_files_used);
+        list_files_used_but_not_scanned(&geiger_context, &rs_files_used).into_iter().collect();
     let s = match output_format {
         OutputFormat::Json => serde_json::to_string(&report).unwrap(),
     };

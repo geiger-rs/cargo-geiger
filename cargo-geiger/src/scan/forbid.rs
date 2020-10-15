@@ -54,7 +54,7 @@ fn scan_forbid_to_report(
         let pack_metrics = match package_metrics {
             Some(m) => m,
             None => {
-                report.packages_without_metrics.push(package.id);
+                report.packages_without_metrics.insert(package.id);
                 continue;
             }
         };
@@ -67,7 +67,7 @@ fn scan_forbid_to_report(
             package,
             forbids_unsafe,
         };
-        report.packages.push(entry);
+        report.packages.insert(entry.package.id.clone(), entry);
     }
     let s = match output_format {
         OutputFormat::Json => serde_json::to_string(&report).unwrap(),
