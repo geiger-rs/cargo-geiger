@@ -370,28 +370,31 @@ fn make_workspace_source(cx: &Context, workspace: &str, name: &str) -> Source {
 }
 
 struct Context {
-    dir: TempDir,
+    _dir: TempDir,
+    path: PathBuf,
 }
 
 impl Context {
     fn new() -> Self {
         let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-        let path = Path::new(&manifest_dir).join("../test_crates");
+        let src_path = Path::new(&manifest_dir).join("../test_crates");
         let dir = TempDir::new().unwrap();
         let copy_options = fs_extra::dir::CopyOptions {
             content_only: true,
             ..Default::default()
         };
-        fs_extra::dir::copy(&path, dir.path(), &copy_options).expect("Failed to copy tests");
-        Context { dir }
+        fs_extra::dir::copy(&src_path, dir.path(), &copy_options).expect("Failed to copy tests");
+        let path = dir.path().canonicalize().expect("Failed to canonicalize temporary path");
+        let _dir = dir;
+        Context { _dir, path }
     }
 
     fn crate_dir(&self, name: &str) -> PathBuf {
-        self.dir.path().join(name)
+        self.path.join(name)
     }
 
     fn workspace_crate_dir(&self, workspace: &str, name: &str) -> PathBuf {
-        let mut p = self.dir.path().to_owned();
+        let mut p = self.path.clone();
         p.extend(&[workspace, name]);
         p
     }
