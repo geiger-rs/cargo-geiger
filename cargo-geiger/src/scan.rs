@@ -17,6 +17,7 @@ use cargo_geiger_serde::{CounterBlock, DependencyKind, PackageInfo, UnsafeInfo};
 use petgraph::visit::EdgeRef;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use url::Url;
 
 /// Provides a more terse and searchable name for the wrapped generic
 /// collection.
@@ -185,7 +186,19 @@ fn package_metrics<'a>(
 
 fn from_cargo_package_id(id: PackageId) -> cargo_geiger_serde::PackageId {
     let source = id.source_id();
-    let source_url = source.url().clone();
+    let source_url = source.url();
+    // Canonicalize paths as cargo does not seem to do so on all platforms.
+    let source_url = if source_url.scheme() == "file" {
+        match source_url.to_file_path() {
+            Ok(p) => {
+                let p = p.canonicalize().expect("A package source path could not be canonicalized");
+                Url::from_file_path(p).expect("A URL could not be created from a file path")
+            }
+            Err(_) => source_url.clone(),
+        }
+    } else {
+        source_url.clone()
+    };
     let source = if source.is_git() {
         cargo_geiger_serde::Source::Git {
             url: source_url,
