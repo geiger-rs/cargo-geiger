@@ -1,8 +1,17 @@
+mod handle_text_tree_line;
+mod total_package_counts;
+
 use crate::format::emoji_symbols::EmojiSymbols;
-use crate::format::print::{colorize, PrintConfig};
-use crate::format::{get_kind_group_name, CrateDetectionStatus, SymbolKind};
-use crate::scan::{unsafe_stats, GeigerContext};
+use crate::format::print_config::{colorize, PrintConfig};
+use crate::format::CrateDetectionStatus;
+use crate::scan::GeigerContext;
 use crate::tree::TextTreeLine;
+
+use handle_text_tree_line::{
+    handle_text_tree_line_extra_deps_group, handle_text_tree_line_package,
+    HandlePackageParameters,
+};
+use total_package_counts::TotalPackageCounts;
 
 use cargo::core::package::PackageSet;
 use geiger::{Count, CounterBlock};
@@ -22,128 +31,44 @@ pub const UNSAFE_COUNTERS_HEADER: [&str; 6] = [
 ];
 
 pub fn create_table_from_text_tree_lines(
-    geiger_context: &GeigerContext,
     package_set: &PackageSet,
-    print_config: &PrintConfig,
-    rs_files_used: &HashSet<PathBuf>,
+    table_parameters: &TableParameters,
     text_tree_lines: Vec<TextTreeLine>,
 ) -> (Vec<String>, u64) {
     let mut table_lines = Vec::<String>::new();
     let mut total_package_counts = TotalPackageCounts::new();
     let mut warning_count = 0;
-    let mut visited = HashSet::new();
-    let emoji_symbols = EmojiSymbols::new(print_config.charset);
+    let mut visited_package_ids = HashSet::new();
+    let emoji_symbols =
+        EmojiSymbols::new(table_parameters.print_config.charset);
+    let mut handle_package_parameters = HandlePackageParameters {
+        total_package_counts: &mut total_package_counts,
+        visited_package_ids: &mut visited_package_ids,
+        warning_count: &mut warning_count,
+    };
+
     for text_tree_line in text_tree_lines {
         match text_tree_line {
-            TextTreeLine::Package { id, tree_vines } => {
-                let package_is_new = visited.insert(id);
-                let pack = package_set.get_one(id).unwrap_or_else(|_| {
-                    // TODO: Avoid panic, return Result.
-                    panic!("Expected to find package by id: {}", id);
-                });
-                let pack_metrics =
-                    match geiger_context.pack_id_to_metrics.get(&id) {
-                        Some(m) => m,
-                        None => {
-                            warning_count += package_is_new as u64;
-                            eprintln!(
-                                "WARNING: No metrics found for package: {}",
-                                id
-                            );
-                            continue;
-                        }
-                    };
-                let unsafety = unsafe_stats(pack_metrics, rs_files_used);
-                if package_is_new {
-                    total_package_counts.total_counter_block +=
-                        unsafety.used.clone();
-                    total_package_counts.total_unused_counter_block +=
-                        unsafety.unused.clone();
-                }
-                let unsafe_found = unsafety.used.has_unsafe();
-                let crate_forbids_unsafe = unsafety.forbids_unsafe;
-                let total_inc = package_is_new as i32;
-                let crate_detection_status =
-                    match (unsafe_found, crate_forbids_unsafe) {
-                        (false, true) => {
-                            total_package_counts
-                                .none_detected_forbids_unsafe += total_inc;
-                            CrateDetectionStatus::NoneDetectedForbidsUnsafe
-                        }
-                        (false, false) => {
-                            total_package_counts.none_detected_allows_unsafe +=
-                                total_inc;
-                            CrateDetectionStatus::NoneDetectedAllowsUnsafe
-                        }
-                        (true, _) => {
-                            total_package_counts.unsafe_detected += total_inc;
-                            CrateDetectionStatus::UnsafeDetected
-                        }
-                    };
-
-                let icon = match crate_detection_status {
-                    CrateDetectionStatus::NoneDetectedForbidsUnsafe => {
-                        emoji_symbols.emoji(SymbolKind::Lock)
-                    }
-                    CrateDetectionStatus::NoneDetectedAllowsUnsafe => {
-                        emoji_symbols.emoji(SymbolKind::QuestionMark)
-                    }
-                    CrateDetectionStatus::UnsafeDetected => {
-                        emoji_symbols.emoji(SymbolKind::Rads)
-                    }
-                };
-
-                let package_name = colorize(
-                    format!(
-                        "{}",
-                        print_config
-                            .format
-                            .display(&id, pack.manifest().metadata())
-                    ),
-                    &crate_detection_status,
-                );
-                let unsafe_info = colorize(
-                    table_row(&unsafety.used, &unsafety.unused),
-                    &crate_detection_status,
-                );
-
-                let shift_chars = unsafe_info.chars().count() + 4;
-
-                let mut line = String::new();
-                line.push_str(
-                    format!("{}  {: <2}", unsafe_info, icon).as_str(),
-                );
-
-                // Here comes some special control characters to position the cursor
-                // properly for printing the last column containing the tree vines, after
-                // the emoji icon. This is a workaround for a potential bug where the
-                // radiation emoji will visually cover two characters in width but only
-                // count as a single character if using the column formatting provided by
-                // Rust. This could be unrelated to Rust and a quirk of this particular
-                // symbol or something in the Terminal app on macOS.
-                if emoji_symbols.will_output_emoji() {
-                    line.push_str("\r"); // Return the cursor to the start of the line.
-                    line.push_str(format!("\x1B[{}C", shift_chars).as_str()); // Move the cursor to the right so that it points to the icon character.
-                }
-
-                table_lines
-                    .push(format!("{} {}{}", line, tree_vines, package_name))
-            }
-            TextTreeLine::ExtraDepsGroup { kind, tree_vines } => {
-                let name = get_kind_group_name(kind);
-                if name.is_none() {
-                    continue;
-                }
-                let name = name.unwrap();
-
-                // TODO: Fix the alignment on macOS (others too?)
-                table_lines.push(format!(
-                    "{}{}{}",
-                    table_row_empty(),
-                    tree_vines,
-                    name
-                ))
-            }
+            TextTreeLine::ExtraDepsGroup {
+                kind: dep_kind,
+                tree_vines,
+            } => handle_text_tree_line_extra_deps_group(
+                dep_kind,
+                &mut table_lines,
+                tree_vines,
+            ),
+            TextTreeLine::Package {
+                id: package_id,
+                tree_vines,
+            } => handle_text_tree_line_package(
+                &emoji_symbols,
+                &mut handle_package_parameters,
+                package_id,
+                package_set,
+                &mut table_lines,
+                table_parameters,
+                tree_vines,
+            ),
         }
     }
 
@@ -165,38 +90,10 @@ pub fn create_table_from_text_tree_lines(
     (table_lines, warning_count)
 }
 
-struct TotalPackageCounts {
-    none_detected_forbids_unsafe: i32,
-    none_detected_allows_unsafe: i32,
-    unsafe_detected: i32,
-    total_counter_block: CounterBlock,
-    total_unused_counter_block: CounterBlock,
-}
-
-impl TotalPackageCounts {
-    fn new() -> TotalPackageCounts {
-        TotalPackageCounts {
-            none_detected_forbids_unsafe: 0,
-            none_detected_allows_unsafe: 0,
-            unsafe_detected: 0,
-            total_counter_block: CounterBlock::default(),
-            total_unused_counter_block: CounterBlock::default(),
-        }
-    }
-
-    fn get_total_detection_status(&self) -> CrateDetectionStatus {
-        match (
-            self.none_detected_forbids_unsafe > 0,
-            self.none_detected_allows_unsafe > 0,
-            self.unsafe_detected > 0,
-        ) {
-            (_, _, true) => CrateDetectionStatus::UnsafeDetected,
-            (true, false, false) => {
-                CrateDetectionStatus::NoneDetectedForbidsUnsafe
-            }
-            _ => CrateDetectionStatus::NoneDetectedAllowsUnsafe,
-        }
-    }
+pub struct TableParameters<'a> {
+    pub geiger_context: &'a GeigerContext,
+    pub print_config: &'a PrintConfig,
+    pub rs_files_used: &'a HashSet<PathBuf>,
 }
 
 fn table_footer(
@@ -250,14 +147,15 @@ mod table_tests {
     use super::*;
 
     use crate::rs_file::RsFileMetricsWrapper;
-    use crate::scan::PackageMetrics;
+    use crate::scan::{unsafe_stats, PackageMetrics};
 
     use geiger::RsFileMetrics;
+    use rstest::*;
     use std::collections::HashMap;
     use std::path::Path;
     use strum::IntoEnumIterator;
 
-    #[test]
+    #[rstest]
     fn table_footer_test() {
         let used_counter_block = create_counter_block();
         let not_used_counter_block = create_counter_block();
@@ -279,7 +177,7 @@ mod table_tests {
         }
     }
 
-    #[test]
+    #[rstest]
     fn table_row_test() {
         let mut rs_path_to_metrics =
             HashMap::<PathBuf, RsFileMetricsWrapper>::new();
@@ -313,55 +211,38 @@ mod table_tests {
         assert_eq!(table_row, "4/6        8/12         12/18  16/24   20/30  ");
     }
 
-    #[test]
+    #[rstest]
     fn table_row_empty_test() {
         let empty_table_row = table_row_empty();
         assert_eq!(empty_table_row.len(), 51);
     }
 
-    #[test]
-    fn total_package_counts_get_total_detection_status_tests() {
-        let total_package_counts_unsafe_detected = TotalPackageCounts {
-            none_detected_forbids_unsafe: 0,
-            none_detected_allows_unsafe: 0,
-            unsafe_detected: 1,
+    #[rstest(
+        input_none_detected_forbids_unsafe,
+        input_none_detected_allows_unsafe,
+        input_unsafe_detected,
+        expected_crate_detection_status,
+        case(0, 0, 1, CrateDetectionStatus::UnsafeDetected),
+        case(1, 0, 0, CrateDetectionStatus::NoneDetectedForbidsUnsafe),
+        case(4, 1, 0, CrateDetectionStatus::NoneDetectedAllowsUnsafe)
+    )]
+    fn total_package_counts_get_total_detection_status_tests(
+        input_none_detected_forbids_unsafe: i32,
+        input_none_detected_allows_unsafe: i32,
+        input_unsafe_detected: i32,
+        expected_crate_detection_status: CrateDetectionStatus,
+    ) {
+        let total_detection_status = TotalPackageCounts {
+            none_detected_forbids_unsafe: input_none_detected_forbids_unsafe,
+            none_detected_allows_unsafe: input_none_detected_allows_unsafe,
+            unsafe_detected: input_unsafe_detected,
             total_counter_block: CounterBlock::default(),
             total_unused_counter_block: CounterBlock::default(),
         };
 
         assert_eq!(
-            total_package_counts_unsafe_detected.get_total_detection_status(),
-            CrateDetectionStatus::UnsafeDetected
-        );
-
-        let total_package_counts_none_detected_forbids_unsafe =
-            TotalPackageCounts {
-                none_detected_forbids_unsafe: 1,
-                none_detected_allows_unsafe: 0,
-                unsafe_detected: 0,
-                total_counter_block: CounterBlock::default(),
-                total_unused_counter_block: CounterBlock::default(),
-            };
-
-        assert_eq!(
-            total_package_counts_none_detected_forbids_unsafe
-                .get_total_detection_status(),
-            CrateDetectionStatus::NoneDetectedForbidsUnsafe
-        );
-
-        let total_package_counts_none_detected_allows_unsafe =
-            TotalPackageCounts {
-                none_detected_forbids_unsafe: 4,
-                none_detected_allows_unsafe: 1,
-                unsafe_detected: 0,
-                total_counter_block: CounterBlock::default(),
-                total_unused_counter_block: CounterBlock::default(),
-            };
-
-        assert_eq!(
-            total_package_counts_none_detected_allows_unsafe
-                .get_total_detection_status(),
-            CrateDetectionStatus::NoneDetectedAllowsUnsafe
+            total_detection_status.get_total_detection_status(),
+            expected_crate_detection_status
         );
     }
 

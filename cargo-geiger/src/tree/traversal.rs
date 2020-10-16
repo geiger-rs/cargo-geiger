@@ -1,4 +1,4 @@
-use crate::format::print::{Prefix, PrintConfig};
+use crate::format::print_config::{Prefix, PrintConfig};
 use crate::graph::{Graph, Node};
 use crate::tree::{get_tree_symbols, TextTreeLine};
 

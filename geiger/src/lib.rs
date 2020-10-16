@@ -116,7 +116,7 @@ pub struct RsFileMetrics {
     pub forbids_unsafe: bool,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum IncludeTests {
     Yes,
     No,
@@ -225,10 +225,7 @@ fn file_forbids_unsafe(f: &syn::File) -> bool {
     use syn::NestedMeta;
     f.attrs
         .iter()
-        .filter(|a| match a.style {
-            AttrStyle::Inner(_) => true,
-            _ => false,
-        })
+        .filter(|a| matches!(a.style, AttrStyle::Inner(_)))
         .filter_map(|a| a.parse_meta().ok())
         .filter(|meta| match meta {
             Meta::List(MetaList {

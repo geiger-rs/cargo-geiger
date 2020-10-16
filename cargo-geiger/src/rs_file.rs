@@ -257,51 +257,67 @@ fn parse_rustc_dep_info(
 #[cfg(test)]
 mod rs_file_tests {
     use super::*;
+    use rstest::*;
 
-    #[test]
-    fn into_rs_code_file_test() {
+    #[rstest(
+        input_target_kind,
+        expected_rs_file,
+        case(
+            TargetKind::Lib(vec![]),
+            RsFile::LibRoot(
+                Path::new("test_path.ext").to_path_buf()
+            )
+        ),
+        case(
+            TargetKind::Bin,
+            RsFile::BinRoot(
+                Path::new("test_path.ext").to_path_buf()
+            )
+        ),
+        case(
+            TargetKind::Test,
+            RsFile::Other(
+                Path::new("test_path.ext").to_path_buf()
+            )
+        ),
+        case(
+            TargetKind::Bench,
+            RsFile::Other(
+                Path::new("test_path.ext").to_path_buf()
+            )
+        ),
+        case(
+            TargetKind::ExampleLib(vec![]),
+            RsFile::Other(
+                Path::new("test_path.ext").to_path_buf()
+            )
+        ),
+        case(
+            TargetKind::ExampleBin,
+            RsFile::Other(
+                Path::new("test_path.ext").to_path_buf()
+            )
+        ),
+        case(
+            TargetKind::CustomBuild,
+            RsFile::CustomBuildRoot(
+                Path::new("test_path.ext").to_path_buf()
+            )
+        ),
+    )]
+    fn into_rs_code_file_test(
+        input_target_kind: TargetKind,
+        expected_rs_file: RsFile
+    ) {
         let path_buf = Path::new("test_path.ext").to_path_buf();
 
         assert_eq!(
-            into_rs_code_file(&TargetKind::Lib(vec![]), path_buf.clone()),
-            RsFile::LibRoot(path_buf.clone())
-        );
-
-        assert_eq!(
-            into_rs_code_file(&TargetKind::Bin, path_buf.clone()),
-            RsFile::BinRoot(path_buf.clone())
-        );
-
-        assert_eq!(
-            into_rs_code_file(&TargetKind::Test, path_buf.clone()),
-            RsFile::Other(path_buf.clone())
-        );
-
-        assert_eq!(
-            into_rs_code_file(&TargetKind::Bench, path_buf.clone()),
-            RsFile::Other(path_buf.clone())
-        );
-
-        assert_eq!(
-            into_rs_code_file(
-                &TargetKind::ExampleLib(vec![]),
-                path_buf.clone()
-            ),
-            RsFile::Other(path_buf.clone())
-        );
-
-        assert_eq!(
-            into_rs_code_file(&TargetKind::ExampleBin, path_buf.clone()),
-            RsFile::Other(path_buf.clone())
-        );
-
-        assert_eq!(
-            into_rs_code_file(&TargetKind::CustomBuild, path_buf.clone()),
-            RsFile::CustomBuildRoot(path_buf.clone())
+            into_rs_code_file(&input_target_kind, path_buf),
+            expected_rs_file
         );
     }
 
-    #[test]
+    #[rstest]
     fn is_file_with_ext_test() {
         let config = Config::default().unwrap();
         let cwd = config.cwd();

@@ -90,3 +90,42 @@ impl<'a> Iterator for Parser<'a> {
         }
     }
 }
+
+#[cfg(test)]
+pub mod parse_tests {
+    use super::*;
+
+    use rstest::*;
+
+    #[rstest]
+    fn parser_new_test() {
+        let parser_s = "parser_string";
+        let parser = Parser::new(parser_s);
+        assert_eq!(parser.s, parser_s);
+    }
+
+    #[rstest]
+    fn parser_argument_test() {
+        let mut parser = Parser::new("parser 1.2.3");
+        let raw_chunk = parser.argument();
+        assert_eq!(raw_chunk, RawChunk::Argument("parser"));
+    }
+
+    #[rstest(
+        input_s_string,
+        expected_name_string,
+        case("parser 1.2.3", "parser"),
+        case("1.2.3 parser", "")
+    )]
+    fn parser_name_test(input_s_string: &str, expected_name_string: &str) {
+        let mut parser = Parser::new(input_s_string);
+        assert_eq!(parser.name(), expected_name_string)
+    }
+
+    #[rstest]
+    fn parser_text_test() {
+        let parser_s = "parser 1.2.3";
+        let mut parser = Parser::new(parser_s);
+        assert_eq!(parser.text(0), RawChunk::Text(parser_s));
+    }
+}

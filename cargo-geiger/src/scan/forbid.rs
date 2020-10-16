@@ -1,6 +1,6 @@
 mod table;
 
-use crate::format::print::{OutputFormat, PrintConfig};
+use crate::format::print_config::{OutputFormat, PrintConfig};
 use crate::graph::Graph;
 
 use super::find::find_unsafe;

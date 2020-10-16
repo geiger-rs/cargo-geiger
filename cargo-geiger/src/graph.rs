@@ -12,6 +12,7 @@ use petgraph::graph::NodeIndex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
+#[derive(Debug, PartialEq)]
 pub enum ExtraDeps {
     All,
     Build,
@@ -202,20 +203,95 @@ fn build_graph_prerequisites<'a>(
 mod graph_tests {
     use super::*;
 
-    #[test]
-    fn extra_deps_allows_test() {
-        assert_eq!(ExtraDeps::All.allows(DepKind::Normal), true);
-        assert_eq!(ExtraDeps::Build.allows(DepKind::Normal), true);
-        assert_eq!(ExtraDeps::Dev.allows(DepKind::Normal), true);
-        assert_eq!(ExtraDeps::NoMore.allows(DepKind::Normal), true);
+    use fake::{Fake, Faker};
+    use rstest::*;
 
-        assert_eq!(ExtraDeps::All.allows(DepKind::Build), true);
-        assert_eq!(ExtraDeps::All.allows(DepKind::Development), true);
+    #[rstest(
+        input_extra_deps,
+        input_dep_kind,
+        expected_allows,
+        case(ExtraDeps::All, DepKind::Normal, true),
+        case(ExtraDeps::Build, DepKind::Normal, true),
+        case(ExtraDeps::Dev, DepKind::Normal, true),
+        case(ExtraDeps::NoMore, DepKind::Normal, true),
+        case(ExtraDeps::All, DepKind::Build, true),
+        case(ExtraDeps::All, DepKind::Development, true),
+        case(ExtraDeps::Build, DepKind::Build, true),
+        case(ExtraDeps::Build, DepKind::Development, false),
+        case(ExtraDeps::Dev, DepKind::Build, false),
+        case(ExtraDeps::Dev, DepKind::Development, true)
+    )]
+    fn extra_deps_allows_test(
+        input_extra_deps: ExtraDeps,
+        input_dep_kind: DepKind,
+        expected_allows: bool,
+    ) {
+        assert_eq!(input_extra_deps.allows(input_dep_kind), expected_allows);
+    }
 
-        assert_eq!(ExtraDeps::Build.allows(DepKind::Build), true);
-        assert_eq!(ExtraDeps::Build.allows(DepKind::Development), false);
+    #[rstest(
+        input_all_deps,
+        input_build_deps,
+        input_dev_deps,
+        expected_extra_deps,
+        case(true, false, false, ExtraDeps::All),
+        case(false, true, false, ExtraDeps::Build),
+        case(false, false, true, ExtraDeps::Dev),
+        case(false, false, false, ExtraDeps::NoMore)
+    )]
+    fn build_graph_prerequisites_extra_deps_test(
+        input_all_deps: bool,
+        input_build_deps: bool,
+        input_dev_deps: bool,
+        expected_extra_deps: ExtraDeps,
+    ) {
+        let mut args: Args = Faker.fake();
 
-        assert_eq!(ExtraDeps::Dev.allows(DepKind::Build), false);
-        assert_eq!(ExtraDeps::Dev.allows(DepKind::Development), true);
+        args.all_deps = input_all_deps;
+        args.build_deps = input_build_deps;
+        args.dev_deps = input_dev_deps;
+
+        let config_host = InternedString::new("config_host");
+
+        let result = build_graph_prerequisites(&args, &config_host);
+
+        assert!(result.is_ok());
+
+        let (extra_deps, _) = result.unwrap();
+
+        assert_eq!(extra_deps, expected_extra_deps);
+    }
+
+    #[rstest(
+        input_all_targets,
+        input_target,
+        expected_target,
+        case(true, None, None),
+        case(false, None, Some("default_config_host")),
+        case(
+            false,
+            Some(String::from("provided_config_host")),
+            Some("provided_config_host")
+        )
+    )]
+    fn build_graph_prerequisites_all_targets_test(
+        input_all_targets: bool,
+        input_target: Option<String>,
+        expected_target: Option<&str>,
+    ) {
+        let mut args: Args = Faker.fake();
+
+        args.all_targets = input_all_targets;
+        args.target = input_target;
+
+        let config_host = InternedString::new("default_config_host");
+
+        let result = build_graph_prerequisites(&args, &config_host);
+
+        assert!(result.is_ok());
+
+        let (_, target) = result.unwrap();
+
+        assert_eq!(target, expected_target);
     }
 }

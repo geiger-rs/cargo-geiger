@@ -1,6 +1,6 @@
 use crate::format::emoji_symbols::EmojiSymbols;
 use crate::format::pattern::Pattern;
-use crate::format::print::PrintConfig;
+use crate::format::print_config::PrintConfig;
 use crate::format::{get_kind_group_name, SymbolKind};
 use crate::graph::Graph;
 use crate::tree::traversal::walk_dependency_tree;
@@ -116,7 +116,7 @@ fn handle_package_text_tree_line(
 
     let package = package_set.get_one(package_id).unwrap(); // FIXME
     let name = format_package_name(package, &print_config.format);
-    let package_metrics = geiger_ctx.pack_id_to_metrics.get(&package_id);
+    let package_metrics = geiger_ctx.package_id_to_metrics.get(&package_id);
     let package_forbids_unsafe = match package_metrics {
         None => false, // no metrics available, .rs parsing failed?
         Some(package_metric) => package_metric.rs_path_to_metrics.iter().all(
@@ -143,8 +143,9 @@ mod forbid_tests {
 
     use cargo::core::Workspace;
     use cargo::util::important_paths;
+    use rstest::*;
 
-    #[test]
+    #[rstest]
     fn construct_scan_mode_forbid_only_output_key_lines_test() {
         let emoji_symbols = EmojiSymbols::new(Charset::Utf8);
         let output_key_lines = construct_key_lines(&emoji_symbols);
@@ -152,7 +153,7 @@ mod forbid_tests {
         assert_eq!(output_key_lines.len(), 5);
     }
 
-    #[test]
+    #[rstest]
     fn format_package_name_test() {
         let pattern = Pattern::try_build("{p}").unwrap();
 

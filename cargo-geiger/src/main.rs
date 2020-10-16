@@ -113,7 +113,7 @@ fn main() {
             cargo::exit_with_error(e.into(), &mut shell)
         }
     };
-    let args = Args::parse_args().unwrap();
+    let args = Args::parse_args(pico_args::Arguments::from_env()).unwrap();
     if let Err(e) = real_main(&args, &mut config) {
         let mut shell = Shell::new();
         cargo::exit_with_error(e, &mut shell)

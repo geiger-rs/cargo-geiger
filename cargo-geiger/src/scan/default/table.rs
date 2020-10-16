@@ -1,6 +1,6 @@
 use crate::format::emoji_symbols::EmojiSymbols;
 use crate::format::table::{
-    create_table_from_text_tree_lines, UNSAFE_COUNTERS_HEADER,
+    create_table_from_text_tree_lines, TableParameters, UNSAFE_COUNTERS_HEADER,
 };
 use crate::format::SymbolKind;
 use crate::graph::Graph;
@@ -48,12 +48,16 @@ pub fn scan_to_table(
         &graph,
         &scan_parameters.print_config,
     );
+    let table_parameters = TableParameters {
+        geiger_context: &geiger_context,
+        print_config: &scan_parameters.print_config,
+        rs_files_used: &rs_files_used,
+    };
+
     let (mut table_lines, mut warning_count) =
         create_table_from_text_tree_lines(
-            &geiger_context,
             package_set,
-            scan_parameters.print_config,
-            &rs_files_used,
+            &table_parameters,
             text_tree_lines,
         );
     scan_output_lines.append(&mut table_lines);
@@ -84,7 +88,7 @@ pub fn scan_to_table(
 
 #[derive(Debug)]
 struct FoundWarningsError {
-    pub warning_count: u64,
+    warning_count: u64,
 }
 
 impl Error for FoundWarningsError {}
