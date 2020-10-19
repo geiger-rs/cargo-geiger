@@ -5,7 +5,7 @@ use crate::scan::{unsafe_stats, GeigerContext};
 use crate::tree::TextTreeLine;
 
 use cargo::core::package::PackageSet;
-use geiger::{Count, CounterBlock};
+use cargo_geiger_serde::{Count, CounterBlock};
 use std::collections::HashSet;
 use std::path::PathBuf;
 
