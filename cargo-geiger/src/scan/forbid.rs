@@ -4,13 +4,13 @@ use crate::format::print_config::{OutputFormat, PrintConfig};
 use crate::graph::Graph;
 
 use super::find::find_unsafe;
-use super::report::{QuickReportEntry, QuickSafetyReport};
 use super::{package_metrics, ScanMode, ScanParameters};
 
 use table::scan_forbid_to_table;
 
 use cargo::core::{PackageId, PackageSet};
 use cargo::{CliResult, Config};
+use cargo_geiger_serde::{QuickReportEntry, QuickSafetyReport};
 
 pub fn scan_forbid_unsafe(
     package_set: &PackageSet,
@@ -54,7 +54,7 @@ fn scan_forbid_to_report(
         let pack_metrics = match package_metrics {
             Some(m) => m,
             None => {
-                report.packages_without_metrics.push(package.id);
+                report.packages_without_metrics.insert(package.id);
                 continue;
             }
         };
@@ -67,7 +67,7 @@ fn scan_forbid_to_report(
             package,
             forbids_unsafe,
         };
-        report.packages.push(entry);
+        report.packages.insert(entry.package.id.clone(), entry);
     }
     let s = match output_format {
         OutputFormat::Json => serde_json::to_string(&report).unwrap(),

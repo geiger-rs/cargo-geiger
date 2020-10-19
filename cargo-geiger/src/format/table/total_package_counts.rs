@@ -1,6 +1,6 @@
 use crate::format::CrateDetectionStatus;
 
-use geiger::CounterBlock;
+use cargo_geiger_serde::CounterBlock;
 
 pub struct TotalPackageCounts {
     pub none_detected_forbids_unsafe: i32,

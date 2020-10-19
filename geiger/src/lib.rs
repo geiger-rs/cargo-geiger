@@ -7,13 +7,12 @@
 #![forbid(unsafe_code)]
 #![forbid(warnings)]
 
-use serde::{Deserialize, Serialize};
+use cargo_geiger_serde::CounterBlock;
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
 use std::io;
 use std::io::Read;
-use std::ops::{Add, AddAssign};
 use std::path::Path;
 use std::path::PathBuf;
 use std::string::FromUtf8Error;
@@ -33,76 +32,6 @@ impl Error for ScanFileError {}
 impl fmt::Display for ScanFileError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self, f)
-    }
-}
-
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct Count {
-    /// Number of safe items
-    pub safe: u64,
-
-    /// Number of unsafe items
-    pub unsafe_: u64,
-}
-
-impl Count {
-    fn count(&mut self, is_unsafe: bool) {
-        if is_unsafe {
-            self.unsafe_ += 1;
-        } else {
-            self.safe += 1;
-        }
-    }
-}
-
-impl Add for Count {
-    type Output = Count;
-
-    fn add(self, other: Count) -> Count {
-        Count {
-            safe: self.safe + other.safe,
-            unsafe_: self.unsafe_ + other.unsafe_,
-        }
-    }
-}
-
-/// Unsafe usage metrics collection.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct CounterBlock {
-    pub functions: Count,
-    pub exprs: Count,
-    pub item_impls: Count,
-    pub item_traits: Count,
-    pub methods: Count,
-}
-
-impl CounterBlock {
-    pub fn has_unsafe(&self) -> bool {
-        self.functions.unsafe_ > 0
-            || self.exprs.unsafe_ > 0
-            || self.item_impls.unsafe_ > 0
-            || self.item_traits.unsafe_ > 0
-            || self.methods.unsafe_ > 0
-    }
-}
-
-impl Add for CounterBlock {
-    type Output = CounterBlock;
-
-    fn add(self, other: CounterBlock) -> CounterBlock {
-        CounterBlock {
-            functions: self.functions + other.functions,
-            exprs: self.exprs + other.exprs,
-            item_impls: self.item_impls + other.item_impls,
-            item_traits: self.item_traits + other.item_traits,
-            methods: self.methods + other.methods,
-        }
-    }
-}
-
-impl AddAssign for CounterBlock {
-    fn add_assign(&mut self, rhs: Self) {
-        *self = self.clone() + rhs;
     }
 }
 

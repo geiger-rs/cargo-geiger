@@ -14,7 +14,7 @@ use handle_text_tree_line::{
 use total_package_counts::TotalPackageCounts;
 
 use cargo::core::package::PackageSet;
-use geiger::{Count, CounterBlock};
+use cargo_geiger_serde::{Count, CounterBlock};
 use std::collections::HashSet;
 use std::path::PathBuf;
 

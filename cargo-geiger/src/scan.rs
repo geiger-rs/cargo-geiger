@@ -1,7 +1,6 @@
 mod default;
 mod find;
 mod forbid;
-mod report;
 
 use crate::args::Args;
 use crate::format::print_config::PrintConfig;
@@ -10,14 +9,15 @@ use crate::rs_file::RsFileMetricsWrapper;
 
 use default::scan_unsafe;
 use forbid::scan_forbid_unsafe;
-use report::{PackageInfo, UnsafeInfo};
 
 use cargo::core::{PackageId, PackageSet, Workspace};
+use cargo::core::dependency::DepKind;
 use cargo::{CliResult, Config};
-use geiger::CounterBlock;
+use cargo_geiger_serde::{CounterBlock, DependencyKind, PackageInfo, UnsafeInfo};
 use petgraph::visit::EdgeRef;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use url::Url;
 
 /// Provides a more terse and searchable name for the wrapped generic
 /// collection.
@@ -165,14 +165,14 @@ fn package_metrics<'a>(
     std::iter::from_fn(move || {
         let i = indices.pop()?;
         let id = graph.graph[i].id;
-        let mut package = PackageInfo::new(id);
+        let mut package = PackageInfo::new(from_cargo_package_id(id));
         for edge in graph.graph.edges(i) {
             let dep_index = edge.target();
             if visited.insert(dep_index) {
                 indices.push(dep_index);
             }
-            let dep = graph.graph[dep_index].id;
-            package.push_dependency(dep, *edge.weight());
+            let dep = from_cargo_package_id(graph.graph[dep_index].id);
+            package.add_dependency(dep, from_cargo_dependency_kind(*edge.weight()));
         }
         match geiger_context.package_id_to_metrics.get(&id) {
             Some(m) => Some((package, Some(m))),
@@ -184,16 +184,61 @@ fn package_metrics<'a>(
     })
 }
 
+fn from_cargo_package_id(id: PackageId) -> cargo_geiger_serde::PackageId {
+    let source = id.source_id();
+    let source_url = source.url();
+    // Canonicalize paths as cargo does not seem to do so on all platforms.
+    let source_url = if source_url.scheme() == "file" {
+        match source_url.to_file_path() {
+            Ok(p) => {
+                let p = p.canonicalize().expect("A package source path could not be canonicalized");
+                Url::from_file_path(p).expect("A URL could not be created from a file path")
+            }
+            Err(_) => source_url.clone(),
+        }
+    } else {
+        source_url.clone()
+    };
+    let source = if source.is_git() {
+        cargo_geiger_serde::Source::Git {
+            url: source_url,
+            rev: source.precise().expect("Git revision should be known").to_string(),
+        }
+    } else if source.is_path() {
+        cargo_geiger_serde::Source::Path(source_url)
+    } else if source.is_registry() {
+        cargo_geiger_serde::Source::Registry {
+            name: source.display_registry_name(),
+            url: source_url,
+        }
+    } else {
+        panic!("Unsupported source type: {:?}", source)
+    };
+    cargo_geiger_serde::PackageId {
+        name: id.name().to_string(),
+        version: id.version().clone(),
+        source,
+    }
+}
+
+fn from_cargo_dependency_kind(kind: DepKind) -> DependencyKind {
+    match kind {
+        DepKind::Normal => DependencyKind::Normal,
+        DepKind::Development => DependencyKind::Development,
+        DepKind::Build => DependencyKind::Build,
+    }
+}
+
 #[cfg(test)]
 mod scan_tests {
     use super::*;
 
     use crate::{
         rs_file::RsFileMetricsWrapper,
-        scan::{report::UnsafeInfo, PackageMetrics},
+        scan::PackageMetrics,
     };
 
-    use geiger::Count;
+    use cargo_geiger_serde::{Count, UnsafeInfo};
     use rstest::*;
     use std::{collections::HashSet, path::PathBuf};
 
