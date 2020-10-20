@@ -1,7 +1,6 @@
 use crate::format::print_config::OutputFormat;
 use crate::format::Charset;
 
-use fake::{Dummy, Fake};
 use pico_args::Arguments;
 use std::path::PathBuf;
 
@@ -56,7 +55,6 @@ OPTIONS:
     -V, --version                 Prints version information.
 ";
 
-#[derive(Debug, Dummy)]
 pub struct Args {
     pub all: bool,
     pub all_deps: bool,

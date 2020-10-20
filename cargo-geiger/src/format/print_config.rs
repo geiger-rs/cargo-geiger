@@ -5,7 +5,6 @@ use crate::format::{Charset, CrateDetectionStatus, FormatError};
 use cargo::core::shell::Verbosity;
 use cargo::util::errors::CliError;
 use colored::Colorize;
-use fake::Dummy;
 use geiger::IncludeTests;
 use petgraph::EdgeDirection;
 
@@ -16,7 +15,7 @@ pub enum Prefix {
     None,
 }
 
-#[derive(Clone, Copy, Debug, Dummy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum OutputFormat {
     Json,
 }
@@ -111,7 +110,6 @@ mod print_config_tests {
     use super::*;
 
     use colored::ColoredString;
-    use fake::{Fake, Faker};
     use rstest::*;
 
     #[rstest(
@@ -130,7 +128,7 @@ mod print_config_tests {
         input_invert_bool: bool,
         expected_edge_direction: EdgeDirection
     ) {
-        let mut args: Args = Faker.fake();
+        let mut args = create_args();
         args.invert = input_invert_bool;
 
         let print_config_result = PrintConfig::new(&args);
@@ -158,7 +156,7 @@ mod print_config_tests {
         input_include_tests_bool: bool,
         expected_include_tests: IncludeTests
     ) {
-        let mut args: Args = Faker.fake();
+        let mut args = create_args();
         args.include_tests = input_include_tests_bool;
 
         let print_config_result = PrintConfig::new(&args);
@@ -200,7 +198,7 @@ mod print_config_tests {
         input_no_indent_bool: bool,
         expected_output_prefix: Prefix
     ) {
-        let mut args: Args = Faker.fake();
+        let mut args = create_args();
         args.prefix_depth = input_prefix_depth_bool;
         args.no_indent = input_no_indent_bool;
 
@@ -233,7 +231,7 @@ mod print_config_tests {
         input_verbosity_u32: u32,
         expected_verbosity: Verbosity,
     ) {
-        let mut args: Args = Faker.fake();
+        let mut args = create_args();
         args.verbose = input_verbosity_u32;
 
         let print_config_result = PrintConfig::new(&args);
@@ -274,5 +272,38 @@ mod print_config_tests {
             ),
             expected_colorized_string
         );
+    }
+
+    fn create_args() -> Args {
+        Args{
+            all: false,
+            all_deps: false,
+            all_features: false,
+            all_targets: false,
+            build_deps: false,
+            charset: Charset::Ascii,
+            color: None,
+            dev_deps: false,
+            features: None,
+            forbid_only: false,
+            format: "".to_string(),
+            frozen: false,
+            help: false,
+            include_tests: false,
+            invert: false,
+            locked: false,
+            manifest_path: None,
+            no_default_features: false,
+            no_indent: false,
+            offline: false,
+            package: None,
+            prefix_depth: false,
+            quiet: false,
+            target: None,
+            unstable_flags: vec![],
+            verbose: 0,
+            version: false,
+            output_format: None
+        }
     }
 }

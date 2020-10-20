@@ -7,12 +7,11 @@ mod display;
 mod parse;
 
 use cargo::core::dependency::DepKind;
-use fake::Dummy;
 use std::fmt;
 use std::str::{self, FromStr};
 use strum_macros::EnumIter;
 
-#[derive(Clone, Copy, Debug, Dummy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Charset {
     Ascii,
     Utf8,

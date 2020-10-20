@@ -202,8 +202,7 @@ fn build_graph_prerequisites<'a>(
 #[cfg(test)]
 mod graph_tests {
     use super::*;
-
-    use fake::{Fake, Faker};
+    use crate::format::Charset;
     use rstest::*;
 
     #[rstest(
@@ -245,8 +244,7 @@ mod graph_tests {
         input_dev_deps: bool,
         expected_extra_deps: ExtraDeps,
     ) {
-        let mut args: Args = Faker.fake();
-
+        let mut args = create_args();
         args.all_deps = input_all_deps;
         args.build_deps = input_build_deps;
         args.dev_deps = input_dev_deps;
@@ -279,7 +277,7 @@ mod graph_tests {
         input_target: Option<String>,
         expected_target: Option<&str>,
     ) {
-        let mut args: Args = Faker.fake();
+        let mut args = create_args();
 
         args.all_targets = input_all_targets;
         args.target = input_target;
@@ -293,5 +291,38 @@ mod graph_tests {
         let (_, target) = result.unwrap();
 
         assert_eq!(target, expected_target);
+    }
+
+    fn create_args() -> Args {
+        Args{
+            all: false,
+            all_deps: false,
+            all_features: false,
+            all_targets: false,
+            build_deps: false,
+            charset: Charset::Ascii,
+            color: None,
+            dev_deps: false,
+            features: None,
+            forbid_only: false,
+            format: "".to_string(),
+            frozen: false,
+            help: false,
+            include_tests: false,
+            invert: false,
+            locked: false,
+            manifest_path: None,
+            no_default_features: false,
+            no_indent: false,
+            offline: false,
+            package: None,
+            prefix_depth: false,
+            quiet: false,
+            target: None,
+            unstable_flags: vec![],
+            verbose: 0,
+            version: false,
+            output_format: None
+        }
     }
 }
