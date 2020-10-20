@@ -37,3 +37,17 @@ steps:
   # All platforms
   - script: cargo test --all
     displayName: Cargo test
+
+  # Linux
+  - script: |
+      cargo install cargo-tarpaulin
+      cargo tarpaulin --out Xml
+    displayName: Cargo tarpaulin
+    condition: eq(variables['Agent.OS'], 'Linux')
+
+  # Linux
+  - task: PublishCodeCoverageResults@1
+    inputs:
+      codeCoverageTool: Cobertura
+      summaryFileLocation: cobertura.xml
+    condition: eq(variables['Agent.OS'], 'Linux')
