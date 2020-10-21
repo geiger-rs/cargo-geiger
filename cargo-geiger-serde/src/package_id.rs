@@ -3,7 +3,9 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 
 /// Identifies a package in the dependency tree
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub struct PackageId {
     /// Package name
     pub name: String,

@@ -36,7 +36,7 @@ impl fmt::Display for ScanFileError {
 }
 
 /// Scan result for a single `.rs` file.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct RsFileMetrics {
     /// Metrics storage.
     pub counters: CounterBlock,

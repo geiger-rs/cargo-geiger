@@ -115,18 +115,12 @@ mod print_config_tests {
     #[rstest(
         input_invert_bool,
         expected_edge_direction,
-        case(
-            true,
-            EdgeDirection::Incoming
-        ),
-        case(
-            false,
-            EdgeDirection::Outgoing
-        )
+        case(true, EdgeDirection::Incoming),
+        case(false, EdgeDirection::Outgoing)
     )]
     fn print_config_new_test_invert(
         input_invert_bool: bool,
-        expected_edge_direction: EdgeDirection
+        expected_edge_direction: EdgeDirection,
     ) {
         let mut args = create_args();
         args.invert = input_invert_bool;
@@ -143,18 +137,12 @@ mod print_config_tests {
     #[rstest(
         input_include_tests_bool,
         expected_include_tests,
-        case(
-            true,
-            IncludeTests::Yes
-        ),
-        case(
-            false,
-            IncludeTests::No
-        ),
+        case(true, IncludeTests::Yes),
+        case(false, IncludeTests::No)
     )]
     fn print_config_new_test_include_tests(
         input_include_tests_bool: bool,
-        expected_include_tests: IncludeTests
+        expected_include_tests: IncludeTests,
     ) {
         let mut args = create_args();
         args.include_tests = input_include_tests_bool;
@@ -172,31 +160,15 @@ mod print_config_tests {
         input_prefix_depth_bool,
         input_no_indent_bool,
         expected_output_prefix,
-        case(
-            true,
-            false,
-            Prefix::Depth,
-        ),
-        case(
-            true,
-            false,
-            Prefix::Depth,
-        ),
-        case(
-            false,
-            true,
-            Prefix::None,
-        ),
-        case(
-            false,
-            false,
-            Prefix::Indent,
-        ),
+        case(true, false, Prefix::Depth,),
+        case(true, false, Prefix::Depth,),
+        case(false, true, Prefix::None,),
+        case(false, false, Prefix::Indent,)
     )]
     fn print_config_new_test_prefix(
         input_prefix_depth_bool: bool,
         input_no_indent_bool: bool,
-        expected_output_prefix: Prefix
+        expected_output_prefix: Prefix,
     ) {
         let mut args = create_args();
         args.prefix_depth = input_prefix_depth_bool;
@@ -205,27 +177,15 @@ mod print_config_tests {
         let print_config_result = PrintConfig::new(&args);
 
         assert!(print_config_result.is_ok());
-        assert_eq!(
-            print_config_result.unwrap().prefix,
-            expected_output_prefix
-        );
+        assert_eq!(print_config_result.unwrap().prefix, expected_output_prefix);
     }
 
     #[rstest(
         input_verbosity_u32,
         expected_verbosity,
-        case(
-            0,
-            Verbosity::Normal
-        ),
-        case(
-            1,
-            Verbosity::Verbose
-        ),
-        case(
-            1,
-            Verbosity::Verbose
-        )
+        case(0, Verbosity::Normal),
+        case(1, Verbosity::Verbose),
+        case(1, Verbosity::Verbose)
     )]
     fn print_config_new_test_verbosity(
         input_verbosity_u32: u32,
@@ -237,10 +197,7 @@ mod print_config_tests {
         let print_config_result = PrintConfig::new(&args);
 
         assert!(print_config_result.is_ok());
-        assert_eq!(
-            print_config_result.unwrap().verbosity,
-            expected_verbosity
-        );
+        assert_eq!(print_config_result.unwrap().verbosity, expected_verbosity);
     }
 
     #[rstest(
@@ -266,16 +223,13 @@ mod print_config_tests {
         let string_value = String::from("string_value");
 
         assert_eq!(
-            colorize(
-                string_value,
-                &input_crate_detection_status
-            ),
+            colorize(string_value, &input_crate_detection_status),
             expected_colorized_string
         );
     }
 
     fn create_args() -> Args {
-        Args{
+        Args {
             all: false,
             all_deps: false,
             all_features: false,
@@ -303,7 +257,7 @@ mod print_config_tests {
             unstable_flags: vec![],
             verbose: 0,
             version: false,
-            output_format: None
+            output_format: None,
         }
     }
 }

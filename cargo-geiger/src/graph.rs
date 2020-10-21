@@ -254,9 +254,7 @@ mod graph_tests {
         let result = build_graph_prerequisites(&args, &config_host);
 
         assert!(result.is_ok());
-
         let (extra_deps, _) = result.unwrap();
-
         assert_eq!(extra_deps, expected_extra_deps);
     }
 
@@ -294,7 +292,7 @@ mod graph_tests {
     }
 
     fn create_args() -> Args {
-        Args{
+        Args {
             all: false,
             all_deps: false,
             all_features: false,
@@ -322,7 +320,7 @@ mod graph_tests {
             unstable_flags: vec![],
             verbose: 0,
             version: false,
-            output_format: None
+            output_format: None,
         }
     }
 }

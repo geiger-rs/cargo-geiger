@@ -8,6 +8,7 @@ use cargo::core::PackageId;
 
 /// A step towards decoupling some parts of the table-tree printing from the
 /// dependency graph traversal.
+#[derive(Debug, PartialEq)]
 pub enum TextTreeLine {
     /// A text line for a package
     Package { id: PackageId, tree_vines: String },
@@ -89,22 +90,13 @@ mod tree_tests {
     #[rstest(
         input_prefix,
         expected_tree_vines_string,
-        case(
-            Prefix::Depth,
-            "3 "
-        ),
-        case(
-            Prefix::Indent,
-            "|       |-- "
-        ),
-        case(
-            Prefix::None,
-            ""
-        )
+        case(Prefix::Depth, "3 "),
+        case(Prefix::Indent, "|       |-- "),
+        case(Prefix::None, "")
     )]
     fn construct_tree_vines_string_test(
         input_prefix: Prefix,
-        expected_tree_vines_string: &str
+        expected_tree_vines_string: &str,
     ) {
         let mut levels_continue = vec![true, false, true];
 
@@ -118,18 +110,12 @@ mod tree_tests {
     #[rstest(
         input_charset,
         expected_tree_symbols,
-        case(
-            Charset::Utf8,
-            UTF8_TREE_SYMBOLS
-        ),
-        case(
-            Charset::Ascii,
-            ASCII_TREE_SYMBOLS
-        )
+        case(Charset::Utf8, UTF8_TREE_SYMBOLS),
+        case(Charset::Ascii, ASCII_TREE_SYMBOLS)
     )]
     fn get_tree_symbols_test(
         input_charset: Charset,
-        expected_tree_symbols: TreeSymbols
+        expected_tree_symbols: TreeSymbols,
     ) {
         assert_eq!(get_tree_symbols(input_charset), expected_tree_symbols);
     }
