@@ -202,7 +202,6 @@ dependencies = [
  "insta",
  "petgraph",
  "pico-args",
- "rand",
  "regex",
  "rstest",
  "semver 0.10.0",
