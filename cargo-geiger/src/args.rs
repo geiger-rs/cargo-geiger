@@ -1,6 +1,7 @@
-use crate::format::print::OutputFormat;
+use crate::format::print_config::OutputFormat;
 use crate::format::Charset;
 
+use pico_args::Arguments;
 use std::path::PathBuf;
 
 pub const HELP: &str =
@@ -86,56 +87,119 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
-        let mut args = pico_args::Arguments::from_env();
+    pub fn parse_args(
+        mut raw_args: Arguments,
+    ) -> Result<Args, Box<dyn std::error::Error>> {
         let args = Args {
-            all: args.contains(["-a", "--all"]),
-            all_deps: args.contains("--all-dependencies"),
-            all_features: args.contains("--all-features"),
-            all_targets: args.contains("--all-targets"),
-            build_deps: args.contains("--build-dependencies"),
-            charset: args
+            all: raw_args.contains(["-a", "--all"]),
+            all_deps: raw_args.contains("--all-dependencies"),
+            all_features: raw_args.contains("--all-features"),
+            all_targets: raw_args.contains("--all-targets"),
+            build_deps: raw_args.contains("--build-dependencies"),
+            charset: raw_args
                 .opt_value_from_str("--charset")?
                 .unwrap_or(Charset::Utf8),
-            color: args.opt_value_from_str("--color")?,
-            dev_deps: args.contains("--dev-dependencies"),
-            features: args.opt_value_from_str("--features")?,
-            forbid_only: args.contains(["-f", "--forbid-only"]),
-            format: args
+            color: raw_args.opt_value_from_str("--color")?,
+            dev_deps: raw_args.contains("--dev-dependencies"),
+            features: raw_args.opt_value_from_str("--features")?,
+            forbid_only: raw_args.contains(["-f", "--forbid-only"]),
+            format: raw_args
                 .opt_value_from_str("--format")?
                 .unwrap_or_else(|| "{p}".to_string()),
-            frozen: args.contains("--frozen"),
-            help: args.contains(["-h", "--help"]),
-            include_tests: args.contains("--include-tests"),
-            invert: args.contains(["-i", "--invert"]),
-            locked: args.contains("--locked"),
-            manifest_path: args.opt_value_from_str("--manifest-path")?,
-            no_default_features: args.contains("--no-default-features"),
-            no_indent: args.contains("--no-indent"),
-            offline: args.contains("--offline"),
-            package: args.opt_value_from_str("--manifest-path")?,
-            prefix_depth: args.contains("--prefix-depth"),
-            quiet: args.contains(["-q", "--quiet"]),
-            target: args.opt_value_from_str("--target")?,
-            unstable_flags: args
+            frozen: raw_args.contains("--frozen"),
+            help: raw_args.contains(["-h", "--help"]),
+            include_tests: raw_args.contains("--include-tests"),
+            invert: raw_args.contains(["-i", "--invert"]),
+            locked: raw_args.contains("--locked"),
+            manifest_path: raw_args.opt_value_from_str("--manifest-path")?,
+            no_default_features: raw_args.contains("--no-default-features"),
+            no_indent: raw_args.contains("--no-indent"),
+            offline: raw_args.contains("--offline"),
+            package: raw_args.opt_value_from_str("--manifest-path")?,
+            prefix_depth: raw_args.contains("--prefix-depth"),
+            quiet: raw_args.contains(["-q", "--quiet"]),
+            target: raw_args.opt_value_from_str("--target")?,
+            unstable_flags: raw_args
                 .opt_value_from_str("-Z")?
                 .map(|s: String| s.split(' ').map(|s| s.to_owned()).collect())
                 .unwrap_or_else(Vec::new),
             verbose: match (
-                args.contains("-vv"),
-                args.contains(["-v", "--verbose"]),
+                raw_args.contains("-vv"),
+                raw_args.contains(["-v", "--verbose"]),
             ) {
                 (false, false) => 0,
                 (false, true) => 1,
                 (true, _) => 2,
             },
-            version: args.contains(["-V", "--version"]),
-            output_format: if args.contains("--json") {
+            version: raw_args.contains(["-V", "--version"]),
+            output_format: if raw_args.contains("--json") {
                 Some(OutputFormat::Json)
             } else {
                 None
             },
         };
         Ok(args)
+    }
+}
+
+#[cfg(test)]
+pub mod args_tests {
+    use super::*;
+
+    use rstest::*;
+    use std::ffi::OsString;
+
+    #[rstest(
+        input_argument_vector,
+        expected_all,
+        expected_charset,
+        expected_verbose,
+        case(
+            vec![],
+            false,
+            Charset::Utf8,
+            0
+        ),
+        case(
+            vec![OsString::from("--all")],
+            true,
+            Charset::Utf8,
+            0,
+        ),
+        case(
+            vec![OsString::from("--charset"), OsString::from("ascii")],
+            false,
+            Charset::Ascii,
+            0
+        ),
+        case(
+            vec![OsString::from("-v")],
+            false,
+            Charset::Utf8,
+            1
+        ),
+        case(
+            vec![OsString::from("-vv")],
+            false,
+            Charset::Utf8,
+            2
+        )
+    )]
+    fn parse_args_test(
+        input_argument_vector: Vec<OsString>,
+        expected_all: bool,
+        expected_charset: Charset,
+        expected_verbose: u32,
+    ) {
+        let args_result =
+            Args::parse_args(Arguments::from_vec(input_argument_vector));
+
+        assert!(args_result.is_ok());
+
+        let args = args_result.unwrap();
+
+        assert_eq!(args.all, expected_all);
+        assert_eq!(args.charset, expected_charset);
+        assert_eq!(args.verbose, expected_verbose)
     }
 }

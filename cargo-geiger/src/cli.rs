@@ -108,7 +108,9 @@ pub fn resolve<'a, 'cfg>(
 mod cli_tests {
     use super::*;
 
-    #[test]
+    use rstest::*;
+
+    #[rstest]
     fn get_cfgs_test() {
         let config = Config::default().unwrap();
 
@@ -135,11 +137,11 @@ mod cli_tests {
             .filter(|cfg| matches!(cfg, Cfg::KeyPair(_, _)))
             .collect();
 
-        assert!(names.len() > 0);
-        assert!(key_pairs.len() > 0);
+        assert!(!names.is_empty());
+        assert!(!key_pairs.is_empty());
     }
 
-    #[test]
+    #[rstest]
     fn get_registry_test() {
         let config = Config::default().unwrap();
         let workspace = Workspace::new(
@@ -162,7 +164,7 @@ mod cli_tests {
         assert_eq!(package_set.sources().len(), 1);
     }
 
-    #[test]
+    #[rstest]
     fn get_workspace_test() {
         let config = Config::default().unwrap();
         let manifest_path: Option<PathBuf> = None;

@@ -1,7 +1,7 @@
 mod table;
 
 use crate::args::Args;
-use crate::format::print::OutputFormat;
+use crate::format::print_config::OutputFormat;
 use crate::graph::Graph;
 use crate::rs_file::resolve_rs_file_deps;
 
@@ -153,7 +153,9 @@ mod default_tests {
     use super::*;
     use crate::format::Charset;
 
-    #[test]
+    use rstest::*;
+
+    #[rstest]
     fn build_compile_options_test() {
         let args_all_features = rand::random();
         let args_features = Some(String::from("unit test features"));
@@ -202,7 +204,7 @@ mod default_tests {
         );
     }
 
-    #[test]
+    #[rstest]
     fn construct_scan_mode_default_output_key_lines_test() {
         let emoji_symbols = EmojiSymbols::new(Charset::Utf8);
         let output_key_lines =

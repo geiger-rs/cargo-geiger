@@ -1,4 +1,4 @@
-use crate::format::print::PrintConfig;
+use crate::format::print_config::PrintConfig;
 use crate::rs_file::{
     into_rs_code_file, is_file_with_ext, RsFile, RsFileMetricsWrapper,
 };
@@ -86,7 +86,7 @@ where
         }
         let _ = progress_step(i, pack_code_file_count);
     }
-    GeigerContext { pack_id_to_metrics }
+    GeigerContext { package_id_to_metrics: pack_id_to_metrics }
 }
 
 fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {

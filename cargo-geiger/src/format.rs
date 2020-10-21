@@ -1,6 +1,6 @@
 pub mod emoji_symbols;
 pub mod pattern;
-pub mod print;
+pub mod print_config;
 pub mod table;
 
 mod display;
@@ -17,6 +17,7 @@ pub enum Charset {
     Utf8,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Chunk {
     License,
     Package,
@@ -43,6 +44,7 @@ pub enum CrateDetectionStatus {
     UnsafeDetected,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum RawChunk<'a> {
     Argument(&'a str),
     Error(&'static str),
@@ -83,14 +85,16 @@ pub fn get_kind_group_name(dep_kind: DepKind) -> Option<&'static str> {
 mod format_tests {
     use super::*;
 
-    #[test]
+    use rstest::*;
+
+    #[rstest]
     fn charset_from_str_test() {
         assert_eq!(Charset::from_str("ascii"), Ok(Charset::Ascii));
         assert_eq!(Charset::from_str("utf8"), Ok(Charset::Utf8));
         assert_eq!(Charset::from_str("invalid_str"), Err("invalid charset"));
     }
 
-    #[test]
+    #[rstest]
     fn get_kind_group_name_test() {
         assert_eq!(
             get_kind_group_name(DepKind::Build),

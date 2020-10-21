@@ -1,6 +1,6 @@
 pub mod traversal;
 
-use crate::format::print::{Prefix, PrintConfig};
+use crate::format::print_config::{Prefix, PrintConfig};
 use crate::format::Charset;
 
 use cargo::core::dependency::DepKind;
@@ -84,34 +84,54 @@ mod tree_tests {
     use cargo::core::shell::Verbosity;
     use geiger::IncludeTests;
     use petgraph::EdgeDirection;
+    use rstest::*;
 
-    #[test]
-    fn construct_tree_vines_string_test() {
+    #[rstest(
+        input_prefix,
+        expected_tree_vines_string,
+        case(
+            Prefix::Depth,
+            "3 "
+        ),
+        case(
+            Prefix::Indent,
+            "|       |-- "
+        ),
+        case(
+            Prefix::None,
+            ""
+        )
+    )]
+    fn construct_tree_vines_string_test(
+        input_prefix: Prefix,
+        expected_tree_vines_string: &str
+    ) {
         let mut levels_continue = vec![true, false, true];
 
-        let print_config = construct_print_config(Prefix::Depth);
+        let print_config = construct_print_config(input_prefix);
         let tree_vines_string =
             construct_tree_vines_string(&mut levels_continue, &print_config);
 
-        assert_eq!(tree_vines_string, "3 ");
-
-        let print_config = construct_print_config(Prefix::Indent);
-        let tree_vines_string =
-            construct_tree_vines_string(&mut levels_continue, &print_config);
-
-        assert_eq!(tree_vines_string, "|       |-- ");
-
-        let print_config = construct_print_config(Prefix::None);
-        let tree_vines_string =
-            construct_tree_vines_string(&mut levels_continue, &print_config);
-
-        assert_eq!(tree_vines_string, "");
+        assert_eq!(tree_vines_string, expected_tree_vines_string);
     }
 
-    #[test]
-    fn get_tree_symbols_test() {
-        assert_eq!(get_tree_symbols(Charset::Utf8), UTF8_TREE_SYMBOLS);
-        assert_eq!(get_tree_symbols(Charset::Ascii), ASCII_TREE_SYMBOLS)
+    #[rstest(
+        input_charset,
+        expected_tree_symbols,
+        case(
+            Charset::Utf8,
+            UTF8_TREE_SYMBOLS
+        ),
+        case(
+            Charset::Ascii,
+            ASCII_TREE_SYMBOLS
+        )
+    )]
+    fn get_tree_symbols_test(
+        input_charset: Charset,
+        expected_tree_symbols: TreeSymbols
+    ) {
+        assert_eq!(get_tree_symbols(input_charset), expected_tree_symbols);
     }
 
     fn construct_print_config(prefix: Prefix) -> PrintConfig {

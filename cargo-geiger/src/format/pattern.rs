@@ -7,6 +7,7 @@ use cargo::core::manifest::ManifestMetadata;
 use cargo::core::PackageId;
 use std::error::Error;
 
+#[derive(Debug, PartialEq)]
 pub struct Pattern(pub Vec<Chunk>);
 
 impl Pattern {

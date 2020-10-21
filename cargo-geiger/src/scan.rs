@@ -3,7 +3,7 @@ mod find;
 mod forbid;
 
 use crate::args::Args;
-use crate::format::print::PrintConfig;
+use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
 use crate::rs_file::RsFileMetricsWrapper;
 
@@ -22,7 +22,7 @@ use url::Url;
 /// Provides a more terse and searchable name for the wrapped generic
 /// collection.
 pub struct GeigerContext {
-    pub pack_id_to_metrics: HashMap<PackageId, PackageMetrics>,
+    pub package_id_to_metrics: HashMap<PackageId, PackageMetrics>,
 }
 
 #[derive(Debug, Default)]
@@ -143,7 +143,7 @@ fn list_files_used_but_not_scanned(
     rs_files_used: &HashSet<PathBuf>,
 ) -> Vec<PathBuf> {
     let scanned_files = geiger_context
-        .pack_id_to_metrics
+        .package_id_to_metrics
         .iter()
         .flat_map(|(_, v)| v.rs_path_to_metrics.keys())
         .collect::<HashSet<&PathBuf>>();
@@ -174,7 +174,7 @@ fn package_metrics<'a>(
             let dep = from_cargo_package_id(graph.graph[dep_index].id);
             package.add_dependency(dep, from_cargo_dependency_kind(*edge.weight()));
         }
-        match geiger_context.pack_id_to_metrics.get(&id) {
+        match geiger_context.package_id_to_metrics.get(&id) {
             Some(m) => Some((package, Some(m))),
             None => {
                 eprintln!("WARNING: No metrics found for package: {}", id);
@@ -239,9 +239,10 @@ mod scan_tests {
     };
 
     use cargo_geiger_serde::{Count, UnsafeInfo};
+    use rstest::*;
     use std::{collections::HashSet, path::PathBuf};
 
-    #[test]
+    #[rstest]
     fn construct_rs_files_used_lines_test() {
         let mut rs_files_used = HashSet::<PathBuf>::new();
 
@@ -261,7 +262,7 @@ mod scan_tests {
         );
     }
 
-    #[test]
+    #[rstest]
     fn unsafe_stats_from_nothing_are_empty() {
         let stats = unsafe_stats(&Default::default(), &Default::default());
         let expected = UnsafeInfo {
@@ -271,21 +272,21 @@ mod scan_tests {
         assert_eq!(stats, expected);
     }
 
-    #[test]
+    #[rstest]
     fn unsafe_stats_report_forbid_unsafe_as_true_if_all_entry_points_forbid_unsafe(
     ) {
         let metrics = metrics_from_iter(vec![(
             "foo.rs",
             MetricsBuilder::default()
                 .forbids_unsafe(true)
-                .is_entry_point(true)
+                .set_is_crate_entry_point(true)
                 .build(),
         )]);
         let stats = unsafe_stats(&metrics, &set_of_paths(&["foo.rs"]));
         assert!(stats.forbids_unsafe)
     }
 
-    #[test]
+    #[rstest]
     fn unsafe_stats_report_forbid_unsafe_as_false_if_one_entry_point_allows_unsafe(
     ) {
         let metrics = metrics_from_iter(vec![
@@ -293,14 +294,14 @@ mod scan_tests {
                 "foo.rs",
                 MetricsBuilder::default()
                     .forbids_unsafe(true)
-                    .is_entry_point(true)
+                    .set_is_crate_entry_point(true)
                     .build(),
             ),
             (
                 "bar.rs",
                 MetricsBuilder::default()
                     .forbids_unsafe(false)
-                    .is_entry_point(true)
+                    .set_is_crate_entry_point(true)
                     .build(),
             ),
         ]);
@@ -309,7 +310,7 @@ mod scan_tests {
         assert!(!stats.forbids_unsafe)
     }
 
-    #[test]
+    #[rstest]
     fn unsafe_stats_accumulate_counters() {
         let metrics = metrics_from_iter(vec![
             ("foo.rs", MetricsBuilder::default().functions(2, 1).build()),
@@ -368,7 +369,7 @@ mod scan_tests {
             self
         }
 
-        fn is_entry_point(mut self, yes: bool) -> Self {
+        fn set_is_crate_entry_point(mut self, yes: bool) -> Self {
             self.inner.is_crate_entry_point = yes;
             self
         }
