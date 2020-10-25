@@ -202,20 +202,14 @@ mod dependency_node_tests {
 
     fn create_package_id_vec(count: i32) -> Vec<PackageId> {
         let config = Config::default().unwrap();
-
         let current_working_dir =
             env::current_dir().unwrap().join("Cargo.toml");
-
         let manifest_path_option = Some(current_working_dir);
-
         let workspace = get_workspace(&config, manifest_path_option).unwrap();
-
         let package = workspace.current().unwrap();
-
         let source_id = package.dependencies().first().unwrap().source_id();
 
         let mut package_id_vec: Vec<PackageId> = vec![];
-
         for i in 0..count {
             package_id_vec.push(
                 PackageId::new(
