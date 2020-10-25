@@ -4,6 +4,8 @@ cargo-geiger ☢️
 [![Build Status](https://dev.azure.com/cargo-geiger/cargo-geiger/_apis/build/status/rust-secure-code.cargo-geiger?branchName=master)](https://dev.azure.com/cargo-geiger/cargo-geiger/_build/latest?definitionId=1&branchName=master)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Code Coverage](https://img.shields.io/azure-devops/coverage/cargo-geiger/cargo-geiger/2/master)](https://img.shields.io/azure-devops/coverage/cargo-geiger/cargo-geiger/2/master)
+[![crates.io](https://img.shields.io/crates/v/cargo-geiger.svg)](https://crates.io/crates/cargo-geiger)
+[![Crates.io](https://img.shields.io/crates/d/cargo-geiger?label=cargo%20installs)](https://crates.io/crates/cargo-geiger)
 
 A program that list statistics related to usage of unsafe Rust code in a Rust
 crate and all its dependencies.
