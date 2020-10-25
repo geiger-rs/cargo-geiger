@@ -294,7 +294,7 @@ mod graph_tests {
     }
 
     fn create_args() -> Args {
-        Args{
+        Args {
             all: false,
             all_deps: false,
             all_features: false,
@@ -322,7 +322,7 @@ mod graph_tests {
             unstable_flags: vec![],
             verbose: 0,
             version: false,
-            output_format: None
+            output_format: None,
         }
     }
 }

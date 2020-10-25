@@ -86,7 +86,9 @@ where
         }
         let _ = progress_step(i, pack_code_file_count);
     }
-    GeigerContext { package_id_to_metrics: pack_id_to_metrics }
+    GeigerContext {
+        package_id_to_metrics: pack_id_to_metrics,
+    }
 }
 
 fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {

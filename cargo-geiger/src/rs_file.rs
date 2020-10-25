@@ -307,7 +307,7 @@ mod rs_file_tests {
     )]
     fn into_rs_code_file_test(
         input_target_kind: TargetKind,
-        expected_rs_file: RsFile
+        expected_rs_file: RsFile,
     ) {
         let path_buf = Path::new("test_path.ext").to_path_buf();
 

@@ -193,14 +193,9 @@ impl Entry for QuickReportEntry {
 mod entry_serde {
     use crate::PackageId;
     use serde::{
-        ser::SerializeSeq,
-        Deserialize, Deserializer, Serialize, Serializer,
+        ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer,
     };
-    use std::{
-        collections::HashMap,
-        fmt,
-        marker::PhantomData,
-    };
+    use std::{collections::HashMap, fmt, marker::PhantomData};
 
     pub(super) fn serialize<T, S>(
         map: &HashMap<PackageId, T>,
@@ -219,7 +214,9 @@ mod entry_serde {
         seq.end()
     }
 
-    pub(super) fn deserialize<'de, T, D>(deserializer: D) -> Result<HashMap<PackageId, T>, D::Error>
+    pub(super) fn deserialize<'de, T, D>(
+        deserializer: D,
+    ) -> Result<HashMap<PackageId, T>, D::Error>
     where
         T: Deserialize<'de> + super::Entry,
         D: Deserializer<'de>,
@@ -253,10 +250,7 @@ mod entry_serde {
 }
 
 mod set_serde {
-    use serde::{
-        ser::SerializeSeq,
-        Serialize, Serializer,
-    };
+    use serde::{ser::SerializeSeq, Serialize, Serializer};
     use std::collections::HashSet;
 
     pub(super) fn serialize<T, S>(

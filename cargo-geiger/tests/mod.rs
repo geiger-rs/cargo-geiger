@@ -3,8 +3,8 @@
 
 use assert_cmd::prelude::*;
 use cargo_geiger_serde::{
-    Count, CounterBlock, PackageId, PackageInfo, QuickReportEntry, QuickSafetyReport, ReportEntry,
-    SafetyReport, Source, UnsafeInfo,
+    Count, CounterBlock, PackageId, PackageInfo, QuickReportEntry,
+    QuickSafetyReport, ReportEntry, SafetyReport, Source, UnsafeInfo,
 };
 use insta::assert_snapshot;
 use rstest::rstest;
@@ -126,14 +126,17 @@ trait Test {
     fn run(&self) {
         let (output, cx) = run_geiger_json(Self::NAME);
         assert!(output.status.success());
-        let actual = serde_json::from_slice::<SafetyReport>(&output.stdout).unwrap();
+        let actual =
+            serde_json::from_slice::<SafetyReport>(&output.stdout).unwrap();
         assert_eq!(actual, self.expected_report(&cx));
     }
 
     fn run_quick(&self) {
         let (output, cx) = run_geiger_json_quick(Self::NAME);
         assert!(output.status.success());
-        let actual = serde_json::from_slice::<QuickSafetyReport>(&output.stdout).unwrap();
+        let actual =
+            serde_json::from_slice::<QuickSafetyReport>(&output.stdout)
+                .unwrap();
         assert_eq!(actual, self.expected_quick_report(&cx));
     }
 }
@@ -152,8 +155,14 @@ impl Test for Test1 {
             package: PackageInfo::new(make_package_id(cx, Self::NAME)),
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 1, unsafe_: 1 },
-                    exprs: Count { safe: 4, unsafe_: 2 },
+                    functions: Count {
+                        safe: 1,
+                        unsafe_: 1,
+                    },
+                    exprs: Count {
+                        safe: 4,
+                        unsafe_: 2,
+                    },
                     ..Default::default()
                 },
                 ..Default::default()
@@ -168,7 +177,8 @@ impl Test for Test2 {
     const NAME: &'static str = "test2_package_with_shallow_deps";
 
     fn expected_report(&self, cx: &Context) -> SafetyReport {
-        let mut report = single_entry_safety_report(self.expected_report_entry(cx));
+        let mut report =
+            single_entry_safety_report(self.expected_report_entry(cx));
         merge_test_reports(&mut report, Test1.expected_report(cx));
         merge_test_reports(&mut report, external::ref_slice_safety_report());
         report
@@ -185,8 +195,14 @@ impl Test for Test2 {
             },
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 0, unsafe_: 1 },
-                    exprs: Count { safe: 0, unsafe_: 4 },
+                    functions: Count {
+                        safe: 0,
+                        unsafe_: 1,
+                    },
+                    exprs: Count {
+                        safe: 0,
+                        unsafe_: 4,
+                    },
                     ..Default::default()
                 },
                 ..Default::default()
@@ -201,7 +217,8 @@ impl Test for Test3 {
     const NAME: &'static str = "test3_package_with_nested_deps";
 
     fn expected_report(&self, cx: &Context) -> SafetyReport {
-        let mut report = single_entry_safety_report(self.expected_report_entry(cx));
+        let mut report =
+            single_entry_safety_report(self.expected_report_entry(cx));
         merge_test_reports(&mut report, external::itertools_safety_report());
         merge_test_reports(&mut report, external::doc_comment_safety_report());
         merge_test_reports(&mut report, Test2.expected_report(cx));
@@ -220,8 +237,14 @@ impl Test for Test3 {
             },
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 1, unsafe_: 0 },
-                    exprs: Count { safe: 6, unsafe_: 1 },
+                    functions: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 6,
+                        unsafe_: 1,
+                    },
                     ..Default::default()
                 },
                 ..Default::default()
@@ -236,7 +259,8 @@ impl Test for Test4 {
     const NAME: &'static str = "test4_workspace_with_top_level_package";
 
     fn expected_report(&self, cx: &Context) -> SafetyReport {
-        let mut report = single_entry_safety_report(self.expected_report_entry(cx));
+        let mut report =
+            single_entry_safety_report(self.expected_report_entry(cx));
         merge_test_reports(&mut report, Test1.expected_report(cx));
         report
     }
@@ -249,13 +273,25 @@ impl Test for Test4 {
             },
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 1, unsafe_: 0 },
-                    exprs: Count { safe: 1, unsafe_: 0 },
+                    functions: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
                     ..Default::default()
                 },
                 unused: CounterBlock {
-                    functions: Count { safe: 1, unsafe_: 0 },
-                    exprs: Count { safe: 1, unsafe_: 1 },
+                    functions: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 1,
+                        unsafe_: 1,
+                    },
                     ..Default::default()
                 },
                 ..Default::default()
@@ -270,8 +306,12 @@ impl Test for Test6 {
     const NAME: &'static str = "test6_cargo_lock_out_of_date";
 
     fn expected_report(&self, cx: &Context) -> SafetyReport {
-        let mut report = single_entry_safety_report(self.expected_report_entry(cx));
-        merge_test_reports(&mut report, external::generational_arena_safety_report());
+        let mut report =
+            single_entry_safety_report(self.expected_report_entry(cx));
+        merge_test_reports(
+            &mut report,
+            external::generational_arena_safety_report(),
+        );
         merge_test_reports(&mut report, external::idna_safety_report());
         report
     }
@@ -287,8 +327,14 @@ impl Test for Test6 {
             },
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 1, unsafe_: 0 },
-                    exprs: Count { safe: 1, unsafe_: 0 },
+                    functions: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
                     ..Default::default()
                 },
                 forbids_unsafe: true,
@@ -304,7 +350,8 @@ impl Test for Test7 {
     const NAME: &'static str = "test7_package_with_patched_dep";
 
     fn expected_report(&self, cx: &Context) -> SafetyReport {
-        let mut report = single_entry_safety_report(self.expected_report_entry(cx));
+        let mut report =
+            single_entry_safety_report(self.expected_report_entry(cx));
         merge_test_reports(&mut report, external::num_cpus_safety_report(cx));
         report
     }
@@ -317,8 +364,14 @@ impl Test for Test7 {
             },
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 1, unsafe_: 0 },
-                    exprs: Count { safe: 1, unsafe_: 0 },
+                    functions: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
                     ..Default::default()
                 },
                 forbids_unsafe: true,
@@ -366,7 +419,9 @@ fn make_source(cx: &Context, name: &str) -> Source {
 }
 
 fn make_workspace_source(cx: &Context, workspace: &str, name: &str) -> Source {
-    Source::Path(Url::from_file_path(cx.workspace_crate_dir(workspace, name)).unwrap())
+    Source::Path(
+        Url::from_file_path(cx.workspace_crate_dir(workspace, name)).unwrap(),
+    )
 }
 
 struct Context {
@@ -383,8 +438,12 @@ impl Context {
             content_only: true,
             ..Default::default()
         };
-        fs_extra::dir::copy(&src_path, dir.path(), &copy_options).expect("Failed to copy tests");
-        let path = dir.path().canonicalize().expect("Failed to canonicalize temporary path");
+        fs_extra::dir::copy(&src_path, dir.path(), &copy_options)
+            .expect("Failed to copy tests");
+        let path = dir
+            .path()
+            .canonicalize()
+            .expect("Failed to canonicalize temporary path");
         // Canonicalizing on Windows returns a UNC path (starting with `\\?\`).
         // `cargo build` (as of 1.47.0) fails to use an overriding path dependency if the manifest
         // given to `cargo build` is a UNC path. Roudtripping to URL gets rid of the UNC prefix.
@@ -423,7 +482,10 @@ fn report_entry_list_to_map<I>(entries: I) -> HashMap<PackageId, ReportEntry>
 where
     I: IntoIterator<Item = ReportEntry>,
 {
-    entries.into_iter().map(|e| (e.package.id.clone(), e)).collect()
+    entries
+        .into_iter()
+        .map(|e| (e.package.id.clone(), e))
+        .collect()
 }
 
 fn to_set<I>(items: I) -> HashSet<I::Item>
@@ -438,8 +500,12 @@ where
 // tests.
 fn merge_test_reports(report: &mut SafetyReport, other: SafetyReport) {
     report.packages.extend(other.packages);
-    report.packages_without_metrics.extend(other.packages_without_metrics);
-    report.used_but_not_scanned_files.extend(other.used_but_not_scanned_files);
+    report
+        .packages_without_metrics
+        .extend(other.packages_without_metrics);
+    report
+        .used_but_not_scanned_files
+        .extend(other.used_but_not_scanned_files);
 }
 
 fn to_quick_report(report: SafetyReport) -> QuickSafetyReport {
@@ -468,17 +534,21 @@ fn single_entry_safety_report(entry: ReportEntry) -> SafetyReport {
 }
 
 mod external {
+    use super::{
+        merge_test_reports, single_entry_safety_report, to_set, Context, Test,
+    };
     use cargo_geiger_serde::{
-        Count, CounterBlock, PackageId, PackageInfo, ReportEntry, SafetyReport, Source, UnsafeInfo,
+        Count, CounterBlock, PackageId, PackageInfo, ReportEntry, SafetyReport,
+        Source, UnsafeInfo,
     };
     use semver::Version;
-    use super::{merge_test_reports, single_entry_safety_report, to_set, Context, Test};
     use url::Url;
 
     fn crates_io_source() -> Source {
         Source::Registry {
             name: "crates.io".into(),
-            url: Url::parse("https://github.com/rust-lang/crates.io-index").unwrap(),
+            url: Url::parse("https://github.com/rust-lang/crates.io-index")
+                .unwrap(),
         }
     }
 
@@ -495,8 +565,14 @@ mod external {
             package: PackageInfo::new(ref_slice_package_id()),
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 4, unsafe_: 0 },
-                    exprs: Count { safe: 10, unsafe_: 2 },
+                    functions: Count {
+                        safe: 4,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 10,
+                        unsafe_: 2,
+                    },
                     ..Default::default()
                 },
                 ..Default::default()
@@ -518,10 +594,22 @@ mod external {
             package: PackageInfo::new(either_package_id()),
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 6, unsafe_: 0 },
-                    exprs: Count { safe: 102, unsafe_: 0 },
-                    item_impls: Count { safe: 21, unsafe_: 0 },
-                    methods: Count { safe: 50, unsafe_: 0 },
+                    functions: Count {
+                        safe: 6,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 102,
+                        unsafe_: 0,
+                    },
+                    item_impls: Count {
+                        safe: 21,
+                        unsafe_: 0,
+                    },
+                    methods: Count {
+                        safe: 50,
+                        unsafe_: 0,
+                    },
                     ..Default::default()
                 },
                 ..Default::default()
@@ -543,8 +631,14 @@ mod external {
             package: PackageInfo::new(doc_comment_package_id()),
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 1, unsafe_: 0 },
-                    exprs: Count { safe: 37, unsafe_: 0 },
+                    functions: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 37,
+                        unsafe_: 0,
+                    },
                     ..Default::default()
                 },
                 ..Default::default()
@@ -558,7 +652,10 @@ mod external {
             name: "itertools".into(),
             version: Version::new(0, 8, 0),
             source: Source::Git {
-                url: Url::parse("https://github.com/rust-itertools/itertools.git").unwrap(),
+                url: Url::parse(
+                    "https://github.com/rust-itertools/itertools.git",
+                )
+                .unwrap(),
                 rev: "8761fbefb3b209cf41829f8dba38044b69c1d8dd".into(),
             },
         }
@@ -572,21 +669,51 @@ mod external {
             },
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 79, unsafe_: 0 },
-                    exprs: Count { safe: 2413, unsafe_: 0 },
-                    item_impls: Count { safe: 129, unsafe_: 0 },
-                    item_traits: Count { safe: 7, unsafe_: 0 },
-                    methods: Count { safe: 180, unsafe_: 0 },
+                    functions: Count {
+                        safe: 79,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 2413,
+                        unsafe_: 0,
+                    },
+                    item_impls: Count {
+                        safe: 129,
+                        unsafe_: 0,
+                    },
+                    item_traits: Count {
+                        safe: 7,
+                        unsafe_: 0,
+                    },
+                    methods: Count {
+                        safe: 180,
+                        unsafe_: 0,
+                    },
                 },
                 unused: CounterBlock {
-                    functions: Count { safe: 67, unsafe_: 0 },
-                    exprs: Count { safe: 1210, unsafe_: 72 },
-                    item_impls: Count { safe: 24, unsafe_: 3 },
-                    item_traits: Count { safe: 2, unsafe_: 1 },
-                    methods: Count { safe: 29, unsafe_: 3 },
+                    functions: Count {
+                        safe: 67,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 1210,
+                        unsafe_: 72,
+                    },
+                    item_impls: Count {
+                        safe: 24,
+                        unsafe_: 3,
+                    },
+                    item_traits: Count {
+                        safe: 2,
+                        unsafe_: 1,
+                    },
+                    methods: Count {
+                        safe: 29,
+                        unsafe_: 3,
+                    },
                 },
                 ..Default::default()
-            }
+            },
         };
         let mut report = single_entry_safety_report(entry);
         merge_test_reports(&mut report, either_safety_report());
@@ -625,16 +752,37 @@ mod external {
             },
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    exprs: Count { safe: 372, unsafe_: 0 },
-                    item_impls: Count { safe: 21, unsafe_: 0 },
-                    methods: Count { safe: 39, unsafe_: 0 },
+                    exprs: Count {
+                        safe: 372,
+                        unsafe_: 0,
+                    },
+                    item_impls: Count {
+                        safe: 21,
+                        unsafe_: 0,
+                    },
+                    methods: Count {
+                        safe: 39,
+                        unsafe_: 0,
+                    },
                     ..Default::default()
                 },
                 unused: CounterBlock {
-                    functions: Count { safe: 6, unsafe_: 0 },
-                    exprs: Count { safe: 243, unsafe_: 0 },
-                    item_impls: Count { safe: 7, unsafe_: 0 },
-                    methods: Count { safe: 8, unsafe_: 0 },
+                    functions: Count {
+                        safe: 6,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 243,
+                        unsafe_: 0,
+                    },
+                    item_impls: Count {
+                        safe: 7,
+                        unsafe_: 0,
+                    },
+                    methods: Count {
+                        safe: 8,
+                        unsafe_: 0,
+                    },
                     ..Default::default()
                 },
                 forbids_unsafe: true,
@@ -665,13 +813,25 @@ mod external {
             },
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 17, unsafe_: 0 },
-                    exprs: Count { safe: 13596, unsafe_: 1 },
+                    functions: Count {
+                        safe: 17,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 13596,
+                        unsafe_: 1,
+                    },
                     ..Default::default()
                 },
                 unused: CounterBlock {
-                    functions: Count { safe: 7, unsafe_: 0 },
-                    exprs: Count { safe: 185, unsafe_: 0 },
+                    functions: Count {
+                        safe: 7,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 185,
+                        unsafe_: 0,
+                    },
                     ..Default::default()
                 },
                 ..Default::default()
@@ -713,21 +873,51 @@ mod external {
             package: PackageInfo::new(smallvec_package_id()),
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 0, unsafe_: 2 },
-                    exprs: Count { safe: 291, unsafe_: 354 },
-                    item_impls: Count { safe: 48, unsafe_: 4 },
-                    item_traits: Count { safe: 3, unsafe_: 1 },
-                    methods: Count { safe: 92, unsafe_: 13 },
+                    functions: Count {
+                        safe: 0,
+                        unsafe_: 2,
+                    },
+                    exprs: Count {
+                        safe: 291,
+                        unsafe_: 354,
+                    },
+                    item_impls: Count {
+                        safe: 48,
+                        unsafe_: 4,
+                    },
+                    item_traits: Count {
+                        safe: 3,
+                        unsafe_: 1,
+                    },
+                    methods: Count {
+                        safe: 92,
+                        unsafe_: 13,
+                    },
                 },
                 unused: CounterBlock {
-                    functions: Count { safe: 18, unsafe_: 0 },
-                    exprs: Count { safe: 126, unsafe_: 0 },
-                    item_impls: Count { safe: 2, unsafe_: 0 },
-                    item_traits: Count { safe: 1, unsafe_: 0 },
-                    methods: Count { safe: 14, unsafe_: 0 },
+                    functions: Count {
+                        safe: 18,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 126,
+                        unsafe_: 0,
+                    },
+                    item_impls: Count {
+                        safe: 2,
+                        unsafe_: 0,
+                    },
+                    item_traits: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
+                    methods: Count {
+                        safe: 14,
+                        unsafe_: 0,
+                    },
                 },
                 ..Default::default()
-            }
+            },
         };
         single_entry_safety_report(entry)
     }
@@ -748,10 +938,22 @@ mod external {
             },
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 16, unsafe_: 0 },
-                    exprs: Count { safe: 2119, unsafe_: 0 },
-                    item_impls: Count { safe: 8, unsafe_: 0 },
-                    methods: Count { safe: 31, unsafe_: 0 },
+                    functions: Count {
+                        safe: 16,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 2119,
+                        unsafe_: 0,
+                    },
+                    item_impls: Count {
+                        safe: 8,
+                        unsafe_: 0,
+                    },
+                    methods: Count {
+                        safe: 31,
+                        unsafe_: 0,
+                    },
                     ..Default::default()
                 },
                 forbids_unsafe: true,
@@ -779,15 +981,36 @@ mod external {
             },
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 37, unsafe_: 0 },
-                    exprs: Count { safe: 12901, unsafe_: 20 },
-                    item_impls: Count { safe: 9, unsafe_: 0 },
-                    item_traits: Count { safe: 1, unsafe_: 0 },
-                    methods: Count { safe: 21, unsafe_: 0 },
+                    functions: Count {
+                        safe: 37,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 12901,
+                        unsafe_: 20,
+                    },
+                    item_impls: Count {
+                        safe: 9,
+                        unsafe_: 0,
+                    },
+                    item_traits: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
+                    methods: Count {
+                        safe: 21,
+                        unsafe_: 0,
+                    },
                 },
                 unused: CounterBlock {
-                    functions: Count { safe: 22, unsafe_: 0 },
-                    exprs: Count { safe: 84, unsafe_: 0 },
+                    functions: Count {
+                        safe: 22,
+                        unsafe_: 0,
+                    },
+                    exprs: Count {
+                        safe: 84,
+                        unsafe_: 0,
+                    },
                     ..Default::default()
                 },
                 ..Default::default()
@@ -809,12 +1032,18 @@ mod external {
     pub(super) fn num_cpus_safety_report(cx: &Context) -> SafetyReport {
         let entry = ReportEntry {
             package: PackageInfo {
-                dependencies: to_set(vec![super::make_package_id(cx, super::Test1::NAME)]),
+                dependencies: to_set(vec![super::make_package_id(
+                    cx,
+                    super::Test1::NAME,
+                )]),
                 ..PackageInfo::new(num_cpus_package_id(cx))
             },
             unsafety: UnsafeInfo {
                 used: CounterBlock {
-                    functions: Count { safe: 1, unsafe_: 0 },
+                    functions: Count {
+                        safe: 1,
+                        unsafe_: 0,
+                    },
                     ..Default::default()
                 },
                 ..Default::default()

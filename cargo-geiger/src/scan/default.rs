@@ -140,7 +140,9 @@ fn scan_to_report(
         report.packages.insert(entry.package.id.clone(), entry);
     }
     report.used_but_not_scanned_files =
-        list_files_used_but_not_scanned(&geiger_context, &rs_files_used).into_iter().collect();
+        list_files_used_but_not_scanned(&geiger_context, &rs_files_used)
+            .into_iter()
+            .collect();
     let s = match output_format {
         OutputFormat::Json => serde_json::to_string(&report).unwrap(),
     };

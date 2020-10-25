@@ -12,8 +12,7 @@ mod source;
 
 pub use package_id::PackageId;
 pub use report::{
-    Count, CounterBlock, DependencyKind, PackageInfo, QuickReportEntry, QuickSafetyReport,
-    ReportEntry, SafetyReport, UnsafeInfo,
+    Count, CounterBlock, DependencyKind, PackageInfo, QuickReportEntry,
+    QuickSafetyReport, ReportEntry, SafetyReport, UnsafeInfo,
 };
 pub use source::Source;
-
