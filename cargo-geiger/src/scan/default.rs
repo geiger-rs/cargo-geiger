@@ -146,7 +146,6 @@ fn scan_to_report(
         list_files_used_but_not_scanned(&geiger_context, &rs_files_used)
             .into_iter()
             .collect();
-
     let s = match output_format {
         OutputFormat::Json => serde_json::to_string(&report).unwrap(),
     };
