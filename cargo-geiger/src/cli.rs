@@ -107,7 +107,6 @@ pub fn resolve<'a, 'cfg>(
 #[cfg(test)]
 mod cli_tests {
     use super::*;
-
     use rstest::*;
 
     #[rstest]
@@ -178,5 +177,29 @@ mod cli_tests {
         let package = package_result.unwrap();
 
         assert_eq!(package.package_id().name(), "cargo-geiger");
+    }
+
+    #[rstest]
+    fn resolve_test() {
+        let config = Config::default().unwrap();
+        let manifest_path: Option<PathBuf> = None;
+        let workspace = get_workspace(&config, manifest_path).unwrap();
+        let package = workspace.current().unwrap();
+        let mut registry = get_registry(&config, &package).unwrap();
+
+        let features: Vec<String> = vec![];
+        let all_features = false;
+        let no_default_features = false;
+
+        let resolve_cargo_result = resolve(
+            package.package_id(),
+            &mut registry,
+            &workspace,
+            &features,
+            all_features,
+            no_default_features,
+        );
+
+        assert!(resolve_cargo_result.is_ok());
     }
 }

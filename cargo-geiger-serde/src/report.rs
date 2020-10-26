@@ -262,7 +262,7 @@ mod set_serde {
         S: Serializer,
     {
         let mut values = set.iter().collect::<Vec<_>>();
-        values.sort_by(|a, b| a.cmp(b));
+        values.sort();
         let mut seq = serializer.serialize_seq(Some(values.len()))?;
         for value in values {
             seq.serialize_element(value)?;

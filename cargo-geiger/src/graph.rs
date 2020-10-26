@@ -254,9 +254,7 @@ mod graph_tests {
         let result = build_graph_prerequisites(&args, &config_host);
 
         assert!(result.is_ok());
-
         let (extra_deps, _) = result.unwrap();
-
         assert_eq!(extra_deps, expected_extra_deps);
     }
 

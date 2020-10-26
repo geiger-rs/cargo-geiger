@@ -8,6 +8,7 @@ use cargo::core::PackageId;
 
 /// A step towards decoupling some parts of the table-tree printing from the
 /// dependency graph traversal.
+#[derive(Debug, PartialEq)]
 pub enum TextTreeLine {
     /// A text line for a package
     Package { id: PackageId, tree_vines: String },

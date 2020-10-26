@@ -23,14 +23,14 @@ use walkdir::{DirEntry, WalkDir};
 /// The wrapped PathBufs are canonicalized.
 #[derive(Debug, PartialEq)]
 pub enum RsFile {
-    /// Library entry point source file, usually src/lib.rs
-    LibRoot(PathBuf),
-
     /// Executable entry point source file, usually src/main.rs
     BinRoot(PathBuf),
 
     /// Not sure if this is relevant but let's be conservative for now.
     CustomBuildRoot(PathBuf),
+
+    /// Library entry point source file, usually src/lib.rs
+    LibRoot(PathBuf),
 
     /// All other .rs files.
     Other(PathBuf),
@@ -94,6 +94,15 @@ pub fn into_rs_code_file(kind: &TargetKind, path: PathBuf) -> RsFile {
         TargetKind::ExampleLib(_) => RsFile::Other(path),
         TargetKind::ExampleBin => RsFile::Other(path),
         TargetKind::CustomBuild => RsFile::CustomBuildRoot(path),
+    }
+}
+
+pub fn into_is_entry_point_and_path_buf(rs_file: RsFile) -> (bool, PathBuf) {
+    match rs_file {
+        RsFile::BinRoot(pb) => (true, pb),
+        RsFile::CustomBuildRoot(pb) => (true, pb),
+        RsFile::LibRoot(pb) => (true, pb),
+        RsFile::Other(pb) => (false, pb),
     }
 }
 
@@ -315,6 +324,24 @@ mod rs_file_tests {
             into_rs_code_file(&input_target_kind, path_buf),
             expected_rs_file
         );
+    }
+
+    #[rstest(
+        input_rs_file,
+        expected_is_entry_point,
+        case(RsFile::BinRoot(PathBuf::from("test.txt")), true),
+        case(RsFile::CustomBuildRoot(PathBuf::from("test.txt")), true),
+        case(RsFile::LibRoot(PathBuf::from("test.txt")), true),
+        case(RsFile::Other(PathBuf::from("test.txt")), false)
+    )]
+    fn into_is_entry_point_and_path_buf_test(
+        input_rs_file: RsFile,
+        expected_is_entry_point: bool,
+    ) {
+        let (is_entry_point, _path_buf) =
+            into_is_entry_point_and_path_buf(input_rs_file);
+        assert_eq!(is_entry_point, expected_is_entry_point);
+        assert_eq!(_path_buf, PathBuf::from("test.txt"));
     }
 
     #[rstest]

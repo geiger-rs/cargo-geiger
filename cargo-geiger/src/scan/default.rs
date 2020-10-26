@@ -115,7 +115,7 @@ fn scan(
 fn scan_to_report(
     workspace: &Workspace,
     packages: &PackageSet,
-    root_pack_id: PackageId,
+    root_package_id: PackageId,
     graph: &Graph,
     scan_parameters: &ScanParameters,
     output_format: OutputFormat,
@@ -125,18 +125,21 @@ fn scan_to_report(
         geiger_context,
     } = scan(workspace, packages, scan_parameters)?;
     let mut report = SafetyReport::default();
-    for (package, pack_metrics) in
-        package_metrics(&geiger_context, graph, root_pack_id)
+    for (package, package_metrics_option) in
+        package_metrics(&geiger_context, graph, root_package_id)
     {
-        let pack_metrics = match pack_metrics {
+        let package_metrics = match package_metrics_option {
             Some(m) => m,
             None => {
                 report.packages_without_metrics.insert(package.id);
                 continue;
             }
         };
-        let unsafety = unsafe_stats(pack_metrics, &rs_files_used);
-        let entry = ReportEntry { package, unsafety };
+        let unsafe_info = unsafe_stats(package_metrics, &rs_files_used);
+        let entry = ReportEntry {
+            package,
+            unsafety: unsafe_info,
+        };
         report.packages.insert(entry.package.id.clone(), entry);
     }
     report.used_but_not_scanned_files =
@@ -150,29 +153,55 @@ fn scan_to_report(
     Ok(())
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod default_tests {
     use super::*;
     use crate::format::Charset;
-
     use rstest::*;
 
-    #[rstest]
-    fn build_compile_options_test() {
-        let args_all_features = rand::random();
-        let args_features = Some(String::from("unit test features"));
-        let args_no_default_features = rand::random();
+    #[rstest(
+        input_features,
+        expected_compile_features,
+        case(
+            Some(String::from("unit test features")),
+            vec!["unit", "test", "features"],
+        ),
+        case(
+            Some(String::from("")),
+            vec![""],
+        )
+    )]
+    fn build_compile_options_test(
+        input_features: Option<String>,
+        expected_compile_features: Vec<&str>,
+    ) {
+        let mut args = create_args();
+        args.all_features = rand::random();
+        args.features = input_features;
+        args.no_default_features = rand::random();
 
-        let args = Args {
+        let config = Config::default().unwrap();
+        let compile_options = build_compile_options(&args, &config);
+
+        assert_eq!(compile_options.all_features, args.all_features);
+        assert_eq!(compile_options.features, expected_compile_features);
+        assert_eq!(
+            compile_options.no_default_features,
+            args.no_default_features
+        );
+    }
+
+    fn create_args() -> Args {
+        Args {
             all: false,
             all_deps: false,
-            all_features: args_all_features,
+            all_features: false,
             all_targets: false,
             build_deps: false,
             charset: Charset::Utf8,
             color: None,
             dev_deps: false,
-            features: args_features,
+            features: None,
             forbid_only: false,
             format: "".to_string(),
             frozen: false,
@@ -181,7 +210,7 @@ mod default_tests {
             invert: false,
             locked: false,
             manifest_path: None,
-            no_default_features: args_no_default_features,
+            no_default_features: false,
             no_indent: false,
             offline: false,
             package: None,
@@ -192,26 +221,6 @@ mod default_tests {
             verbose: 0,
             version: false,
             output_format: None,
-        };
-
-        let config = Config::default().unwrap();
-
-        let compile_options = build_compile_options(&args, &config);
-
-        assert_eq!(compile_options.all_features, args_all_features);
-        assert_eq!(compile_options.features, vec!["unit", "test", "features"]);
-        assert_eq!(
-            compile_options.no_default_features,
-            args_no_default_features
-        );
-    }
-
-    #[rstest]
-    fn construct_scan_mode_default_output_key_lines_test() {
-        let emoji_symbols = EmojiSymbols::new(Charset::Utf8);
-        let output_key_lines =
-            construct_scan_mode_default_output_key_lines(&emoji_symbols);
-
-        assert_eq!(output_key_lines.len(), 12);
+        }
     }
 }

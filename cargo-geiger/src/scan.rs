@@ -34,13 +34,13 @@ pub struct PackageMetrics {
 }
 
 pub enum ScanMode {
-    // The default scan mode, scan every .rs file.
-    Full,
-
     // An optimization to allow skipping everything except the entry points.
     // This is only useful for the "--forbid-only" mode since that mode only
     // depends on entry point .rs files.
     EntryPointsOnly,
+
+    // The default scan mode, scan every .rs file.
+    Full,
 }
 
 pub struct ScanParameters<'a> {
