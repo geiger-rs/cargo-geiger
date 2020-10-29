@@ -124,7 +124,6 @@ fn add_graph_node_if_not_present_and_edge(
         .add_edge(index, dependency_index, dependency.kind());
 }
 
-#[doc(hidden)]
 fn add_package_dependencies_to_graph<'a>(
     resolve: &'a Resolve,
     package_id: PackageId,

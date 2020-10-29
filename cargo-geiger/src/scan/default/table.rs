@@ -12,6 +12,7 @@ use super::super::{
 };
 use super::scan;
 
+use crate::krates_utils::CargoMetadataParameters;
 use cargo::core::shell::Verbosity;
 use cargo::core::{PackageId, PackageSet, Workspace};
 use cargo::{CliError, CliResult};
@@ -20,18 +21,24 @@ use std::error::Error;
 use std::fmt;
 
 pub fn scan_to_table(
-    workspace: &Workspace,
-    package_set: &PackageSet,
-    root_pack_id: PackageId,
+    cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
+    package_set: &PackageSet,
+    root_package_id: PackageId,
     scan_parameters: &ScanParameters,
+    workspace: &Workspace,
 ) -> CliResult {
     let mut scan_output_lines = Vec::<String>::new();
 
     let ScanDetails {
         rs_files_used,
         geiger_context,
-    } = scan(workspace, package_set, scan_parameters)?;
+    } = scan(
+        cargo_metadata_parameters,
+        package_set,
+        scan_parameters,
+        workspace,
+    )?;
 
     if scan_parameters.print_config.verbosity == Verbosity::Verbose {
         let mut rs_files_used_lines =
@@ -44,7 +51,7 @@ pub fn scan_to_table(
     scan_output_lines.append(&mut output_key_lines);
 
     let text_tree_lines = walk_dependency_tree(
-        root_pack_id,
+        root_package_id,
         &graph,
         &scan_parameters.print_config,
     );

@@ -3,6 +3,7 @@ mod table;
 use crate::args::Args;
 use crate::format::print_config::OutputFormat;
 use crate::graph::Graph;
+use crate::krates_utils::CargoMetadataParameters;
 use crate::rs_file::resolve_rs_file_deps;
 
 use super::find::find_unsafe;
@@ -20,27 +21,30 @@ use cargo::{CliError, CliResult, Config};
 use cargo_geiger_serde::{ReportEntry, SafetyReport};
 
 pub fn scan_unsafe(
-    workspace: &Workspace,
-    package_set: &PackageSet,
-    root_pack_id: PackageId,
+    cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
+    package_set: &PackageSet,
+    root_package_id: PackageId,
     scan_parameters: &ScanParameters,
+    workspace: &Workspace,
 ) -> CliResult {
     match scan_parameters.args.output_format {
         Some(output_format) => scan_to_report(
-            workspace,
-            package_set,
-            root_pack_id,
+            cargo_metadata_parameters,
             graph,
-            scan_parameters,
             output_format,
+            package_set,
+            root_package_id,
+            scan_parameters,
+            workspace,
         ),
         None => scan_to_table(
-            workspace,
-            package_set,
-            root_pack_id,
+            cargo_metadata_parameters,
             graph,
+            package_set,
+            root_package_id,
             scan_parameters,
+            workspace,
         ),
     }
 }
@@ -92,18 +96,20 @@ fn build_compile_options<'a>(
 }
 
 fn scan(
-    workspace: &Workspace,
-    packages: &PackageSet,
+    cargo_metadata_parameters: &CargoMetadataParameters,
+    package_set: &PackageSet,
     scan_parameters: &ScanParameters,
+    workspace: &Workspace,
 ) -> Result<ScanDetails, CliError> {
     let compile_options =
         build_compile_options(scan_parameters.args, scan_parameters.config);
     let rs_files_used =
         resolve_rs_file_deps(&compile_options, workspace).unwrap();
     let geiger_context = find_unsafe(
-        ScanMode::Full,
+        cargo_metadata_parameters,
         scan_parameters.config,
-        packages,
+        ScanMode::Full,
+        package_set,
         scan_parameters.print_config,
     )?;
     Ok(ScanDetails {
@@ -113,17 +119,23 @@ fn scan(
 }
 
 fn scan_to_report(
-    workspace: &Workspace,
-    packages: &PackageSet,
-    root_package_id: PackageId,
+    cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
-    scan_parameters: &ScanParameters,
     output_format: OutputFormat,
+    package_set: &PackageSet,
+    root_package_id: PackageId,
+    scan_parameters: &ScanParameters,
+    workspace: &Workspace,
 ) -> CliResult {
     let ScanDetails {
         rs_files_used,
         geiger_context,
-    } = scan(workspace, packages, scan_parameters)?;
+    } = scan(
+        cargo_metadata_parameters,
+        package_set,
+        scan_parameters,
+        workspace,
+    )?;
     let mut report = SafetyReport::default();
     for (package, package_metrics_option) in
         package_metrics(&geiger_context, graph, root_package_id)

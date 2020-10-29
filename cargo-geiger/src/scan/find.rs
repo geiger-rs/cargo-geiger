@@ -1,14 +1,17 @@
 use crate::format::print_config::PrintConfig;
+use crate::krates_utils::{
+    CargoMetadataParameters, GetRoot, ToCargoMetadataPackage, ToPackageId,
+};
 use crate::rs_file::{
-    into_is_entry_point_and_path_buf, into_rs_code_file, is_file_with_ext,
-    RsFile, RsFileMetricsWrapper,
+    into_is_entry_point_and_path_buf, into_rs_code_file, into_target_kind,
+    is_file_with_ext, RsFile, RsFileMetricsWrapper,
 };
 use crate::scan::PackageMetrics;
 
 use super::{GeigerContext, ScanMode};
 
 use cargo::core::package::PackageSet;
-use cargo::core::{Package, PackageId};
+use cargo::core::PackageId;
 use cargo::util::CargoResult;
 use cargo::{CliError, Config};
 use geiger::{find_unsafe_in_file, IncludeTests, RsFileMetrics, ScanFileError};
@@ -18,17 +21,19 @@ use std::path::PathBuf;
 use walkdir::WalkDir;
 
 pub fn find_unsafe(
-    mode: ScanMode,
+    cargo_metadata_parameters: &CargoMetadataParameters,
     config: &Config,
-    packages: &PackageSet,
+    mode: ScanMode,
+    package_set: &PackageSet,
     print_config: &PrintConfig,
 ) -> Result<GeigerContext, CliError> {
     let mut progress = cargo::util::Progress::new("Scanning", config);
     let geiger_context = find_unsafe_in_packages(
-        packages,
         print_config.allow_partial_results,
+        cargo_metadata_parameters,
         print_config.include_tests,
         mode,
+        package_set,
         |i, count| -> CargoResult<()> { progress.tick(i, count) },
     );
     progress.clear();
@@ -37,19 +42,27 @@ pub fn find_unsafe(
 }
 
 fn find_unsafe_in_packages<F>(
-    packages: &PackageSet,
     allow_partial_results: bool,
+    cargo_metadata_parameters: &CargoMetadataParameters,
     include_tests: IncludeTests,
     mode: ScanMode,
+    package_set: &PackageSet,
     mut progress_step: F,
 ) -> GeigerContext
 where
     F: FnMut(usize, usize) -> CargoResult<()>,
 {
     let mut package_id_to_metrics = HashMap::new();
-    let package_ids = packages.get_many(packages.package_ids()).unwrap();
+    let packages = package_set
+        .get_many(package_set.package_ids())
+        .unwrap()
+        .iter()
+        .map(|p| {
+            p.to_cargo_metadata_package(cargo_metadata_parameters.metadata)
+        })
+        .collect::<Vec<cargo_metadata::Package>>();
     let package_code_files: Vec<_> =
-        find_rs_files_in_packages(&package_ids).collect();
+        find_rs_files_in_packages(&packages).collect();
     let package_code_file_count = package_code_files.len();
     for (i, (package_id, rs_code_file)) in
         package_code_files.into_iter().enumerate()
@@ -79,8 +92,22 @@ where
         }
         let _ = progress_step(i, package_code_file_count);
     }
+
+    let cargo_core_package_metrics = package_id_to_metrics
+        .iter()
+        .map(|(cargo_metadata_package_id, package_metrics)| {
+            (
+                cargo_metadata_package_id.clone().to_package_id(
+                    cargo_metadata_parameters.krates,
+                    package_set,
+                ),
+                package_metrics.clone(),
+            )
+        })
+        .collect::<HashMap<PackageId, PackageMetrics>>();
+
     GeigerContext {
-        package_id_to_metrics,
+        package_id_to_metrics: cargo_core_package_metrics,
     }
 }
 
@@ -100,15 +127,15 @@ fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     })
 }
 
-fn find_rs_files_in_package(package: &Package) -> Vec<RsFile> {
+fn find_rs_files_in_package(package: &cargo_metadata::Package) -> Vec<RsFile> {
     // Find all build target entry point source files.
     let mut canon_targets = HashMap::new();
-    for target in package.targets() {
-        let path = target.src_path().path();
-        let path = match path {
+    for target in &package.targets {
+        let path = target.src_path.as_path();
+        /*let path = match path {
             None => continue,
             Some(p) => p,
-        };
+        };*/
         if !path.exists() {
             // A package published to crates.io is not required to include
             // everything. We have to skip this build target.
@@ -121,26 +148,28 @@ fn find_rs_files_in_package(package: &Package) -> Vec<RsFile> {
         targets.push(target);
     }
     let mut rs_files = Vec::new();
-    for path_bufs in find_rs_files_in_dir(package.root()) {
+    for path_bufs in find_rs_files_in_dir(package.clone().get_root().as_path())
+    {
         if !canon_targets.contains_key(&path_bufs) {
             rs_files.push(RsFile::Other(path_bufs));
         }
     }
     for (path_buf, targets) in canon_targets.into_iter() {
         for target in targets {
-            rs_files.push(into_rs_code_file(target.kind(), path_buf.clone()));
+            let target_kind = into_target_kind(target.clone().kind);
+            rs_files.push(into_rs_code_file(&target_kind, path_buf.clone()));
         }
     }
     rs_files
 }
 
-fn find_rs_files_in_packages<'a>(
-    packages: &'a [&Package],
-) -> impl Iterator<Item = (PackageId, RsFile)> + 'a {
+fn find_rs_files_in_packages(
+    packages: &[cargo_metadata::Package],
+) -> impl Iterator<Item = (cargo_metadata::PackageId, RsFile)> + '_ {
     packages.iter().flat_map(|package| {
         find_rs_files_in_package(package)
             .into_iter()
-            .map(move |p| (package.package_id(), p))
+            .map(move |p| (package.id.clone(), p))
     })
 }
 
@@ -158,8 +187,11 @@ fn handle_unsafe_in_file_error(
 
 fn update_package_id_to_metrics_with_rs_file_metrics(
     is_entry_point: bool,
-    package_id: PackageId,
-    package_id_to_metrics: &mut HashMap<PackageId, PackageMetrics>,
+    package_id: cargo_metadata::PackageId,
+    package_id_to_metrics: &mut HashMap<
+        cargo_metadata::PackageId,
+        PackageMetrics,
+    >,
     path_buf: PathBuf,
     rs_file_metrics: RsFileMetrics,
 ) {
@@ -178,10 +210,8 @@ fn update_package_id_to_metrics_with_rs_file_metrics(
 mod find_tests {
     use super::*;
 
-    use crate::cli::get_workspace;
-
+    use cargo_metadata::{CargoOpt, MetadataCommand};
     use rstest::*;
-    use std::env;
     use std::fs::File;
     use std::io;
     use std::io::ErrorKind;
@@ -281,11 +311,10 @@ mod find_tests {
     fn update_package_id_to_metrics_with_rs_file_metrics_test(
         input_is_entry_point: bool,
         expected_is_crate_entry_point: bool,
-        package: Package,
+        package: cargo_metadata::Package,
     ) {
-        //let package = get_current_workspace_package();
         let mut package_id_to_metrics =
-            HashMap::<PackageId, PackageMetrics>::new();
+            HashMap::<cargo_metadata::PackageId, PackageMetrics>::new();
 
         let mut rs_files_in_package = find_rs_files_in_package(&package);
         let rs_file = rs_files_in_package.pop().unwrap();
@@ -296,19 +325,18 @@ mod find_tests {
 
         update_package_id_to_metrics_with_rs_file_metrics(
             input_is_entry_point,
-            package.package_id(),
+            package.id.clone(),
             &mut package_id_to_metrics,
-            package.manifest_path().to_path_buf(),
+            package.manifest_path.clone(),
             rs_file_metrics.clone(),
         );
 
-        assert!(package_id_to_metrics.contains_key(&package.package_id()));
-        let package_metrics =
-            package_id_to_metrics.get(&package.package_id()).unwrap();
+        assert!(package_id_to_metrics.contains_key(&package.id));
+        let package_metrics = package_id_to_metrics.get(&package.id).unwrap();
 
         let wrapper = package_metrics
             .rs_path_to_metrics
-            .get(package.manifest_path())
+            .get(package.manifest_path.as_path())
             .unwrap();
 
         assert_eq!(wrapper.metrics, rs_file_metrics);
@@ -316,15 +344,13 @@ mod find_tests {
     }
 
     #[fixture]
-    fn get_current_workspace_package() -> Package {
-        let config = Config::default().unwrap();
+    fn get_current_workspace_package() -> cargo_metadata::Package {
+        let metadata = MetadataCommand::new()
+            .manifest_path("./Cargo.toml")
+            .features(CargoOpt::AllFeatures)
+            .exec()
+            .unwrap();
 
-        let current_working_dir =
-            env::current_dir().unwrap().join("Cargo.toml");
-
-        let manifest_path_option = Some(current_working_dir);
-
-        let workspace = get_workspace(&config, manifest_path_option).unwrap();
-        workspace.current().unwrap().clone()
+        metadata.root_package().unwrap().clone()
     }
 }
