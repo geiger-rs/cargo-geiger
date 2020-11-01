@@ -10,6 +10,7 @@ use crate::rs_file::RsFileMetricsWrapper;
 use default::scan_unsafe;
 use forbid::scan_forbid_unsafe;
 
+use crate::krates_utils::CargoMetadataParameters;
 use cargo::core::dependency::DepKind;
 use cargo::core::{PackageId, PackageSet, Workspace};
 use cargo::{CliResult, Config};
@@ -27,7 +28,7 @@ pub struct GeigerContext {
     pub package_id_to_metrics: HashMap<PackageId, PackageMetrics>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct PackageMetrics {
     /// The key is the canonicalized path to the rs source file.
     pub rs_path_to_metrics: HashMap<PathBuf, RsFileMetricsWrapper>,
@@ -51,6 +52,7 @@ pub struct ScanParameters<'a> {
 
 pub fn scan(
     args: &Args,
+    cargo_metadata_parameters: &CargoMetadataParameters,
     config: &Config,
     graph: &Graph,
     package_set: &PackageSet,
@@ -67,18 +69,20 @@ pub fn scan(
 
     if args.forbid_only {
         scan_forbid_unsafe(
+            cargo_metadata_parameters,
+            &graph,
             package_set,
             root_package_id,
-            &graph,
             &scan_parameters,
         )
     } else {
         scan_unsafe(
-            workspace,
+            cargo_metadata_parameters,
+            &graph,
             package_set,
             root_package_id,
-            &graph,
             &scan_parameters,
+            workspace,
         )
     }
 }
@@ -159,9 +163,9 @@ fn list_files_used_but_not_scanned(
 fn package_metrics<'a>(
     geiger_context: &'a GeigerContext,
     graph: &'a Graph,
-    root_id: PackageId,
+    root_package_id: PackageId,
 ) -> impl Iterator<Item = (PackageInfo, Option<&'a PackageMetrics>)> {
-    let root_index = graph.nodes[&root_id];
+    let root_index = graph.nodes[&root_package_id];
     let mut indices = vec![root_index];
     let mut visited = HashSet::new();
     std::iter::from_fn(move || {

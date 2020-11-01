@@ -14,15 +14,19 @@ mod args;
 mod cli;
 mod format;
 mod graph;
+mod krates_utils;
 mod rs_file;
 mod scan;
 mod tree;
 
 use crate::args::{Args, HELP};
-use crate::cli::{get_registry, get_workspace, resolve};
+use crate::cli::{
+    get_cargo_metadata, get_krates, get_registry, get_workspace, resolve,
+};
 use crate::graph::build_graph;
 use crate::scan::scan;
 
+use crate::krates_utils::CargoMetadataParameters;
 use cargo::core::shell::{ColorChoice, Shell};
 use cargo::{CliResult, Config};
 
@@ -56,6 +60,14 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         ColorChoice::Never => colored::control::set_override(false),
         ColorChoice::CargoAuto => {}
     }
+
+    let cargo_metadata = get_cargo_metadata(args, config)?;
+    let krates = get_krates(&cargo_metadata)?;
+
+    let cargo_metadata_parameters = CargoMetadataParameters {
+        metadata: &cargo_metadata,
+        krates: &krates,
+    };
 
     let workspace = get_workspace(config, args.manifest_path.clone())?;
     let package = workspace.current()?;
@@ -96,6 +108,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 
     scan(
         args,
+        &cargo_metadata_parameters,
         config,
         &graph,
         &package_set,

@@ -3,22 +3,25 @@ use crate::format::pattern::Pattern;
 use crate::format::print_config::PrintConfig;
 use crate::format::{get_kind_group_name, SymbolKind};
 use crate::graph::Graph;
+use crate::krates_utils::CargoMetadataParameters;
 use crate::tree::traversal::walk_dependency_tree;
 use crate::tree::TextTreeLine;
 
 use super::super::find::find_unsafe;
 use super::super::ScanMode;
 
+use crate::scan::GeigerContext;
 use cargo::core::{Package, PackageId, PackageSet};
 use cargo::{CliResult, Config};
 use colored::Colorize;
 
 pub fn scan_forbid_to_table(
+    cargo_metadata_parameters: &CargoMetadataParameters,
     config: &Config,
-    package_set: &PackageSet,
-    root_package_id: PackageId,
     graph: &Graph,
+    package_set: &PackageSet,
     print_config: &PrintConfig,
+    root_package_id: PackageId,
 ) -> CliResult {
     let mut scan_output_lines = Vec::<String>::new();
     let emoji_symbols = EmojiSymbols::new(print_config.charset);
@@ -43,9 +46,17 @@ pub fn scan_forbid_to_table(
                 id: package_id,
                 tree_vines,
             } => {
-                handle_package_text_tree_line(
+                let geiger_ctx = find_unsafe(
+                    cargo_metadata_parameters,
                     config,
+                    ScanMode::EntryPointsOnly,
+                    package_set,
+                    print_config,
+                )?;
+
+                handle_package_text_tree_line(
                     &emoji_symbols,
+                    &geiger_ctx,
                     package_id,
                     package_set,
                     print_config,
@@ -97,20 +108,14 @@ fn format_package_name(package: &Package, pattern: &Pattern) -> String {
 }
 
 fn handle_package_text_tree_line(
-    config: &Config,
     emoji_symbols: &EmojiSymbols,
+    geiger_ctx: &GeigerContext,
     package_id: PackageId,
     package_set: &PackageSet,
     print_config: &PrintConfig,
     scan_output_lines: &mut Vec<String>,
     tree_vines: String,
 ) -> CliResult {
-    let geiger_ctx = find_unsafe(
-        ScanMode::EntryPointsOnly,
-        config,
-        package_set,
-        print_config,
-    )?;
     let sym_lock = emoji_symbols.emoji(SymbolKind::Lock);
     let sym_qmark = emoji_symbols.emoji(SymbolKind::QuestionMark);
 

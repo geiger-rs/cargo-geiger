@@ -8,45 +8,55 @@ use super::{package_metrics, ScanMode, ScanParameters};
 
 use table::scan_forbid_to_table;
 
+use crate::krates_utils::CargoMetadataParameters;
 use cargo::core::{PackageId, PackageSet};
 use cargo::{CliResult, Config};
 use cargo_geiger_serde::{QuickReportEntry, QuickSafetyReport};
 
 pub fn scan_forbid_unsafe(
+    cargo_metadata_parameters: &CargoMetadataParameters,
+    graph: &Graph,
     package_set: &PackageSet,
     root_package_id: PackageId,
-    graph: &Graph,
     scan_parameters: &ScanParameters,
 ) -> CliResult {
     match scan_parameters.args.output_format {
         Some(output_format) => scan_forbid_to_report(
+            cargo_metadata_parameters,
             scan_parameters.config,
-            package_set,
-            root_package_id,
             graph,
-            scan_parameters.print_config,
             output_format,
+            package_set,
+            scan_parameters.print_config,
+            root_package_id,
         ),
         None => scan_forbid_to_table(
+            cargo_metadata_parameters,
             scan_parameters.config,
-            package_set,
-            root_package_id,
             graph,
+            package_set,
             scan_parameters.print_config,
+            root_package_id,
         ),
     }
 }
 
 fn scan_forbid_to_report(
+    cargo_metadata_parameters: &CargoMetadataParameters,
     config: &Config,
-    packages: &PackageSet,
-    root_package_id: PackageId,
     graph: &Graph,
-    print_config: &PrintConfig,
     output_format: OutputFormat,
+    package_set: &PackageSet,
+    print_config: &PrintConfig,
+    root_package_id: PackageId,
 ) -> CliResult {
-    let geiger_context =
-        find_unsafe(ScanMode::EntryPointsOnly, config, packages, print_config)?;
+    let geiger_context = find_unsafe(
+        cargo_metadata_parameters,
+        config,
+        ScanMode::EntryPointsOnly,
+        package_set,
+        print_config,
+    )?;
     let mut report = QuickSafetyReport::default();
     for (package, package_metrics) in
         package_metrics(&geiger_context, graph, root_package_id)

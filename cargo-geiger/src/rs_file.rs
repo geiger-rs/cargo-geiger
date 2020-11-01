@@ -36,7 +36,7 @@ pub enum RsFile {
     Other(PathBuf),
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct RsFileMetricsWrapper {
     /// The information returned by the `geiger` crate for a `.rs` file.
     pub metrics: RsFileMetrics,
@@ -85,24 +85,43 @@ impl From<PoisonError<CustomExecutorInnerContext>> for RsResolveError {
     }
 }
 
-pub fn into_rs_code_file(kind: &TargetKind, path: PathBuf) -> RsFile {
-    match kind {
-        TargetKind::Lib(_) => RsFile::LibRoot(path),
-        TargetKind::Bin => RsFile::BinRoot(path),
-        TargetKind::Test => RsFile::Other(path),
-        TargetKind::Bench => RsFile::Other(path),
-        TargetKind::ExampleLib(_) => RsFile::Other(path),
-        TargetKind::ExampleBin => RsFile::Other(path),
-        TargetKind::CustomBuild => RsFile::CustomBuildRoot(path),
-    }
-}
-
 pub fn into_is_entry_point_and_path_buf(rs_file: RsFile) -> (bool, PathBuf) {
     match rs_file {
         RsFile::BinRoot(pb) => (true, pb),
         RsFile::CustomBuildRoot(pb) => (true, pb),
         RsFile::LibRoot(pb) => (true, pb),
         RsFile::Other(pb) => (false, pb),
+    }
+}
+
+pub fn into_rs_code_file(target_kind: &TargetKind, path: PathBuf) -> RsFile {
+    match target_kind {
+        TargetKind::Bench => RsFile::Other(path),
+        TargetKind::Bin => RsFile::BinRoot(path),
+        TargetKind::CustomBuild => RsFile::CustomBuildRoot(path),
+        TargetKind::ExampleBin => RsFile::Other(path),
+        TargetKind::ExampleLib(_) => RsFile::Other(path),
+        TargetKind::Lib(_) => RsFile::LibRoot(path),
+        TargetKind::Test => RsFile::Other(path),
+    }
+}
+
+pub fn into_target_kind(raw_target_kind: Vec<String>) -> TargetKind {
+    let mut raw_target_kind_str = raw_target_kind
+        .iter()
+        .map(|s| s.as_str())
+        .collect::<Vec<&str>>();
+
+    raw_target_kind_str.sort_unstable();
+
+    match &raw_target_kind_str[..] {
+        ["bench"] => TargetKind::Bench,
+        ["bin"] => TargetKind::Bin,
+        ["bin", "example"] => TargetKind::ExampleBin,
+        ["example", "lib"] => TargetKind::ExampleLib(vec![]),
+        ["lib"] => TargetKind::Lib(vec![]),
+        ["test"] => TargetKind::Test,
+        _ => TargetKind::CustomBuild,
     }
 }
 
@@ -269,6 +288,24 @@ mod rs_file_tests {
     use rstest::*;
 
     #[rstest(
+        input_rs_file,
+        expected_is_entry_point,
+        case(RsFile::BinRoot(PathBuf::from("test.txt")), true),
+        case(RsFile::CustomBuildRoot(PathBuf::from("test.txt")), true),
+        case(RsFile::LibRoot(PathBuf::from("test.txt")), true),
+        case(RsFile::Other(PathBuf::from("test.txt")), false)
+    )]
+    fn into_is_entry_point_and_path_buf_test(
+        input_rs_file: RsFile,
+        expected_is_entry_point: bool,
+    ) {
+        let (is_entry_point, _path_buf) =
+            into_is_entry_point_and_path_buf(input_rs_file);
+        assert_eq!(is_entry_point, expected_is_entry_point);
+        assert_eq!(_path_buf, PathBuf::from("test.txt"));
+    }
+
+    #[rstest(
         input_target_kind,
         expected_rs_file,
         case(
@@ -327,21 +364,58 @@ mod rs_file_tests {
     }
 
     #[rstest(
-        input_rs_file,
-        expected_is_entry_point,
-        case(RsFile::BinRoot(PathBuf::from("test.txt")), true),
-        case(RsFile::CustomBuildRoot(PathBuf::from("test.txt")), true),
-        case(RsFile::LibRoot(PathBuf::from("test.txt")), true),
-        case(RsFile::Other(PathBuf::from("test.txt")), false)
+        input_raw_target_kind,
+        expected_target_kind,
+        case(
+            vec![String::from("bench")],
+            TargetKind::Bench
+        ),
+        case(
+            vec![String::from("bin")],
+            TargetKind::Bin
+        ),
+        case(
+            vec![String::from("bin"), String::from("example")],
+            TargetKind::ExampleBin
+        ),
+        case(
+            vec![String::from("example"), String::from("bin")],
+            TargetKind::ExampleBin
+        ),
+        case(
+            vec![String::from("lib"), String::from("example")],
+            TargetKind::ExampleLib(vec![])
+        ),
+        case(
+            vec![String::from("example"), String::from("lib")],
+            TargetKind::ExampleLib(vec![])
+        ),
+        case(
+            vec![String::from("lib")],
+            TargetKind::Lib(vec![])
+        ),
+        case(
+            vec![String::from("test")],
+            TargetKind::Test
+        ),
+        case(
+            vec![
+                String::from("other"),
+                String::from("raw"),
+                String::from("target"),
+                String::from("kinds")
+            ],
+            TargetKind::CustomBuild
+        )
     )]
-    fn into_is_entry_point_and_path_buf_test(
-        input_rs_file: RsFile,
-        expected_is_entry_point: bool,
+    fn into_target_kind_test(
+        input_raw_target_kind: Vec<String>,
+        expected_target_kind: TargetKind,
     ) {
-        let (is_entry_point, _path_buf) =
-            into_is_entry_point_and_path_buf(input_rs_file);
-        assert_eq!(is_entry_point, expected_is_entry_point);
-        assert_eq!(_path_buf, PathBuf::from("test.txt"));
+        assert_eq!(
+            into_target_kind(input_raw_target_kind),
+            expected_target_kind
+        );
     }
 
     #[rstest]

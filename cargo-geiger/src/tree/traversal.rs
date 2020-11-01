@@ -19,13 +19,13 @@ use std::collections::HashSet;
 /// TODO: Consider separating the tree vine building from the tree traversal.
 ///
 pub fn walk_dependency_tree(
-    root_pack_id: PackageId,
+    root_package_id: PackageId,
     graph: &Graph,
     print_config: &PrintConfig,
 ) -> Vec<TextTreeLine> {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
-    let node = &graph.graph[graph.nodes[&root_pack_id]];
+    let node = &graph.graph[graph.nodes[&root_package_id]];
     walk_dependency_node(
         node,
         graph,
