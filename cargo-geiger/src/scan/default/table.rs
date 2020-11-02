@@ -12,7 +12,7 @@ use super::super::{
 };
 use super::scan;
 
-use crate::krates_utils::CargoMetadataParameters;
+use crate::krates_utils::{CargoMetadataParameters, ToCargoMetadataPackageId};
 use cargo::core::shell::Verbosity;
 use cargo::core::{PackageId, PackageSet, Workspace};
 use cargo::{CliError, CliResult};
@@ -51,9 +51,12 @@ pub fn scan_to_table(
     scan_output_lines.append(&mut output_key_lines);
 
     let text_tree_lines = walk_dependency_tree(
-        root_package_id,
+        cargo_metadata_parameters,
         &graph,
+        package_set,
         &scan_parameters.print_config,
+        root_package_id
+            .to_cargo_metadata_package_id(cargo_metadata_parameters.metadata),
     );
     let table_parameters = TableParameters {
         geiger_context: &geiger_context,

@@ -1,5 +1,5 @@
 use crate::format::print_config::PrintConfig;
-use crate::graph::{Graph, Node};
+use crate::graph::Graph;
 use crate::tree::TextTreeLine;
 
 use super::construct_tree_vines_string;
@@ -12,17 +12,17 @@ use petgraph::EdgeDirection;
 use std::collections::{HashMap, HashSet};
 
 pub fn walk_dependency_node(
-    package: &Node,
+    package: &PackageId,
     graph: &Graph,
     visited_deps: &mut HashSet<PackageId>,
     levels_continue: &mut Vec<bool>,
     print_config: &PrintConfig,
 ) -> Vec<TextTreeLine> {
-    let new = print_config.all || visited_deps.insert(package.id);
+    let new = print_config.all || visited_deps.insert(*package);
     let tree_vines = construct_tree_vines_string(levels_continue, print_config);
 
     let mut all_out_text_tree_lines = vec![TextTreeLine::Package {
-        id: package.id,
+        id: *package,
         tree_vines,
     }];
 
@@ -51,10 +51,10 @@ pub fn walk_dependency_node(
 
 fn construct_dependency_type_nodes_hashmap<'a>(
     graph: &'a Graph,
-    package: &Node,
+    package: &PackageId,
     print_config: &PrintConfig,
-) -> HashMap<DepKind, Vec<&'a Node>> {
-    let mut dependency_type_nodes: HashMap<DepKind, Vec<&Node>> = [
+) -> HashMap<DepKind, Vec<&'a PackageId>> {
+    let mut dependency_type_nodes: HashMap<DepKind, Vec<&PackageId>> = [
         (DepKind::Build, vec![]),
         (DepKind::Development, vec![]),
         (DepKind::Normal, vec![]),
@@ -65,7 +65,7 @@ fn construct_dependency_type_nodes_hashmap<'a>(
 
     for edge in graph
         .graph
-        .edges_directed(graph.nodes[&package.id], print_config.direction)
+        .edges_directed(graph.nodes[&package], print_config.direction)
     {
         let dependency = match print_config.direction {
             EdgeDirection::Incoming => &graph.graph[edge.source()],
@@ -139,17 +139,14 @@ mod dependency_node_tests {
         expected_development_nodes_length: usize,
         expected_normal_nodes_length: usize,
     ) {
-        let mut inner_graph = petgraph::Graph::<Node, DepKind>::new();
+        let mut inner_graph = petgraph::Graph::<PackageId, DepKind>::new();
         let mut nodes = HashMap::<PackageId, NodeIndex>::new();
 
         let package_ids = create_package_id_vec(7);
         let print_config = create_print_config(input_edge_direction);
 
         for package_id in &package_ids {
-            nodes.insert(
-                *package_id,
-                inner_graph.add_node(Node { id: *package_id }),
-            );
+            nodes.insert(*package_id, inner_graph.add_node(*package_id));
         }
 
         add_edges_to_graph(
@@ -167,7 +164,7 @@ mod dependency_node_tests {
         let dependency_type_nodes_hashmap =
             construct_dependency_type_nodes_hashmap(
                 &graph,
-                &Node { id: package_ids[0] },
+                &package_ids[0],
                 &print_config,
             );
 
@@ -187,7 +184,7 @@ mod dependency_node_tests {
 
     fn add_edges_to_graph(
         directed_edges: &[(usize, usize, DepKind)],
-        graph: &mut petgraph::Graph<Node, DepKind>,
+        graph: &mut petgraph::Graph<PackageId, DepKind>,
         nodes: &HashMap<PackageId, NodeIndex>,
         package_ids: &[PackageId],
     ) {

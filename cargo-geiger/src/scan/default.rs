@@ -1,10 +1,10 @@
 mod table;
 
-use crate::args::Args;
+use crate::args::FeaturesArgs;
 use crate::format::print_config::OutputFormat;
 use crate::graph::Graph;
 use crate::krates_utils::CargoMetadataParameters;
-use crate::rs_file::resolve_rs_file_deps;
+use crate::scan::rs_file::resolve_rs_file_deps;
 
 use super::find::find_unsafe;
 use super::{
@@ -53,21 +53,13 @@ pub fn scan_unsafe(
 /// constructed without providing all standard cargo options, TODO: Open an issue
 /// in cargo?
 fn build_compile_options<'a>(
-    args: &'a Args,
+    args: &'a FeaturesArgs,
     config: &'a Config,
 ) -> CompileOptions {
-    let features = args
-        .features
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(String::new)
-        .split(' ')
-        .map(str::to_owned)
-        .collect::<Vec<String>>();
     let mut compile_options =
         CompileOptions::new(&config, CompileMode::Check { test: false })
             .unwrap();
-    compile_options.features = features;
+    compile_options.features = args.features.clone();
     compile_options.all_features = args.all_features;
     compile_options.no_default_features = args.no_default_features;
 
@@ -101,8 +93,10 @@ fn scan(
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
 ) -> Result<ScanDetails, CliError> {
-    let compile_options =
-        build_compile_options(scan_parameters.args, scan_parameters.config);
+    let compile_options = build_compile_options(
+        &scan_parameters.args.features_args,
+        scan_parameters.config,
+    );
     let rs_files_used =
         resolve_rs_file_deps(&compile_options, workspace).unwrap();
     let geiger_context = find_unsafe(
@@ -168,26 +162,29 @@ fn scan_to_report(
 #[cfg(test)]
 mod default_tests {
     use super::*;
-    use crate::format::Charset;
     use rstest::*;
 
     #[rstest(
         input_features,
         expected_compile_features,
         case(
-            Some(String::from("unit test features")),
+            vec![
+                String::from("unit"),
+                String::from("test"),
+                String::from("features")
+            ],
             vec!["unit", "test", "features"],
         ),
         case(
-            Some(String::from("")),
+            vec![String::from("")],
             vec![""],
         )
     )]
     fn build_compile_options_test(
-        input_features: Option<String>,
+        input_features: Vec<String>,
         expected_compile_features: Vec<&str>,
     ) {
-        let mut args = create_args();
+        let mut args = FeaturesArgs::default();
         args.all_features = rand::random();
         args.features = input_features;
         args.no_default_features = rand::random();
@@ -201,38 +198,5 @@ mod default_tests {
             compile_options.no_default_features,
             args.no_default_features
         );
-    }
-
-    fn create_args() -> Args {
-        Args {
-            all: false,
-            all_deps: false,
-            all_features: false,
-            all_targets: false,
-            build_deps: false,
-            charset: Charset::Utf8,
-            color: None,
-            dev_deps: false,
-            features: None,
-            forbid_only: false,
-            format: "".to_string(),
-            frozen: false,
-            help: false,
-            include_tests: false,
-            invert: false,
-            locked: false,
-            manifest_path: None,
-            no_default_features: false,
-            no_indent: false,
-            offline: false,
-            package: None,
-            prefix_depth: false,
-            quiet: false,
-            target: None,
-            unstable_flags: vec![],
-            verbose: 0,
-            version: false,
-            output_format: None,
-        }
     }
 }

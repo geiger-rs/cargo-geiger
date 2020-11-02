@@ -63,7 +63,6 @@ impl ToPackageId for cargo_metadata::PackageId {
         package_set: &PackageSet,
     ) -> PackageId {
         let node = krates.node_for_kid(&self).unwrap();
-
         package_set
             .package_ids()
             .filter(|p| {
@@ -108,6 +107,7 @@ pub trait ToPackageId {
 mod krates_utils_tests {
     use super::*;
 
+    use crate::args::FeaturesArgs;
     use crate::cli::{get_registry, get_workspace, resolve};
 
     use cargo::Config;
@@ -132,25 +132,16 @@ mod krates_utils_tests {
 
     #[rstest]
     fn to_package_id_test() {
+        let args = FeaturesArgs::default();
         let config = Config::default().unwrap();
         let manifest_path: Option<PathBuf> = None;
         let workspace = get_workspace(&config, manifest_path).unwrap();
         let package = workspace.current().unwrap();
         let mut registry = get_registry(&config, &package).unwrap();
 
-        let features: Vec<String> = vec![];
-        let all_features = false;
-        let no_default_features = false;
-
-        let (package_set, _) = resolve(
-            package.package_id(),
-            &mut registry,
-            &workspace,
-            &features,
-            all_features,
-            no_default_features,
-        )
-        .unwrap();
+        let (package_set, _) =
+            resolve(&args, package.package_id(), &mut registry, &workspace)
+                .unwrap();
 
         let metadata = construct_metadata();
         let krates = Builder::new()

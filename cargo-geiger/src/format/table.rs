@@ -146,8 +146,7 @@ fn table_row_empty() -> String {
 mod table_tests {
     use super::*;
 
-    use crate::rs_file::RsFileMetricsWrapper;
-    use crate::scan::{unsafe_stats, PackageMetrics};
+    use crate::scan::{unsafe_stats, PackageMetrics, RsFileMetricsWrapper};
 
     use geiger::RsFileMetrics;
     use rstest::*;

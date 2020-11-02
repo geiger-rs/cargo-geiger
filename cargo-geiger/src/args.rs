@@ -55,16 +55,16 @@ OPTIONS:
     -V, --version                 Prints version information.
 ";
 
+#[derive(Default)]
 pub struct Args {
     pub all: bool,
     pub all_deps: bool,
-    pub all_features: bool,
     pub all_targets: bool,
     pub build_deps: bool,
     pub charset: Charset,
     pub color: Option<String>,
     pub dev_deps: bool,
-    pub features: Option<String>,
+    pub features_args: FeaturesArgs,
     pub forbid_only: bool,
     pub format: String,
     pub frozen: bool,
@@ -73,7 +73,6 @@ pub struct Args {
     pub invert: bool,
     pub locked: bool,
     pub manifest_path: Option<PathBuf>,
-    pub no_default_features: bool,
     pub no_indent: bool,
     pub offline: bool,
     pub package: Option<String>,
@@ -93,7 +92,6 @@ impl Args {
         let args = Args {
             all: raw_args.contains(["-a", "--all"]),
             all_deps: raw_args.contains("--all-dependencies"),
-            all_features: raw_args.contains("--all-features"),
             all_targets: raw_args.contains("--all-targets"),
             build_deps: raw_args.contains("--build-dependencies"),
             charset: raw_args
@@ -101,7 +99,13 @@ impl Args {
                 .unwrap_or(Charset::Utf8),
             color: raw_args.opt_value_from_str("--color")?,
             dev_deps: raw_args.contains("--dev-dependencies"),
-            features: raw_args.opt_value_from_str("--features")?,
+            features_args: FeaturesArgs {
+                all_features: raw_args.contains("--all-features"),
+                features: parse_features(
+                    raw_args.opt_value_from_str("--features")?,
+                ),
+                no_default_features: raw_args.contains("--no-default-features"),
+            },
             forbid_only: raw_args.contains(["-f", "--forbid-only"]),
             format: raw_args
                 .opt_value_from_str("--format")?
@@ -112,7 +116,6 @@ impl Args {
             invert: raw_args.contains(["-i", "--invert"]),
             locked: raw_args.contains("--locked"),
             manifest_path: raw_args.opt_value_from_str("--manifest-path")?,
-            no_default_features: raw_args.contains("--no-default-features"),
             no_indent: raw_args.contains("--no-indent"),
             offline: raw_args.contains("--offline"),
             package: raw_args.opt_value_from_str("--manifest-path")?,
@@ -140,6 +143,24 @@ impl Args {
         };
         Ok(args)
     }
+}
+
+#[derive(Default)]
+pub struct FeaturesArgs {
+    pub all_features: bool,
+    pub features: Vec<String>,
+    pub no_default_features: bool,
+}
+
+fn parse_features(raw_features: Option<String>) -> Vec<String> {
+    raw_features
+        .as_ref()
+        .cloned()
+        .unwrap_or_else(String::new)
+        .split(' ')
+        .map(str::to_owned)
+        .filter(|f| f != "")
+        .collect::<Vec<String>>()
 }
 
 #[cfg(test)]
@@ -201,5 +222,36 @@ pub mod args_tests {
         assert_eq!(args.all, expected_all);
         assert_eq!(args.charset, expected_charset);
         assert_eq!(args.verbose, expected_verbose)
+    }
+
+    #[rstest(
+        input_raw_features,
+        expected_features,
+        case(
+            Some(String::from("test some features")),
+            vec![
+                String::from("test"),
+                String::from("some"),
+                String::from("features")
+            ]
+        ),
+        case(
+            Some(String::from("test")),
+            vec![String::from("test")]
+        ),
+        case(
+            Some(String::from("")),
+            vec![]
+        ),
+        case(
+            None,
+            vec![]
+        )
+    )]
+    fn parse_features_test(
+        input_raw_features: Option<String>,
+        expected_features: Vec<String>,
+    ) {
+        assert_eq!(parse_features(input_raw_features), expected_features);
     }
 }

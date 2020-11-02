@@ -3,7 +3,7 @@ use crate::format::pattern::Pattern;
 use crate::format::print_config::PrintConfig;
 use crate::format::{get_kind_group_name, SymbolKind};
 use crate::graph::Graph;
-use crate::krates_utils::CargoMetadataParameters;
+use crate::krates_utils::{CargoMetadataParameters, ToCargoMetadataPackageId};
 use crate::tree::traversal::walk_dependency_tree;
 use crate::tree::TextTreeLine;
 
@@ -29,8 +29,14 @@ pub fn scan_forbid_to_table(
     let mut output_key_lines = construct_key_lines(&emoji_symbols);
     scan_output_lines.append(&mut output_key_lines);
 
-    let tree_lines =
-        walk_dependency_tree(root_package_id, &graph, &print_config);
+    let tree_lines = walk_dependency_tree(
+        cargo_metadata_parameters,
+        &graph,
+        package_set,
+        &print_config,
+        root_package_id
+            .to_cargo_metadata_package_id(cargo_metadata_parameters.metadata),
+    );
     for tree_line in tree_lines {
         match tree_line {
             TextTreeLine::ExtraDepsGroup { kind, tree_vines } => {
