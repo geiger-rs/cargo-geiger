@@ -151,7 +151,7 @@ Changelog
      the previous version.
 
 ### 0.5.0
- - Moved resusable parts, decoupled from `cargo`, to the new crate
+ - Moved reusable parts, decoupled from `cargo`, to the new crate
    [geiger]. Main github issue: [#30].
  - Some general refactoring and cleanup.
  - Merge pull request [#46] from alexmaco/dependency_kind_control. add options
@@ -174,7 +174,7 @@ Changelog
 
 ### 0.4.0
  - Filters out tests by default. Tests can still be included by using
-   `--include-tests`. The test code is filted out by looking for the attribute
+   `--include-tests`. The test code is filtered out by looking for the attribute
    `#[test]` on functions and `#[cfg(test)]` on modules.
 
 ### 0.3.1
