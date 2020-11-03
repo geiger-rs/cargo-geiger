@@ -1,7 +1,7 @@
 # Contributing to Cargo Geiger
 
 The following is a set of guidelines for contributing to Cargo Geiger. 
-Pull requests are very welcome, and the below are guidelines, not rules.
+__Pull requests are very welcome, and the below are guidelines, not rules.__
 Use your best judgment, and feel free to propose changes to this document.
 
 ## Contribution Workflow
