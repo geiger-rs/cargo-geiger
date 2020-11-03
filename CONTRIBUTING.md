@@ -28,4 +28,3 @@ Some of the below quality and style standards will be enforced automatically by 
 - Recommendations from `cargo clippy` should be applied.
 - All code should be formatted by `cargo fmt`.
 - Pull requests should be documented, explaining why the pull request was raised.
-- Each commit should be signed using `git --sign`.
