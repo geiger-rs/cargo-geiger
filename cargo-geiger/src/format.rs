@@ -17,6 +17,12 @@ pub enum Charset {
     Utf8,
 }
 
+impl Default for Charset {
+    fn default() -> Self {
+        Charset::Ascii
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Chunk {
     License,

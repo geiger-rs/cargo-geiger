@@ -1,11 +1,13 @@
 mod default;
 mod find;
 mod forbid;
+mod rs_file;
 
 use crate::args::Args;
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
-use crate::rs_file::RsFileMetricsWrapper;
+
+pub use rs_file::RsFileMetricsWrapper;
 
 use default::scan_unsafe;
 use forbid::scan_forbid_unsafe;
@@ -170,23 +172,26 @@ fn package_metrics<'a>(
     let mut visited = HashSet::new();
     std::iter::from_fn(move || {
         let i = indices.pop()?;
-        let id = graph.graph[i].id;
-        let mut package = PackageInfo::new(from_cargo_package_id(id));
+        let package_id = graph.graph[i];
+        let mut package = PackageInfo::new(from_cargo_package_id(package_id));
         for edge in graph.graph.edges(i) {
             let dep_index = edge.target();
             if visited.insert(dep_index) {
                 indices.push(dep_index);
             }
-            let dep = from_cargo_package_id(graph.graph[dep_index].id);
+            let dep = from_cargo_package_id(graph.graph[dep_index]);
             package.add_dependency(
                 dep,
                 from_cargo_dependency_kind(*edge.weight()),
             );
         }
-        match geiger_context.package_id_to_metrics.get(&id) {
+        match geiger_context.package_id_to_metrics.get(&package_id) {
             Some(m) => Some((package, Some(m))),
             None => {
-                eprintln!("WARNING: No metrics found for package: {}", id);
+                eprintln!(
+                    "WARNING: No metrics found for package: {}",
+                    package_id
+                );
                 Some((package, None))
             }
         }
@@ -248,7 +253,8 @@ fn from_cargo_dependency_kind(kind: DepKind) -> DependencyKind {
 mod scan_tests {
     use super::*;
 
-    use crate::{rs_file::RsFileMetricsWrapper, scan::PackageMetrics};
+    use crate::scan::PackageMetrics;
+    use rs_file::RsFileMetricsWrapper;
 
     use cargo_geiger_serde::{Count, UnsafeInfo};
     use rstest::*;

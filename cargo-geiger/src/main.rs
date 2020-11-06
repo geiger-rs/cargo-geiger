@@ -15,7 +15,6 @@ mod cli;
 mod format;
 mod graph;
 mod krates_utils;
-mod rs_file;
 mod scan;
 mod tree;
 
@@ -61,7 +60,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         ColorChoice::CargoAuto => {}
     }
 
-    let cargo_metadata = get_cargo_metadata(args, config)?;
+    let cargo_metadata = get_cargo_metadata(&args, config)?;
     let krates = get_krates(&cargo_metadata)?;
 
     let cargo_metadata_parameters = CargoMetadataParameters {
@@ -72,23 +71,14 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let workspace = get_workspace(config, args.manifest_path.clone())?;
     let package = workspace.current()?;
     let mut registry = get_registry(config, &package)?;
-    let features = args
-        .features
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(String::new)
-        .split(' ')
-        .map(str::to_owned)
-        .collect::<Vec<String>>();
 
     let (package_set, resolve) = resolve(
+        &args.features_args,
         package.package_id(),
         &mut registry,
         &workspace,
-        &features,
-        args.all_features,
-        args.no_default_features,
     )?;
+
     let package_ids = package_set.package_ids().collect::<Vec<_>>();
     let package_set = registry.get(&package_ids)?;
 

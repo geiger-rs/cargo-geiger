@@ -8,6 +8,7 @@
 // TODO: Investigate how cargo-clippy is implemented. Is it using syn?  Is is
 // using rustc? Is it implementing a compiler plugin?
 
+use crate::args::FeaturesArgs;
 use crate::Args;
 
 // TODO: Consider making this a lib.rs (again) and expose a full API, excluding
@@ -37,25 +38,18 @@ pub fn get_cargo_metadata(
     let mut metadata_command = MetadataCommand::new();
     metadata_command.manifest_path(root_manifest_path);
 
-    if args.all_features {
+    if args.features_args.all_features {
         metadata_command.features(CargoOpt::AllFeatures);
     }
 
-    if args.no_default_features {
+    if args.features_args.no_default_features {
         metadata_command.features(CargoOpt::NoDefaultFeatures);
     }
 
-    if args.features.is_some() {
-        let features = args
-            .features
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(String::new)
-            .split(' ')
-            .map(str::to_owned)
-            .collect::<Vec<String>>();
-
-        metadata_command.features(CargoOpt::SomeFeatures(features));
+    if !args.features_args.features.is_empty() {
+        metadata_command.features(CargoOpt::SomeFeatures(
+            args.features_args.features.clone(),
+        ));
     }
 
     Ok(metadata_command.exec()?)
@@ -113,19 +107,17 @@ pub fn get_workspace(
 }
 
 pub fn resolve<'a, 'cfg>(
+    args: &FeaturesArgs,
     package_id: PackageId,
     registry: &mut PackageRegistry<'cfg>,
     workspace: &'a Workspace<'cfg>,
-    features: &[String],
-    all_features: bool,
-    no_default_features: bool,
 ) -> CargoResult<(PackageSet<'a>, Resolve)> {
     let dev_deps = true; // TODO: Review this.
-    let uses_default_features = !no_default_features;
+    let uses_default_features = !args.no_default_features;
     let opts = ResolveOpts::new(
         dev_deps,
-        features,
-        all_features,
+        &args.features.clone(),
+        args.all_features,
         uses_default_features,
     );
     let prev = ops::load_pkg_lockfile(workspace)?;
@@ -150,12 +142,11 @@ pub fn resolve<'a, 'cfg>(
 #[cfg(test)]
 mod cli_tests {
     use super::*;
-    use crate::format::Charset;
     use rstest::*;
 
     #[rstest]
     fn get_cargo_metadata_test() {
-        let args = create_args();
+        let args = Args::default();
         let config = Config::default().unwrap();
 
         let cargo_metadata_result = get_cargo_metadata(&args, &config);
@@ -194,7 +185,7 @@ mod cli_tests {
 
     #[rstest]
     fn get_krates_test() {
-        let args = create_args();
+        let args = Args::default();
         let config = Config::default().unwrap();
         let cargo_metadata = get_cargo_metadata(&args, &config).unwrap();
 
@@ -243,58 +234,16 @@ mod cli_tests {
 
     #[rstest]
     fn resolve_test() {
+        let args = FeaturesArgs::default();
         let config = Config::default().unwrap();
         let manifest_path: Option<PathBuf> = None;
         let workspace = get_workspace(&config, manifest_path).unwrap();
         let package = workspace.current().unwrap();
         let mut registry = get_registry(&config, &package).unwrap();
 
-        let features: Vec<String> = vec![];
-        let all_features = false;
-        let no_default_features = false;
-
-        let resolve_cargo_result = resolve(
-            package.package_id(),
-            &mut registry,
-            &workspace,
-            &features,
-            all_features,
-            no_default_features,
-        );
+        let resolve_cargo_result =
+            resolve(&args, package.package_id(), &mut registry, &workspace);
 
         assert!(resolve_cargo_result.is_ok());
-    }
-
-    fn create_args() -> Args {
-        Args {
-            all: false,
-            all_deps: false,
-            all_features: false,
-            all_targets: false,
-            build_deps: false,
-            charset: Charset::Ascii,
-            color: None,
-            dev_deps: false,
-            features: None,
-            forbid_only: false,
-            format: "".to_string(),
-            frozen: false,
-            help: false,
-            include_tests: false,
-            invert: false,
-            locked: false,
-            manifest_path: None,
-            no_default_features: false,
-            no_indent: false,
-            offline: false,
-            package: None,
-            prefix_depth: false,
-            quiet: false,
-            target: None,
-            unstable_flags: vec![],
-            verbose: 0,
-            version: false,
-            output_format: None,
-        }
     }
 }

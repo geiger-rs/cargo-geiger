@@ -34,16 +34,8 @@ impl ExtraDeps {
 
 /// Representation of the package dependency graph
 pub struct Graph {
-    pub graph: petgraph::Graph<Node, DepKind>,
+    pub graph: petgraph::Graph<PackageId, DepKind>,
     pub nodes: HashMap<PackageId, NodeIndex>,
-}
-
-/// Representation of a node within the package dependency graph
-pub struct Node {
-    pub id: PackageId,
-    // TODO: Investigate why this was needed before the separation of printing
-    // and graph traversal and if it should be added back.
-    //pack: &'a Package,
 }
 
 // Almost unmodified compared to the original in cargo-tree, should be fairly
@@ -65,13 +57,9 @@ pub fn build_graph<'a>(
         graph: petgraph::Graph::new(),
         nodes: HashMap::new(),
     };
-    let node = Node {
-        id: root_package_id,
-        //pack: packages.get_one(root)?,
-    };
     graph
         .nodes
-        .insert(root_package_id, graph.graph.add_node(node));
+        .insert(root_package_id, graph.graph.add_node(root_package_id));
 
     let mut pending_packages = vec![root_package_id];
 
@@ -112,11 +100,7 @@ fn add_graph_node_if_not_present_and_edge(
         Entry::Occupied(e) => *e.get(),
         Entry::Vacant(e) => {
             pending_packages.push(dependency_package_id);
-            let node = Node {
-                id: dependency_package_id,
-                //pack: packages.get_one(dep_id)?,
-            };
-            *e.insert(graph.graph.add_node(node))
+            *e.insert(graph.graph.add_node(dependency_package_id))
         }
     };
     graph
@@ -201,7 +185,6 @@ fn build_graph_prerequisites<'a>(
 #[cfg(test)]
 mod graph_tests {
     use super::*;
-    use crate::format::Charset;
     use rstest::*;
 
     #[rstest(
@@ -243,7 +226,7 @@ mod graph_tests {
         input_dev_deps: bool,
         expected_extra_deps: ExtraDeps,
     ) {
-        let mut args = create_args();
+        let mut args = Args::default();
         args.all_deps = input_all_deps;
         args.build_deps = input_build_deps;
         args.dev_deps = input_dev_deps;
@@ -274,7 +257,7 @@ mod graph_tests {
         input_target: Option<String>,
         expected_target: Option<&str>,
     ) {
-        let mut args = create_args();
+        let mut args = Args::default();
 
         args.all_targets = input_all_targets;
         args.target = input_target;
@@ -288,38 +271,5 @@ mod graph_tests {
         let (_, target) = result.unwrap();
 
         assert_eq!(target, expected_target);
-    }
-
-    fn create_args() -> Args {
-        Args {
-            all: false,
-            all_deps: false,
-            all_features: false,
-            all_targets: false,
-            build_deps: false,
-            charset: Charset::Ascii,
-            color: None,
-            dev_deps: false,
-            features: None,
-            forbid_only: false,
-            format: "".to_string(),
-            frozen: false,
-            help: false,
-            include_tests: false,
-            invert: false,
-            locked: false,
-            manifest_path: None,
-            no_default_features: false,
-            no_indent: false,
-            offline: false,
-            package: None,
-            prefix_depth: false,
-            quiet: false,
-            target: None,
-            unstable_flags: vec![],
-            verbose: 0,
-            version: false,
-            output_format: None,
-        }
     }
 }

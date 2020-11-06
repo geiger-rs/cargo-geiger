@@ -2,7 +2,7 @@ use crate::format::print_config::PrintConfig;
 use crate::krates_utils::{
     CargoMetadataParameters, GetRoot, ToCargoMetadataPackage, ToPackageId,
 };
-use crate::rs_file::{
+use crate::scan::rs_file::{
     into_is_entry_point_and_path_buf, into_rs_code_file, into_target_kind,
     is_file_with_ext, RsFile, RsFileMetricsWrapper,
 };

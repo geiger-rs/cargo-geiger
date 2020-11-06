@@ -1,5 +1,5 @@
 use crate::format::print_config::{Prefix, PrintConfig};
-use crate::graph::{Graph, Node};
+use crate::graph::Graph;
 use crate::tree::{get_tree_symbols, TextTreeLine, TreeSymbols};
 
 use super::dependency_node::walk_dependency_node;
@@ -12,7 +12,7 @@ use std::slice::Iter;
 
 pub fn walk_dependency_kind(
     dep_kind: DepKind,
-    deps: &mut Vec<&Node>,
+    deps: &mut Vec<&PackageId>,
     graph: &Graph,
     visited_deps: &mut HashSet<PackageId>,
     levels_continue: &mut Vec<bool>,
@@ -23,7 +23,7 @@ pub fn walk_dependency_kind(
     }
 
     // Resolve uses Hash data types internally but we want consistent output ordering
-    deps.sort_by_key(|n| n.id);
+    deps.sort_by_key(|n| *n);
 
     let tree_symbols = get_tree_symbols(print_config.charset);
     let mut text_tree_lines = Vec::new();
@@ -52,10 +52,10 @@ pub fn walk_dependency_kind(
 }
 
 fn handle_walk_dependency_node(
-    dependency: &Node,
+    dependency: &PackageId,
     graph: &Graph,
     levels_continue: &mut Vec<bool>,
-    node_iterator: &mut Peekable<Iter<&Node>>,
+    node_iterator: &mut Peekable<Iter<&PackageId>>,
     print_config: &PrintConfig,
     text_tree_lines: &mut Vec<TextTreeLine>,
     visited_deps: &mut HashSet<PackageId>,
