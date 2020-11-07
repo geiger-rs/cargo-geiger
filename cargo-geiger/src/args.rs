@@ -58,12 +58,9 @@ OPTIONS:
 #[derive(Default)]
 pub struct Args {
     pub all: bool,
-    pub all_deps: bool,
-    pub all_targets: bool,
-    pub build_deps: bool,
     pub charset: Charset,
     pub color: Option<String>,
-    pub dev_deps: bool,
+    pub deps_args: DepsArgs,
     pub features_args: FeaturesArgs,
     pub forbid_only: bool,
     pub format: String,
@@ -78,7 +75,7 @@ pub struct Args {
     pub package: Option<String>,
     pub prefix_depth: bool,
     pub quiet: bool,
-    pub target: Option<String>,
+    pub target_args: TargetArgs,
     pub unstable_flags: Vec<String>,
     pub verbose: u32,
     pub version: bool,
@@ -91,14 +88,15 @@ impl Args {
     ) -> Result<Args, Box<dyn std::error::Error>> {
         let args = Args {
             all: raw_args.contains(["-a", "--all"]),
-            all_deps: raw_args.contains("--all-dependencies"),
-            all_targets: raw_args.contains("--all-targets"),
-            build_deps: raw_args.contains("--build-dependencies"),
             charset: raw_args
                 .opt_value_from_str("--charset")?
                 .unwrap_or(Charset::Utf8),
             color: raw_args.opt_value_from_str("--color")?,
-            dev_deps: raw_args.contains("--dev-dependencies"),
+            deps_args: DepsArgs {
+                all_deps: raw_args.contains("--all-dependencies"),
+                build_deps: raw_args.contains("--build-dependencies"),
+                dev_deps: raw_args.contains("--dev-dependencies"),
+            },
             features_args: FeaturesArgs {
                 all_features: raw_args.contains("--all-features"),
                 features: parse_features(
@@ -121,7 +119,10 @@ impl Args {
             package: raw_args.opt_value_from_str("--manifest-path")?,
             prefix_depth: raw_args.contains("--prefix-depth"),
             quiet: raw_args.contains(["-q", "--quiet"]),
-            target: raw_args.opt_value_from_str("--target")?,
+            target_args: TargetArgs {
+                all_targets: raw_args.contains("--all-targets"),
+                target: raw_args.opt_value_from_str("--target")?,
+            },
             unstable_flags: raw_args
                 .opt_value_from_str("-Z")?
                 .map(|s: String| s.split(' ').map(|s| s.to_owned()).collect())
@@ -146,10 +147,23 @@ impl Args {
 }
 
 #[derive(Default)]
+pub struct DepsArgs {
+    pub all_deps: bool,
+    pub build_deps: bool,
+    pub dev_deps: bool,
+}
+
+#[derive(Default)]
 pub struct FeaturesArgs {
     pub all_features: bool,
     pub features: Vec<String>,
     pub no_default_features: bool,
+}
+
+#[derive(Default)]
+pub struct TargetArgs {
+    pub all_targets: bool,
+    pub target: Option<String>,
 }
 
 fn parse_features(raw_features: Option<String>) -> Vec<String> {

@@ -12,7 +12,10 @@ pub use rs_file::RsFileMetricsWrapper;
 use default::scan_unsafe;
 use forbid::scan_forbid_unsafe;
 
-use crate::krates_utils::CargoMetadataParameters;
+use crate::krates_utils::{
+    CargoMetadataParameters, ToCargoCoreDepKind, ToCargoMetadataPackageId,
+    ToPackageId,
+};
 use cargo::core::dependency::DepKind;
 use cargo::core::{PackageId, PackageSet, Workspace};
 use cargo::{CliResult, Config};
@@ -162,40 +165,55 @@ fn list_files_used_but_not_scanned(
         .collect()
 }
 
-fn package_metrics<'a>(
-    geiger_context: &'a GeigerContext,
-    graph: &'a Graph,
+fn package_metrics(
+    cargo_metadata_parameters: &CargoMetadataParameters,
+    geiger_context: &GeigerContext,
+    graph: &Graph,
+    package_set: &PackageSet,
     root_package_id: PackageId,
-) -> impl Iterator<Item = (PackageInfo, Option<&'a PackageMetrics>)> {
-    let root_index = graph.nodes[&root_package_id];
+) -> Vec<(PackageInfo, Option<PackageMetrics>)> {
+    let mut package_metrics =
+        Vec::<(PackageInfo, Option<PackageMetrics>)>::new();
+    let root_index = graph.nodes[&root_package_id
+        .to_cargo_metadata_package_id(cargo_metadata_parameters.metadata)];
     let mut indices = vec![root_index];
     let mut visited = HashSet::new();
-    std::iter::from_fn(move || {
-        let i = indices.pop()?;
-        let package_id = graph.graph[i];
+
+    while !indices.is_empty() {
+        let i = indices.pop().unwrap();
+        let package_id = graph.graph[i]
+            .to_package_id(cargo_metadata_parameters.krates, package_set);
         let mut package = PackageInfo::new(from_cargo_package_id(package_id));
         for edge in graph.graph.edges(i) {
             let dep_index = edge.target();
             if visited.insert(dep_index) {
                 indices.push(dep_index);
             }
-            let dep = from_cargo_package_id(graph.graph[dep_index]);
+            let dep =
+                from_cargo_package_id(graph.graph[dep_index].to_package_id(
+                    cargo_metadata_parameters.krates,
+                    package_set,
+                ));
             package.add_dependency(
                 dep,
-                from_cargo_dependency_kind(*edge.weight()),
+                from_cargo_dependency_kind(
+                    edge.weight().to_cargo_core_dep_kind(),
+                ),
             );
         }
         match geiger_context.package_id_to_metrics.get(&package_id) {
-            Some(m) => Some((package, Some(m))),
+            Some(m) => package_metrics.push((package, Some(m.clone()))),
             None => {
                 eprintln!(
                     "WARNING: No metrics found for package: {}",
                     package_id
                 );
-                Some((package, None))
+                package_metrics.push((package, None))
             }
         }
-    })
+    }
+
+    package_metrics
 }
 
 fn from_cargo_package_id(id: PackageId) -> cargo_geiger_serde::PackageId {

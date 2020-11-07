@@ -1,22 +1,21 @@
-use crate::format::print_config::{Prefix, PrintConfig};
-use crate::graph::Graph;
+use crate::format::print_config::Prefix;
+use crate::tree::traversal::WalkDependencyParameters;
 use crate::tree::{get_tree_symbols, TextTreeLine, TreeSymbols};
 
 use super::dependency_node::walk_dependency_node;
 
+use crate::krates_utils::CargoMetadataParameters;
 use cargo::core::dependency::DepKind;
-use cargo::core::PackageId;
-use std::collections::HashSet;
+use cargo::core::{PackageId, PackageSet};
 use std::iter::Peekable;
 use std::slice::Iter;
 
 pub fn walk_dependency_kind(
+    cargo_metadata_parameters: &CargoMetadataParameters,
     dep_kind: DepKind,
-    deps: &mut Vec<&PackageId>,
-    graph: &Graph,
-    visited_deps: &mut HashSet<PackageId>,
-    levels_continue: &mut Vec<bool>,
-    print_config: &PrintConfig,
+    deps: &mut Vec<PackageId>,
+    package_set: &PackageSet,
+    walk_dependency_parameters: &mut WalkDependencyParameters,
 ) -> Vec<TextTreeLine> {
     if deps.is_empty() {
         return Vec::new();
@@ -25,12 +24,13 @@ pub fn walk_dependency_kind(
     // Resolve uses Hash data types internally but we want consistent output ordering
     deps.sort_by_key(|n| *n);
 
-    let tree_symbols = get_tree_symbols(print_config.charset);
+    let tree_symbols =
+        get_tree_symbols(walk_dependency_parameters.print_config.charset);
     let mut text_tree_lines = Vec::new();
-    if let Prefix::Indent = print_config.prefix {
+    if let Prefix::Indent = walk_dependency_parameters.print_config.prefix {
         push_extra_deps_group_text_tree_line_for_non_normal_dependencies(
             dep_kind,
-            levels_continue,
+            walk_dependency_parameters.levels_continue,
             &tree_symbols,
             &mut text_tree_lines,
         )
@@ -39,36 +39,35 @@ pub fn walk_dependency_kind(
     let mut node_iterator = deps.iter().peekable();
     while let Some(dependency) = node_iterator.next() {
         handle_walk_dependency_node(
+            cargo_metadata_parameters,
             dependency,
-            graph,
-            levels_continue,
             &mut node_iterator,
-            print_config,
+            package_set,
             &mut text_tree_lines,
-            visited_deps,
+            walk_dependency_parameters,
         );
     }
     text_tree_lines
 }
 
 fn handle_walk_dependency_node(
+    cargo_metadata_parameters: &CargoMetadataParameters,
     dependency: &PackageId,
-    graph: &Graph,
-    levels_continue: &mut Vec<bool>,
-    node_iterator: &mut Peekable<Iter<&PackageId>>,
-    print_config: &PrintConfig,
+    node_iterator: &mut Peekable<Iter<PackageId>>,
+    package_set: &PackageSet,
     text_tree_lines: &mut Vec<TextTreeLine>,
-    visited_deps: &mut HashSet<PackageId>,
+    walk_dependency_parameters: &mut WalkDependencyParameters,
 ) {
-    levels_continue.push(node_iterator.peek().is_some());
+    walk_dependency_parameters
+        .levels_continue
+        .push(node_iterator.peek().is_some());
     text_tree_lines.append(&mut walk_dependency_node(
+        cargo_metadata_parameters,
         dependency,
-        graph,
-        visited_deps,
-        levels_continue,
-        print_config,
+        package_set,
+        walk_dependency_parameters,
     ));
-    levels_continue.pop();
+    walk_dependency_parameters.levels_continue.pop();
 }
 
 fn push_extra_deps_group_text_tree_line_for_non_normal_dependencies(

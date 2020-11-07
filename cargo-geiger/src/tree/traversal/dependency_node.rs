@@ -1,25 +1,33 @@
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
+use crate::krates_utils::{
+    CargoMetadataParameters, ToCargoCoreDepKind, ToCargoMetadataPackageId,
+    ToPackageId,
+};
+use crate::tree::traversal::WalkDependencyParameters;
 use crate::tree::TextTreeLine;
 
 use super::construct_tree_vines_string;
 use super::walk_dependency_kind;
 
 use cargo::core::dependency::DepKind;
-use cargo::core::PackageId;
+use cargo::core::{PackageId, PackageSet};
 use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 pub fn walk_dependency_node(
+    cargo_metadata_parameters: &CargoMetadataParameters,
     package: &PackageId,
-    graph: &Graph,
-    visited_deps: &mut HashSet<PackageId>,
-    levels_continue: &mut Vec<bool>,
-    print_config: &PrintConfig,
+    package_set: &PackageSet,
+    walk_dependency_parameters: &mut WalkDependencyParameters,
 ) -> Vec<TextTreeLine> {
-    let new = print_config.all || visited_deps.insert(*package);
-    let tree_vines = construct_tree_vines_string(levels_continue, print_config);
+    let new = walk_dependency_parameters.print_config.all
+        || walk_dependency_parameters.visited_deps.insert(*package);
+    let tree_vines = construct_tree_vines_string(
+        walk_dependency_parameters.levels_continue,
+        walk_dependency_parameters.print_config,
+    );
 
     let mut all_out_text_tree_lines = vec![TextTreeLine::Package {
         id: *package,
@@ -30,17 +38,26 @@ pub fn walk_dependency_node(
         return all_out_text_tree_lines;
     }
 
-    let mut dependency_type_nodes =
-        construct_dependency_type_nodes_hashmap(graph, package, print_config);
+    let mut dependency_type_nodes = construct_dependency_type_nodes_hashmap(
+        walk_dependency_parameters.graph,
+        &package
+            .to_cargo_metadata_package_id(cargo_metadata_parameters.metadata),
+        walk_dependency_parameters.print_config,
+    );
 
     for (dep_kind, nodes) in dependency_type_nodes.iter_mut() {
+        let mut cargo_core_nodes = nodes
+            .iter()
+            .map(|n| {
+                n.to_package_id(cargo_metadata_parameters.krates, package_set)
+            })
+            .collect::<Vec<PackageId>>();
         let mut dep_kind_out = walk_dependency_kind(
+            cargo_metadata_parameters,
             *dep_kind,
-            nodes,
-            graph,
-            visited_deps,
-            levels_continue,
-            print_config,
+            &mut cargo_core_nodes,
+            package_set,
+            walk_dependency_parameters,
         );
 
         all_out_text_tree_lines.append(&mut dep_kind_out);
@@ -51,10 +68,13 @@ pub fn walk_dependency_node(
 
 fn construct_dependency_type_nodes_hashmap<'a>(
     graph: &'a Graph,
-    package: &PackageId,
+    package: &cargo_metadata::PackageId,
     print_config: &PrintConfig,
-) -> HashMap<DepKind, Vec<&'a PackageId>> {
-    let mut dependency_type_nodes: HashMap<DepKind, Vec<&PackageId>> = [
+) -> HashMap<DepKind, Vec<cargo_metadata::PackageId>> {
+    let mut dependency_type_nodes: HashMap<
+        DepKind,
+        Vec<cargo_metadata::PackageId>,
+    > = [
         (DepKind::Build, vec![]),
         (DepKind::Development, vec![]),
         (DepKind::Normal, vec![]),
@@ -73,9 +93,9 @@ fn construct_dependency_type_nodes_hashmap<'a>(
         };
 
         dependency_type_nodes
-            .get_mut(edge.weight())
+            .get_mut(&edge.weight().to_cargo_core_dep_kind())
             .unwrap()
-            .push(dependency);
+            .push(dependency.clone());
     }
 
     dependency_type_nodes
@@ -85,17 +105,15 @@ fn construct_dependency_type_nodes_hashmap<'a>(
 mod dependency_node_tests {
     use super::*;
 
-    use crate::cli::get_workspace;
     use crate::format::pattern::Pattern;
     use crate::format::print_config::{Prefix, PrintConfig};
     use crate::format::Charset;
 
     use cargo::core::Verbosity;
-    use cargo::Config;
+    use cargo_metadata::DependencyKind;
     use geiger::IncludeTests;
     use petgraph::graph::NodeIndex;
     use rstest::*;
-    use std::env;
 
     #[rstest(
         input_directed_edges,
@@ -105,12 +123,12 @@ mod dependency_node_tests {
         expected_normal_nodes_length,
         case(
             vec![
-                (1, 0, DepKind::Build),
-                (2, 0, DepKind::Build),
-                (3, 0, DepKind::Build),
-                (4, 0, DepKind::Development),
-                (5, 0, DepKind::Development),
-                (6, 0, DepKind::Normal)
+                (1, 0, DependencyKind::Build),
+                (2, 0, DependencyKind::Build),
+                (3, 0, DependencyKind::Build),
+                (4, 0, DependencyKind::Development),
+                (5, 0, DependencyKind::Development),
+                (6, 0, DependencyKind::Normal)
             ],
             EdgeDirection::Incoming,
             3,
@@ -119,12 +137,12 @@ mod dependency_node_tests {
         ),
         case(
             vec![
-                (0, 1, DepKind::Build),
-                (0, 2, DepKind::Development),
-                (0, 3, DepKind::Development),
-                (0, 4, DepKind::Normal),
-                (0, 5, DepKind::Normal),
-                (0, 6, DepKind::Normal)
+                (0, 1, DependencyKind::Build),
+                (0, 2, DependencyKind::Development),
+                (0, 3, DependencyKind::Development),
+                (0, 4, DependencyKind::Normal),
+                (0, 5, DependencyKind::Normal),
+                (0, 6, DependencyKind::Normal)
             ],
             EdgeDirection::Outgoing,
             1,
@@ -133,20 +151,26 @@ mod dependency_node_tests {
         )
     )]
     fn construct_dependency_type_nodes_hashmap_test(
-        input_directed_edges: Vec<(usize, usize, DepKind)>,
+        input_directed_edges: Vec<(usize, usize, DependencyKind)>,
         input_edge_direction: EdgeDirection,
         expected_build_nodes_length: usize,
         expected_development_nodes_length: usize,
         expected_normal_nodes_length: usize,
     ) {
-        let mut inner_graph = petgraph::Graph::<PackageId, DepKind>::new();
-        let mut nodes = HashMap::<PackageId, NodeIndex>::new();
+        let mut inner_graph = petgraph::Graph::<
+            cargo_metadata::PackageId,
+            cargo_metadata::DependencyKind,
+        >::new();
+        let mut nodes = HashMap::<cargo_metadata::PackageId, NodeIndex>::new();
 
-        let package_ids = create_package_id_vec(7);
+        let package_ids = create_cargo_metadata_package_id_vec(7);
         let print_config = create_print_config(input_edge_direction);
 
         for package_id in &package_ids {
-            nodes.insert(*package_id, inner_graph.add_node(*package_id));
+            nodes.insert(
+                package_id.clone(),
+                inner_graph.add_node(package_id.clone()),
+            );
         }
 
         add_edges_to_graph(
@@ -183,10 +207,10 @@ mod dependency_node_tests {
     }
 
     fn add_edges_to_graph(
-        directed_edges: &[(usize, usize, DepKind)],
-        graph: &mut petgraph::Graph<PackageId, DepKind>,
-        nodes: &HashMap<PackageId, NodeIndex>,
-        package_ids: &[PackageId],
+        directed_edges: &[(usize, usize, DependencyKind)],
+        graph: &mut petgraph::Graph<cargo_metadata::PackageId, DependencyKind>,
+        nodes: &HashMap<cargo_metadata::PackageId, NodeIndex>,
+        package_ids: &[cargo_metadata::PackageId],
     ) {
         for (source_index, target_index, dep_kind) in directed_edges {
             graph.add_edge(
@@ -197,25 +221,15 @@ mod dependency_node_tests {
         }
     }
 
-    fn create_package_id_vec(count: i32) -> Vec<PackageId> {
-        let config = Config::default().unwrap();
-        let current_working_dir =
-            env::current_dir().unwrap().join("Cargo.toml");
-        let manifest_path_option = Some(current_working_dir);
-        let workspace = get_workspace(&config, manifest_path_option).unwrap();
-        let package = workspace.current().unwrap();
-        let source_id = package.dependencies().first().unwrap().source_id();
+    fn create_cargo_metadata_package_id_vec(
+        count: i32,
+    ) -> Vec<cargo_metadata::PackageId> {
+        let mut package_id_vec = vec![];
 
-        let mut package_id_vec: Vec<PackageId> = vec![];
         for i in 0..count {
-            package_id_vec.push(
-                PackageId::new(
-                    format!("test_name_{}", i),
-                    format!("1.2.{}", i).as_str(),
-                    source_id,
-                )
-                .unwrap(),
-            )
+            package_id_vec.push(cargo_metadata::PackageId {
+                repr: format!("string_repr_{}", i),
+            });
         }
 
         package_id_vec

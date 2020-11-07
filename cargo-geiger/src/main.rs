@@ -25,7 +25,7 @@ use crate::cli::{
 use crate::graph::build_graph;
 use crate::scan::scan;
 
-use crate::krates_utils::CargoMetadataParameters;
+use crate::krates_utils::{CargoMetadataParameters, ToCargoMetadataPackage};
 use cargo::core::shell::{ColorChoice, Shell};
 use cargo::{CliResult, Config};
 
@@ -69,12 +69,18 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     };
 
     let workspace = get_workspace(config, args.manifest_path.clone())?;
-    let package = workspace.current()?;
-    let mut registry = get_registry(config, &package)?;
+    let root_package = workspace.current()?;
+    let mut registry = get_registry(config, &root_package)?;
+
+    // `cargo_metadata.root_package()` will return `None` when called on a virtual
+    // manifest
+    let cargo_metadata_root_package_id = root_package
+        .to_cargo_metadata_package(cargo_metadata_parameters.metadata)
+        .id;
 
     let (package_set, resolve) = resolve(
         &args.features_args,
-        package.package_id(),
+        root_package.package_id(),
         &mut registry,
         &workspace,
     )?;
@@ -84,15 +90,16 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 
     let root_package_id = match args.package {
         Some(ref pkg) => resolve.query(pkg)?,
-        None => package.package_id(),
+        None => root_package.package_id(),
     };
 
     let graph = build_graph(
         args,
+        &cargo_metadata_parameters,
         config,
         &resolve,
         &package_set,
-        package.package_id(),
+        cargo_metadata_root_package_id,
         &workspace,
     )?;
 
