@@ -1,16 +1,21 @@
-use crate::args::Args;
+use crate::args::{Args, DepsArgs, TargetArgs};
 use crate::cli::get_cfgs;
+use crate::krates_utils::{
+    CargoMetadataParameters, DepsNotReplaced, MatchesIgnoringSource,
+    Replacement,
+};
 
-use cargo::core::dependency::DepKind;
 use cargo::core::package::PackageSet;
-use cargo::core::{Dependency, PackageId, Resolve, Workspace};
+use cargo::core::{Resolve, Workspace};
 use cargo::util::interning::InternedString;
 use cargo::util::CargoResult;
 use cargo::Config;
-use cargo_platform::Cfg;
+use cargo_metadata::DependencyKind;
+use cargo_platform::{Cfg, Platform};
 use petgraph::graph::NodeIndex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
 pub enum ExtraDeps {
@@ -21,12 +26,12 @@ pub enum ExtraDeps {
 }
 
 impl ExtraDeps {
-    pub fn allows(&self, dep: DepKind) -> bool {
+    pub fn allows(&self, dep: DependencyKind) -> bool {
         match (self, dep) {
-            (_, DepKind::Normal) => true,
+            (_, DependencyKind::Normal) => true,
             (ExtraDeps::All, _) => true,
-            (ExtraDeps::Build, DepKind::Build) => true,
-            (ExtraDeps::Dev, DepKind::Development) => true,
+            (ExtraDeps::Build, DependencyKind::Build) => true,
+            (ExtraDeps::Dev, DependencyKind::Development) => true,
             _ => false,
         }
     }
@@ -34,8 +39,11 @@ impl ExtraDeps {
 
 /// Representation of the package dependency graph
 pub struct Graph {
-    pub graph: petgraph::Graph<PackageId, DepKind>,
-    pub nodes: HashMap<PackageId, NodeIndex>,
+    pub graph: petgraph::Graph<
+        cargo_metadata::PackageId,
+        cargo_metadata::DependencyKind,
+    >,
+    pub nodes: HashMap<cargo_metadata::PackageId, NodeIndex>,
 }
 
 // Almost unmodified compared to the original in cargo-tree, should be fairly
@@ -43,23 +51,29 @@ pub struct Graph {
 /// Function to build a graph of packages dependencies
 pub fn build_graph<'a>(
     args: &Args,
+    cargo_metadata_parameters: &'a CargoMetadataParameters,
     config: &Config,
     resolve: &'a Resolve,
     package_set: &'a PackageSet,
-    root_package_id: PackageId,
+    root_package_id: cargo_metadata::PackageId,
     workspace: &Workspace,
 ) -> CargoResult<Graph> {
     let config_host = config.load_global_rustc(Some(&workspace))?.host;
-    let (extra_deps, target) = build_graph_prerequisites(args, &config_host)?;
-    let cfgs = get_cfgs(config, &args.target, &workspace)?;
+    let (extra_deps, target) = build_graph_prerequisites(
+        &config_host,
+        &args.deps_args,
+        &args.target_args,
+    )?;
+    let cfgs = get_cfgs(config, &args.target_args.target, &workspace)?;
 
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
         nodes: HashMap::new(),
     };
-    graph
-        .nodes
-        .insert(root_package_id, graph.graph.add_node(root_package_id));
+    graph.nodes.insert(
+        root_package_id.clone(),
+        graph.graph.add_node(root_package_id.clone()),
+    );
 
     let mut pending_packages = vec![root_package_id];
 
@@ -71,9 +85,10 @@ pub fn build_graph<'a>(
 
     while let Some(package_id) = pending_packages.pop() {
         add_package_dependencies_to_graph(
-            resolve,
+            cargo_metadata_parameters,
             package_id,
             package_set,
+            resolve,
             &graph_configuration,
             &mut graph,
             &mut pending_packages,
@@ -90,65 +105,88 @@ struct GraphConfiguration<'a> {
 }
 
 fn add_graph_node_if_not_present_and_edge(
-    dependency: &Dependency,
-    dependency_package_id: PackageId,
+    dependency: &cargo_metadata::Dependency,
+    dependency_package_id: cargo_metadata::PackageId,
     graph: &mut Graph,
     index: NodeIndex,
-    pending_packages: &mut Vec<PackageId>,
+    pending_packages: &mut Vec<cargo_metadata::PackageId>,
 ) {
-    let dependency_index = match graph.nodes.entry(dependency_package_id) {
-        Entry::Occupied(e) => *e.get(),
-        Entry::Vacant(e) => {
-            pending_packages.push(dependency_package_id);
-            *e.insert(graph.graph.add_node(dependency_package_id))
-        }
-    };
+    let dependency_index =
+        match graph.nodes.entry(dependency_package_id.clone()) {
+            Entry::Occupied(e) => *e.get(),
+            Entry::Vacant(e) => {
+                pending_packages.push(dependency_package_id.clone());
+                *e.insert(graph.graph.add_node(dependency_package_id))
+            }
+        };
     graph
         .graph
-        .add_edge(index, dependency_index, dependency.kind());
+        .add_edge(index, dependency_index, dependency.kind);
 }
 
 fn add_package_dependencies_to_graph<'a>(
-    resolve: &'a Resolve,
-    package_id: PackageId,
+    cargo_metadata_parameters: &CargoMetadataParameters,
+    package_id: cargo_metadata::PackageId,
     package_set: &'a PackageSet,
+    resolve: &'a Resolve,
     graph_configuration: &GraphConfiguration,
     graph: &mut Graph,
-    pending_packages: &mut Vec<PackageId>,
+    pending_packages: &mut Vec<cargo_metadata::PackageId>,
 ) -> CargoResult<()> {
     let index = graph.nodes[&package_id];
-    let package = package_set.get_one(package_id)?;
+    let package = cargo_metadata_parameters
+        .krates
+        .node_for_kid(&package_id)
+        .unwrap()
+        .krate
+        .clone();
 
-    for (raw_dependency_package_id, _) in resolve.deps_not_replaced(package_id)
+    for (raw_dependency_package_id, _) in
+        cargo_metadata_parameters.metadata.deps_not_replaced(
+            cargo_metadata_parameters.krates,
+            package_id,
+            package_set,
+            resolve,
+        )
     {
         let dependency_iterator = package
-            .dependencies()
+            .dependencies
             .iter()
-            .filter(|d| d.matches_ignoring_source(raw_dependency_package_id))
-            .filter(|d| graph_configuration.extra_deps.allows(d.kind()))
             .filter(|d| {
-                d.platform()
+                d.matches_ignoring_source(
+                    cargo_metadata_parameters.krates,
+                    raw_dependency_package_id.clone(),
+                )
+            })
+            .filter(|d| graph_configuration.extra_deps.allows(d.kind))
+            .filter(|d| {
+                d.target
+                    .as_ref()
                     .and_then(|p| {
                         graph_configuration.target.map(|t| {
                             match graph_configuration.cfgs {
                                 None => false,
-                                Some(cfgs) => p.matches(t, cfgs),
+                                Some(cfgs) => {
+                                    (Platform::from_str(p.repr.as_str()))
+                                        .unwrap()
+                                        .matches(t, cfgs)
+                                }
                             }
                         })
                     })
                     .unwrap_or(true)
             });
 
-        let dependency_package_id =
-            match resolve.replacement(raw_dependency_package_id) {
-                Some(id) => id,
-                None => raw_dependency_package_id,
-            };
+        let dependency_package_id = raw_dependency_package_id.replace(
+            cargo_metadata_parameters,
+            package_set,
+            resolve,
+        );
 
         for dependency in dependency_iterator {
             add_graph_node_if_not_present_and_edge(
                 dependency,
-                dependency_package_id,
+                dependency_package_id.clone(),
                 graph,
                 index,
                 pending_packages,
@@ -160,23 +198,24 @@ fn add_package_dependencies_to_graph<'a>(
 }
 
 fn build_graph_prerequisites<'a>(
-    args: &'a Args,
     config_host: &'a InternedString,
+    deps_args: &'a DepsArgs,
+    target_args: &'a TargetArgs,
 ) -> CargoResult<(ExtraDeps, Option<&'a str>)> {
-    let extra_deps = if args.all_deps {
+    let extra_deps = if deps_args.all_deps {
         ExtraDeps::All
-    } else if args.build_deps {
+    } else if deps_args.build_deps {
         ExtraDeps::Build
-    } else if args.dev_deps {
+    } else if deps_args.dev_deps {
         ExtraDeps::Dev
     } else {
         ExtraDeps::NoMore
     };
 
-    let target = if args.all_targets {
+    let target = if target_args.all_targets {
         None
     } else {
-        Some(args.target.as_deref().unwrap_or(&config_host))
+        Some(target_args.target.as_deref().unwrap_or(&config_host))
     };
 
     Ok((extra_deps, target))
@@ -189,51 +228,78 @@ mod graph_tests {
 
     #[rstest(
         input_extra_deps,
-        input_dep_kind,
+        input_dependency_kind,
         expected_allows,
-        case(ExtraDeps::All, DepKind::Normal, true),
-        case(ExtraDeps::Build, DepKind::Normal, true),
-        case(ExtraDeps::Dev, DepKind::Normal, true),
-        case(ExtraDeps::NoMore, DepKind::Normal, true),
-        case(ExtraDeps::All, DepKind::Build, true),
-        case(ExtraDeps::All, DepKind::Development, true),
-        case(ExtraDeps::Build, DepKind::Build, true),
-        case(ExtraDeps::Build, DepKind::Development, false),
-        case(ExtraDeps::Dev, DepKind::Build, false),
-        case(ExtraDeps::Dev, DepKind::Development, true)
+        case(ExtraDeps::All, DependencyKind::Normal, true),
+        case(ExtraDeps::Build, DependencyKind::Normal, true),
+        case(ExtraDeps::Dev, DependencyKind::Normal, true),
+        case(ExtraDeps::NoMore, DependencyKind::Normal, true),
+        case(ExtraDeps::All, DependencyKind::Build, true),
+        case(ExtraDeps::All, DependencyKind::Development, true),
+        case(ExtraDeps::Build, DependencyKind::Build, true),
+        case(ExtraDeps::Build, DependencyKind::Development, false),
+        case(ExtraDeps::Dev, DependencyKind::Build, false),
+        case(ExtraDeps::Dev, DependencyKind::Development, true)
     )]
     fn extra_deps_allows_test(
         input_extra_deps: ExtraDeps,
-        input_dep_kind: DepKind,
+        input_dependency_kind: DependencyKind,
         expected_allows: bool,
     ) {
-        assert_eq!(input_extra_deps.allows(input_dep_kind), expected_allows);
+        assert_eq!(
+            input_extra_deps.allows(input_dependency_kind),
+            expected_allows
+        );
     }
 
     #[rstest(
-        input_all_deps,
-        input_build_deps,
-        input_dev_deps,
+        input_deps_args,
         expected_extra_deps,
-        case(true, false, false, ExtraDeps::All),
-        case(false, true, false, ExtraDeps::Build),
-        case(false, false, true, ExtraDeps::Dev),
-        case(false, false, false, ExtraDeps::NoMore)
+        case(
+            DepsArgs {
+                all_deps: true,
+                build_deps: false,
+                dev_deps: false
+            },
+            ExtraDeps::All
+        ),
+        case(
+            DepsArgs {
+                all_deps: false,
+                build_deps: true,
+                dev_deps: false
+            },
+            ExtraDeps::Build
+        ),
+        case(
+            DepsArgs {
+                all_deps: false,
+                build_deps: false,
+                dev_deps: true
+            },
+            ExtraDeps::Dev
+        ),
+        case(
+            DepsArgs {
+                all_deps: false,
+                build_deps: false,
+                dev_deps: false
+            },
+            ExtraDeps::NoMore
+        )
     )]
     fn build_graph_prerequisites_extra_deps_test(
-        input_all_deps: bool,
-        input_build_deps: bool,
-        input_dev_deps: bool,
+        input_deps_args: DepsArgs,
         expected_extra_deps: ExtraDeps,
     ) {
-        let mut args = Args::default();
-        args.all_deps = input_all_deps;
-        args.build_deps = input_build_deps;
-        args.dev_deps = input_dev_deps;
-
         let config_host = InternedString::new("config_host");
+        let target_args = TargetArgs::default();
 
-        let result = build_graph_prerequisites(&args, &config_host);
+        let result = build_graph_prerequisites(
+            &config_host,
+            &input_deps_args,
+            &target_args,
+        );
 
         assert!(result.is_ok());
         let (extra_deps, _) = result.unwrap();
@@ -241,35 +307,44 @@ mod graph_tests {
     }
 
     #[rstest(
-        input_all_targets,
-        input_target,
+        input_target_args,
         expected_target,
-        case(true, None, None),
-        case(false, None, Some("default_config_host")),
         case(
-            false,
-            Some(String::from("provided_config_host")),
+            TargetArgs {
+                all_targets: true,
+                target: None
+            },
+            None
+        ),
+        case(
+            TargetArgs {
+                all_targets: false,
+                target: None
+            },
+            Some("default_config_host")),
+        case(
+            TargetArgs {
+                all_targets: false,
+                target: Some(String::from("provided_config_host")),
+            },
             Some("provided_config_host")
         )
     )]
     fn build_graph_prerequisites_all_targets_test(
-        input_all_targets: bool,
-        input_target: Option<String>,
+        input_target_args: TargetArgs,
         expected_target: Option<&str>,
     ) {
-        let mut args = Args::default();
-
-        args.all_targets = input_all_targets;
-        args.target = input_target;
-
         let config_host = InternedString::new("default_config_host");
+        let deps_args = DepsArgs::default();
 
-        let result = build_graph_prerequisites(&args, &config_host);
+        let result = build_graph_prerequisites(
+            &config_host,
+            &deps_args,
+            &input_target_args,
+        );
 
         assert!(result.is_ok());
-
         let (_, target) = result.unwrap();
-
         assert_eq!(target, expected_target);
     }
 }

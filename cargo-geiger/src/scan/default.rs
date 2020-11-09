@@ -131,9 +131,13 @@ fn scan_to_report(
         workspace,
     )?;
     let mut report = SafetyReport::default();
-    for (package, package_metrics_option) in
-        package_metrics(&geiger_context, graph, root_package_id)
-    {
+    for (package, package_metrics_option) in package_metrics(
+        cargo_metadata_parameters,
+        &geiger_context,
+        graph,
+        package_set,
+        root_package_id,
+    ) {
         let package_metrics = match package_metrics_option {
             Some(m) => m,
             None => {
@@ -141,7 +145,7 @@ fn scan_to_report(
                 continue;
             }
         };
-        let unsafe_info = unsafe_stats(package_metrics, &rs_files_used);
+        let unsafe_info = unsafe_stats(&package_metrics, &rs_files_used);
         let entry = ReportEntry {
             package,
             unsafety: unsafe_info,

@@ -58,9 +58,13 @@ fn scan_forbid_to_report(
         print_config,
     )?;
     let mut report = QuickSafetyReport::default();
-    for (package, package_metrics) in
-        package_metrics(&geiger_context, graph, root_package_id)
-    {
+    for (package, package_metrics) in package_metrics(
+        cargo_metadata_parameters,
+        &geiger_context,
+        graph,
+        package_set,
+        root_package_id,
+    ) {
         let pack_metrics = match package_metrics {
             Some(m) => m,
             None => {
