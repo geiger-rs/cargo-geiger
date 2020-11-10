@@ -6,18 +6,15 @@ mod rs_file;
 use crate::args::Args;
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
+use crate::utils::{CargoMetadataParameters, ToCargoCoreDepKind, ToPackageId};
 
 pub use rs_file::RsFileMetricsWrapper;
 
 use default::scan_unsafe;
 use forbid::scan_forbid_unsafe;
 
-use crate::krates_utils::{
-    CargoMetadataParameters, ToCargoCoreDepKind, ToCargoMetadataPackageId,
-    ToPackageId,
-};
 use cargo::core::dependency::DepKind;
-use cargo::core::{PackageId, PackageSet, Workspace};
+use cargo::core::{PackageSet, Workspace};
 use cargo::{CliResult, Config};
 use cargo_geiger_serde::{
     CounterBlock, DependencyKind, PackageInfo, UnsafeInfo,
@@ -30,7 +27,8 @@ use url::Url;
 /// Provides a more terse and searchable name for the wrapped generic
 /// collection.
 pub struct GeigerContext {
-    pub package_id_to_metrics: HashMap<PackageId, PackageMetrics>,
+    pub package_id_to_metrics:
+        HashMap<cargo_metadata::PackageId, PackageMetrics>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -61,7 +59,7 @@ pub fn scan(
     config: &Config,
     graph: &Graph,
     package_set: &PackageSet,
-    root_package_id: PackageId,
+    root_package_id: cargo_metadata::PackageId,
     workspace: &Workspace,
 ) -> CliResult {
     let print_config = PrintConfig::new(args)?;
@@ -170,30 +168,32 @@ fn package_metrics(
     geiger_context: &GeigerContext,
     graph: &Graph,
     package_set: &PackageSet,
-    root_package_id: PackageId,
+    root_package_id: cargo_metadata::PackageId,
 ) -> Vec<(PackageInfo, Option<PackageMetrics>)> {
     let mut package_metrics =
         Vec::<(PackageInfo, Option<PackageMetrics>)>::new();
-    let root_index = graph.nodes[&root_package_id
-        .to_cargo_metadata_package_id(cargo_metadata_parameters.metadata)];
+    let root_index = graph.nodes[&root_package_id];
     let mut indices = vec![root_index];
     let mut visited = HashSet::new();
 
     while !indices.is_empty() {
         let i = indices.pop().unwrap();
-        let package_id = graph.graph[i]
-            .to_package_id(cargo_metadata_parameters.krates, package_set);
-        let mut package = PackageInfo::new(from_cargo_package_id(package_id));
+        let package_id = graph.graph[i].clone();
+        let mut package = PackageInfo::new(from_cargo_package_id(
+            cargo_metadata_parameters,
+            package_id.clone(),
+            package_set,
+        ));
         for edge in graph.graph.edges(i) {
             let dep_index = edge.target();
             if visited.insert(dep_index) {
                 indices.push(dep_index);
             }
-            let dep =
-                from_cargo_package_id(graph.graph[dep_index].to_package_id(
-                    cargo_metadata_parameters.krates,
-                    package_set,
-                ));
+            let dep = from_cargo_package_id(
+                cargo_metadata_parameters,
+                graph.graph[dep_index].clone(),
+                package_set,
+            );
             package.add_dependency(
                 dep,
                 from_cargo_dependency_kind(
@@ -216,8 +216,14 @@ fn package_metrics(
     package_metrics
 }
 
-fn from_cargo_package_id(id: PackageId) -> cargo_geiger_serde::PackageId {
-    let source = id.source_id();
+fn from_cargo_package_id(
+    cargo_metadata_parameters: &CargoMetadataParameters,
+    cargo_metadata_package_id: cargo_metadata::PackageId,
+    package_set: &PackageSet,
+) -> cargo_geiger_serde::PackageId {
+    let package_id = cargo_metadata_package_id
+        .to_package_id(cargo_metadata_parameters.krates, package_set);
+    let source = package_id.source_id();
     let source_url = source.url();
     // Canonicalize paths as cargo does not seem to do so on all platforms.
     let source_url = if source_url.scheme() == "file" {
@@ -253,8 +259,8 @@ fn from_cargo_package_id(id: PackageId) -> cargo_geiger_serde::PackageId {
         panic!("Unsupported source type: {:?}", source)
     };
     cargo_geiger_serde::PackageId {
-        name: id.name().to_string(),
-        version: id.version().clone(),
+        name: package_id.name().to_string(),
+        version: package_id.version().clone(),
         source,
     }
 }

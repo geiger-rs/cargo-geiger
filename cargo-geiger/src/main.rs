@@ -14,9 +14,9 @@ mod args;
 mod cli;
 mod format;
 mod graph;
-mod krates_utils;
 mod scan;
 mod tree;
+mod utils;
 
 use crate::args::{Args, HELP};
 use crate::cli::{
@@ -25,7 +25,9 @@ use crate::cli::{
 use crate::graph::build_graph;
 use crate::scan::scan;
 
-use crate::krates_utils::{CargoMetadataParameters, ToCargoMetadataPackage};
+use crate::utils::{
+    CargoMetadataParameters, ToCargoMetadataPackage, ToCargoMetadataPackageId,
+};
 use cargo::core::shell::{ColorChoice, Shell};
 use cargo::{CliResult, Config};
 
@@ -109,7 +111,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         config,
         &graph,
         &package_set,
-        root_package_id,
+        root_package_id
+            .to_cargo_metadata_package_id(cargo_metadata_parameters.metadata),
         &workspace,
     )
 }

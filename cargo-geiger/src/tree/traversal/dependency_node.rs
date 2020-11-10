@@ -1,36 +1,35 @@
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
-use crate::krates_utils::{
-    CargoMetadataParameters, ToCargoCoreDepKind, ToCargoMetadataPackageId,
-    ToPackageId,
-};
 use crate::tree::traversal::WalkDependencyParameters;
 use crate::tree::TextTreeLine;
+use crate::utils::{CargoMetadataParameters, ToCargoCoreDepKind};
 
 use super::construct_tree_vines_string;
 use super::walk_dependency_kind;
 
 use cargo::core::dependency::DepKind;
-use cargo::core::{PackageId, PackageSet};
+use cargo::core::PackageSet;
 use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;
 use std::collections::HashMap;
 
 pub fn walk_dependency_node(
     cargo_metadata_parameters: &CargoMetadataParameters,
-    package: &PackageId,
+    package: &cargo_metadata::PackageId,
     package_set: &PackageSet,
     walk_dependency_parameters: &mut WalkDependencyParameters,
 ) -> Vec<TextTreeLine> {
     let new = walk_dependency_parameters.print_config.all
-        || walk_dependency_parameters.visited_deps.insert(*package);
+        || walk_dependency_parameters
+            .visited_deps
+            .insert(package.clone());
     let tree_vines = construct_tree_vines_string(
         walk_dependency_parameters.levels_continue,
         walk_dependency_parameters.print_config,
     );
 
     let mut all_out_text_tree_lines = vec![TextTreeLine::Package {
-        id: *package,
+        id: package.clone(),
         tree_vines,
     }];
 
@@ -40,22 +39,15 @@ pub fn walk_dependency_node(
 
     let mut dependency_type_nodes = construct_dependency_type_nodes_hashmap(
         walk_dependency_parameters.graph,
-        &package
-            .to_cargo_metadata_package_id(cargo_metadata_parameters.metadata),
+        &package,
         walk_dependency_parameters.print_config,
     );
 
     for (dep_kind, nodes) in dependency_type_nodes.iter_mut() {
-        let mut cargo_core_nodes = nodes
-            .iter()
-            .map(|n| {
-                n.to_package_id(cargo_metadata_parameters.krates, package_set)
-            })
-            .collect::<Vec<PackageId>>();
         let mut dep_kind_out = walk_dependency_kind(
             cargo_metadata_parameters,
             *dep_kind,
-            &mut cargo_core_nodes,
+            nodes,
             package_set,
             walk_dependency_parameters,
         );

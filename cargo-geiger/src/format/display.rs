@@ -1,13 +1,17 @@
 use crate::format::pattern::Pattern;
 use crate::format::Chunk;
 
+use crate::utils::{
+    CargoMetadataParameters, GetPackageNameFromCargoMetadataPackageId,
+    GetPackageVersionFromCargoMetadataPackageId,
+};
 use cargo::core::manifest::ManifestMetadata;
-use cargo::core::PackageId;
 use std::fmt;
 
 pub struct Display<'a> {
+    pub cargo_metadata_parameters: &'a CargoMetadataParameters<'a>,
     pub pattern: &'a Pattern,
-    pub package: &'a PackageId,
+    pub package: &'a cargo_metadata::PackageId,
     pub metadata: &'a ManifestMetadata,
 }
 
@@ -24,8 +28,16 @@ impl<'a> fmt::Display for Display<'a> {
                     (write!(
                         fmt,
                         "{} {}",
-                        self.package.name(),
-                        self.package.version()
+                        self.cargo_metadata_parameters
+                            .krates
+                            .get_package_name_from_cargo_metadata_package_id(
+                                self.package
+                            ),
+                        self.cargo_metadata_parameters
+                            .krates
+                            .get_package_version_from_cargo_metadata_package_id(
+                                self.package
+                            )
                     ))?
                 }
                 Chunk::Raw(ref s) => (fmt.write_str(s))?,
@@ -48,8 +60,8 @@ pub mod display_tests {
     use crate::format::Chunk;
 
     use cargo::core::manifest::ManifestMetadata;
-    use cargo::core::{PackageId, SourceId};
-    use cargo::util::ToSemver;
+    use cargo_metadata::{CargoOpt, MetadataCommand};
+    use krates::Builder;
     use rstest::*;
 
     #[rstest(
@@ -61,7 +73,7 @@ pub mod display_tests {
         ),
         case(
             Pattern(vec![Chunk::Package]),
-            "package_name 1.2.3"
+            "cargo-geiger 0.10.2"
         ),
         case(
             Pattern(vec![Chunk::Raw(String::from("chunk_value"))]),
@@ -76,15 +88,17 @@ pub mod display_tests {
         input_pattern: Pattern,
         expected_formatted_string: &str,
     ) {
-        let package_id = PackageId::new(
-            "package_name",
-            "1.2.3".to_semver().unwrap(),
-            SourceId::from_url(
-                "git+https://github.com/rust-secure-code/cargo-geiger",
-            )
-            .unwrap(),
-        )
-        .unwrap();
+        let metadata = MetadataCommand::new()
+            .manifest_path("./Cargo.toml")
+            .features(CargoOpt::AllFeatures)
+            .exec()
+            .unwrap();
+
+        let krates = Builder::new()
+            .build_with_metadata(metadata.clone(), |_| ())
+            .unwrap();
+
+        let package_id = metadata.root_package().unwrap().id.clone();
 
         let manifest_metadata = ManifestMetadata {
             authors: vec![],
@@ -102,6 +116,10 @@ pub mod display_tests {
         };
 
         let display = Display {
+            cargo_metadata_parameters: &CargoMetadataParameters {
+                krates: &krates,
+                metadata: &metadata,
+            },
             pattern: &input_pattern,
             package: &package_id,
             metadata: &manifest_metadata,

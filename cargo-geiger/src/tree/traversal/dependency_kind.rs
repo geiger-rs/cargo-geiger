@@ -4,16 +4,16 @@ use crate::tree::{get_tree_symbols, TextTreeLine, TreeSymbols};
 
 use super::dependency_node::walk_dependency_node;
 
-use crate::krates_utils::CargoMetadataParameters;
+use crate::utils::CargoMetadataParameters;
 use cargo::core::dependency::DepKind;
-use cargo::core::{PackageId, PackageSet};
+use cargo::core::PackageSet;
 use std::iter::Peekable;
 use std::slice::Iter;
 
 pub fn walk_dependency_kind(
     cargo_metadata_parameters: &CargoMetadataParameters,
     dep_kind: DepKind,
-    deps: &mut Vec<PackageId>,
+    deps: &mut Vec<cargo_metadata::PackageId>,
     package_set: &PackageSet,
     walk_dependency_parameters: &mut WalkDependencyParameters,
 ) -> Vec<TextTreeLine> {
@@ -22,7 +22,7 @@ pub fn walk_dependency_kind(
     }
 
     // Resolve uses Hash data types internally but we want consistent output ordering
-    deps.sort_by_key(|n| *n);
+    deps.sort_by_key(|n| n.clone());
 
     let tree_symbols =
         get_tree_symbols(walk_dependency_parameters.print_config.charset);
@@ -52,8 +52,8 @@ pub fn walk_dependency_kind(
 
 fn handle_walk_dependency_node(
     cargo_metadata_parameters: &CargoMetadataParameters,
-    dependency: &PackageId,
-    node_iterator: &mut Peekable<Iter<PackageId>>,
+    dependency: &cargo_metadata::PackageId,
+    node_iterator: &mut Peekable<Iter<cargo_metadata::PackageId>>,
     package_set: &PackageSet,
     text_tree_lines: &mut Vec<TextTreeLine>,
     walk_dependency_parameters: &mut WalkDependencyParameters,

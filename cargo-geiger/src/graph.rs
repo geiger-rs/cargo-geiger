@@ -1,6 +1,6 @@
 use crate::args::{Args, DepsArgs, TargetArgs};
 use crate::cli::get_cfgs;
-use crate::krates_utils::{
+use crate::utils::{
     CargoMetadataParameters, DepsNotReplaced, MatchesIgnoringSource,
     Replacement,
 };

@@ -13,6 +13,7 @@ use handle_text_tree_line::{
 };
 use total_package_counts::TotalPackageCounts;
 
+use crate::utils::CargoMetadataParameters;
 use cargo::core::package::PackageSet;
 use cargo_geiger_serde::{Count, CounterBlock};
 use std::collections::HashSet;
@@ -31,6 +32,7 @@ pub const UNSAFE_COUNTERS_HEADER: [&str; 6] = [
 ];
 
 pub fn create_table_from_text_tree_lines(
+    cargo_metadata_parameters: &CargoMetadataParameters,
     package_set: &PackageSet,
     table_parameters: &TableParameters,
     text_tree_lines: Vec<TextTreeLine>,
@@ -61,6 +63,7 @@ pub fn create_table_from_text_tree_lines(
                 id: package_id,
                 tree_vines,
             } => handle_text_tree_line_package(
+                cargo_metadata_parameters,
                 &emoji_symbols,
                 &mut handle_package_parameters,
                 package_id,

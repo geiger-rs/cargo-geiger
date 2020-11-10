@@ -12,9 +12,9 @@ use super::super::{
 };
 use super::scan;
 
-use crate::krates_utils::{CargoMetadataParameters, ToCargoMetadataPackageId};
+use crate::utils::CargoMetadataParameters;
 use cargo::core::shell::Verbosity;
-use cargo::core::{PackageId, PackageSet, Workspace};
+use cargo::core::{PackageSet, Workspace};
 use cargo::{CliError, CliResult};
 use colored::Colorize;
 use std::error::Error;
@@ -24,7 +24,7 @@ pub fn scan_to_table(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
     package_set: &PackageSet,
-    root_package_id: PackageId,
+    root_package_id: cargo_metadata::PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
 ) -> CliResult {
@@ -55,8 +55,7 @@ pub fn scan_to_table(
         &graph,
         package_set,
         &scan_parameters.print_config,
-        root_package_id
-            .to_cargo_metadata_package_id(cargo_metadata_parameters.metadata),
+        root_package_id,
     );
     let table_parameters = TableParameters {
         geiger_context: &geiger_context,
@@ -66,6 +65,7 @@ pub fn scan_to_table(
 
     let (mut table_lines, mut warning_count) =
         create_table_from_text_tree_lines(
+            cargo_metadata_parameters,
             package_set,
             &table_parameters,
             text_tree_lines,

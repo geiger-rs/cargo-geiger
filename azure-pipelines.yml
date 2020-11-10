@@ -40,7 +40,7 @@ steps:
 
   # Linux
   - script: |
-      cargo install cargo-tarpaulin
+      cargo install cargo-tarpaulin --version 0.14.3
       cargo tarpaulin --out Xml
     displayName: Cargo tarpaulin
     condition: eq(variables['Agent.OS'], 'Linux')

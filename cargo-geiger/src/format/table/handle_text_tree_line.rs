@@ -1,20 +1,20 @@
+use crate::format::emoji_symbols::EmojiSymbols;
 use crate::format::print_config::colorize;
 use crate::format::{get_kind_group_name, CrateDetectionStatus, SymbolKind};
 use crate::scan::unsafe_stats;
+use crate::utils::{CargoMetadataParameters, ToPackage};
 
 use super::total_package_counts::TotalPackageCounts;
 use super::TableParameters;
 use super::{table_row, table_row_empty};
 
-use crate::format::emoji_symbols::EmojiSymbols;
 use cargo::core::dependency::DepKind;
 use cargo::core::package::PackageSet;
-use cargo::core::PackageId;
 use std::collections::HashSet;
 
 pub struct HandlePackageParameters<'a> {
     pub total_package_counts: &'a mut TotalPackageCounts,
-    pub visited_package_ids: &'a mut HashSet<PackageId>,
+    pub visited_package_ids: &'a mut HashSet<cargo_metadata::PackageId>,
     pub warning_count: &'a mut u64,
 }
 
@@ -33,10 +33,12 @@ pub fn handle_text_tree_line_extra_deps_group(
     table_lines.push(format!("{}{}{}", table_row_empty(), tree_vines, name));
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn handle_text_tree_line_package(
+    cargo_metadata_parameters: &CargoMetadataParameters,
     emoji_symbols: &EmojiSymbols,
     handle_package_parameters: &mut HandlePackageParameters,
-    package_id: PackageId,
+    package_id: cargo_metadata::PackageId,
     package_set: &PackageSet,
     table_lines: &mut Vec<String>,
     table_parameters: &TableParameters,
@@ -44,11 +46,11 @@ pub fn handle_text_tree_line_package(
 ) {
     let package_is_new = handle_package_parameters
         .visited_package_ids
-        .insert(package_id);
-    let package = package_set.get_one(package_id).unwrap_or_else(|_| {
-        // TODO: Avoid panic, return Result.
-        panic!("Expected to find package by id: {}", package_id);
-    });
+        .insert(package_id.clone());
+
+    let package =
+        package_id.to_package(cargo_metadata_parameters.krates, package_set);
+
     let package_metrics = match table_parameters
         .geiger_context
         .package_id_to_metrics
@@ -97,10 +99,11 @@ pub fn handle_text_tree_line_package(
     let package_name = colorize(
         format!(
             "{}",
-            table_parameters
-                .print_config
-                .format
-                .display(&package_id, package.manifest().metadata())
+            table_parameters.print_config.format.display(
+                cargo_metadata_parameters,
+                package.manifest().metadata(),
+                &package_id
+            )
         ),
         &crate_detection_status,
     );

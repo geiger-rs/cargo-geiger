@@ -8,8 +8,8 @@ use super::{package_metrics, ScanMode, ScanParameters};
 
 use table::scan_forbid_to_table;
 
-use crate::krates_utils::CargoMetadataParameters;
-use cargo::core::{PackageId, PackageSet};
+use crate::utils::CargoMetadataParameters;
+use cargo::core::PackageSet;
 use cargo::{CliResult, Config};
 use cargo_geiger_serde::{QuickReportEntry, QuickSafetyReport};
 
@@ -17,7 +17,7 @@ pub fn scan_forbid_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
     package_set: &PackageSet,
-    root_package_id: PackageId,
+    root_package_id: cargo_metadata::PackageId,
     scan_parameters: &ScanParameters,
 ) -> CliResult {
     match scan_parameters.args.output_format {
@@ -48,7 +48,7 @@ fn scan_forbid_to_report(
     output_format: OutputFormat,
     package_set: &PackageSet,
     print_config: &PrintConfig,
-    root_package_id: PackageId,
+    root_package_id: cargo_metadata::PackageId,
 ) -> CliResult {
     let geiger_context = find_unsafe(
         cargo_metadata_parameters,

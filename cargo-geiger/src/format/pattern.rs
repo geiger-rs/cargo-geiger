@@ -3,8 +3,8 @@ use crate::format::{Chunk, RawChunk};
 
 use super::display::Display;
 
+use crate::utils::CargoMetadataParameters;
 use cargo::core::manifest::ManifestMetadata;
-use cargo::core::PackageId;
 use std::error::Error;
 
 #[derive(Debug, PartialEq)]
@@ -13,10 +13,12 @@ pub struct Pattern(pub Vec<Chunk>);
 impl Pattern {
     pub fn display<'a>(
         &'a self,
-        package: &'a PackageId,
+        cargo_metadata_parameters: &'a CargoMetadataParameters,
         metadata: &'a ManifestMetadata,
+        package: &'a cargo_metadata::PackageId,
     ) -> Display<'a> {
         Display {
+            cargo_metadata_parameters,
             pattern: self,
             package,
             metadata,
