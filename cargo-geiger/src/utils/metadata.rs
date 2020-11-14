@@ -1,14 +1,18 @@
+use super::{
+    CargoMetadataParameters, DepsNotReplaced,
+    GetPackageNameFromCargoMetadataPackageId,
+    GetPackageVersionFromCargoMetadataPackageId, GetRoot,
+    MatchesIgnoringSource, Replacement, ToCargoCoreDepKind,
+    ToCargoMetadataPackageId, ToPackageId,
+};
+
+use crate::utils::ToPackage;
 use cargo::core::dependency::DepKind;
 use cargo::core::{Package, PackageId, PackageSet, Resolve};
-use cargo_metadata::{DependencyKind, Metadata};
+use cargo_metadata::DependencyKind;
 use krates::Krates;
 use std::collections::HashSet;
 use std::path::PathBuf;
-
-pub struct CargoMetadataParameters<'a> {
-    pub krates: &'a Krates,
-    pub metadata: &'a Metadata,
-}
 
 impl DepsNotReplaced for cargo_metadata::Metadata {
     fn deps_not_replaced(
@@ -36,26 +40,6 @@ impl DepsNotReplaced for cargo_metadata::Metadata {
         }
 
         cargo_metadata_deps_not_replaced
-    }
-}
-
-impl GetPackageNameFromCargoMetadataPackageId for Krates {
-    fn get_package_name_from_cargo_metadata_package_id(
-        &self,
-        package_id: &cargo_metadata::PackageId,
-    ) -> String {
-        let package = self.node_for_kid(package_id);
-        package.unwrap().krate.clone().name
-    }
-}
-
-impl GetPackageVersionFromCargoMetadataPackageId for Krates {
-    fn get_package_version_from_cargo_metadata_package_id(
-        &self,
-        package_id: &cargo_metadata::PackageId,
-    ) -> cargo_metadata::Version {
-        let package = self.node_for_kid(package_id);
-        package.unwrap().krate.clone().version
     }
 }
 
@@ -111,55 +95,16 @@ impl ToCargoCoreDepKind for DependencyKind {
     }
 }
 
-impl ToCargoMetadataDependencyKind for DepKind {
-    fn to_cargo_metadata_dependency_kind(&self) -> DependencyKind {
-        match self {
-            DepKind::Build => DependencyKind::Build,
-            DepKind::Development => DependencyKind::Development,
-            DepKind::Normal => DependencyKind::Normal,
-        }
-    }
-}
-
-impl ToCargoMetadataPackage for Package {
-    fn to_cargo_metadata_package(
-        &self,
-        metadata: &Metadata,
-    ) -> cargo_metadata::Package {
-        metadata
-            .packages
-            .iter()
-            .filter(|p| {
-                p.name == self.name().to_string()
-                    && p.version.major == self.version().major
-                    && p.version.minor == self.version().minor
-                    && p.version.patch == self.version().patch
+impl ToPackage for cargo_metadata::PackageId {
+    fn to_package(&self, krates: &Krates, package_set: &PackageSet) -> Package {
+        let package_id = self.to_package_id(krates, package_set);
+        package_set
+            .get_one(package_id)
+            .unwrap_or_else(|_| {
+                // TODO: Avoid panic, return Result.
+                panic!("Expected to find package by id: {}", package_id);
             })
-            .cloned()
-            .collect::<Vec<cargo_metadata::Package>>()
-            .pop()
-            .unwrap()
-    }
-}
-
-impl ToCargoMetadataPackageId for PackageId {
-    fn to_cargo_metadata_package_id(
-        &self,
-        metadata: &Metadata,
-    ) -> cargo_metadata::PackageId {
-        metadata
-            .packages
-            .iter()
-            .filter(|p| {
-                p.name == self.name().to_string()
-                    && p.version.major == self.version().major
-                    && p.version.minor == self.version().minor
-                    && p.version.patch == self.version().patch
-            })
-            .map(|p| p.id.clone())
-            .collect::<Vec<cargo_metadata::PackageId>>()
-            .pop()
-            .unwrap()
+            .clone()
     }
 }
 
@@ -184,94 +129,18 @@ impl ToPackageId for cargo_metadata::PackageId {
     }
 }
 
-pub trait DepsNotReplaced {
-    fn deps_not_replaced(
-        &self,
-        krates: &Krates,
-        package_id: cargo_metadata::PackageId,
-        package_set: &PackageSet,
-        resolve: &Resolve,
-    ) -> Vec<(
-        cargo_metadata::PackageId,
-        HashSet<cargo_metadata::Dependency>,
-    )>;
-}
-
-pub trait GetPackageNameFromCargoMetadataPackageId {
-    fn get_package_name_from_cargo_metadata_package_id(
-        &self,
-        package_id: &cargo_metadata::PackageId,
-    ) -> String;
-}
-
-pub trait GetPackageVersionFromCargoMetadataPackageId {
-    fn get_package_version_from_cargo_metadata_package_id(
-        &self,
-        package_id: &cargo_metadata::PackageId,
-    ) -> cargo_metadata::Version;
-}
-
-pub trait GetRoot {
-    fn get_root(&self) -> PathBuf;
-}
-
-pub trait MatchesIgnoringSource {
-    fn matches_ignoring_source(
-        &self,
-        krates: &Krates,
-        package_id: cargo_metadata::PackageId,
-    ) -> bool;
-}
-
-pub trait Replacement {
-    fn replace(
-        &self,
-        cargo_metadata_parameters: &CargoMetadataParameters,
-        package_set: &PackageSet,
-        resolve: &Resolve,
-    ) -> cargo_metadata::PackageId;
-}
-
-pub trait ToCargoCoreDepKind {
-    fn to_cargo_core_dep_kind(&self) -> DepKind;
-}
-
-pub trait ToCargoMetadataDependencyKind {
-    fn to_cargo_metadata_dependency_kind(&self) -> DependencyKind;
-}
-
-pub trait ToCargoMetadataPackage {
-    fn to_cargo_metadata_package(
-        &self,
-        metadata: &Metadata,
-    ) -> cargo_metadata::Package;
-}
-
-pub trait ToCargoMetadataPackageId {
-    fn to_cargo_metadata_package_id(
-        &self,
-        metadata: &Metadata,
-    ) -> cargo_metadata::PackageId;
-}
-
-pub trait ToPackageId {
-    fn to_package_id(
-        &self,
-        krates: &Krates,
-        package_set: &PackageSet,
-    ) -> PackageId;
-}
-
 #[cfg(test)]
-mod krates_utils_tests {
+mod metadata_tests {
     use super::*;
+
+    use super::super::GetPackageNameFromCargoMetadataPackageId;
 
     use crate::args::FeaturesArgs;
     use crate::cli::{get_registry, get_workspace, resolve};
 
     use cargo::Config;
     use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
-    use krates::Builder;
+    use krates::Builder as KratesBuilder;
     use rstest::*;
     use std::path::PathBuf;
 
@@ -315,24 +184,6 @@ mod krates_utils_tests {
         cargo_metadata_package_names.sort();
 
         assert_eq!(cargo_core_package_names, cargo_metadata_package_names);
-    }
-
-    #[rstest]
-    fn get_package_name_from_cargo_metadata_package_id_test() {
-        let (krates, metadata) = construct_krates_and_metadata();
-        let package = metadata.root_package().unwrap();
-        let package_name =
-            krates.get_package_name_from_cargo_metadata_package_id(&package.id);
-        assert_eq!(package_name, package.name);
-    }
-
-    #[rstest]
-    fn get_package_version_from_cargo_metadata_package_id_test() {
-        let (krates, metadata) = construct_krates_and_metadata();
-        let package = metadata.root_package().unwrap();
-        let package_version = krates
-            .get_package_version_from_cargo_metadata_package_id(&package.id);
-        assert_eq!(package_version, package.version);
     }
 
     #[rstest]
@@ -423,59 +274,6 @@ mod krates_utils_tests {
         )
     }
 
-    #[rstest(
-        input_dep_kind,
-        expected_dependency_kind,
-        case(DepKind::Build, DependencyKind::Build),
-        case(DepKind::Development, DependencyKind::Development),
-        case(DepKind::Normal, DependencyKind::Normal)
-    )]
-    fn to_cargo_metadata_dependency_kind_test(
-        input_dep_kind: DepKind,
-        expected_dependency_kind: DependencyKind,
-    ) {
-        assert_eq!(
-            input_dep_kind.to_cargo_metadata_dependency_kind(),
-            expected_dependency_kind
-        );
-    }
-
-    #[rstest]
-    fn to_cargo_metadata_package_test() {
-        let config = Config::default().unwrap();
-        let manifest_path: Option<PathBuf> = None;
-        let workspace = get_workspace(&config, manifest_path).unwrap();
-        let package = workspace.current().unwrap();
-
-        let (_, metadata) = construct_krates_and_metadata();
-
-        let cargo_metadata_package =
-            package.to_cargo_metadata_package(&metadata);
-
-        assert_eq!(cargo_metadata_package.name, package.name().to_string());
-        assert!(
-            cargo_metadata_package.version.major == package.version().major
-                && cargo_metadata_package.version.minor
-                    == package.version().minor
-                && cargo_metadata_package.version.patch
-                    == package.version().patch
-        );
-    }
-
-    #[rstest]
-    fn to_cargo_metadata_package_id_test() {
-        let config = Config::default().unwrap();
-        let manifest_path: Option<PathBuf> = None;
-        let workspace = get_workspace(&config, manifest_path).unwrap();
-        let package = workspace.current().unwrap();
-
-        let (_, metadata) = construct_krates_and_metadata();
-        let cargo_metadata_package_id =
-            package.package_id().to_cargo_metadata_package_id(&metadata);
-
-        assert!(cargo_metadata_package_id.repr.contains("cargo-geiger"));
-    }
-
     #[rstest]
     fn to_package_id_test() {
         let args = FeaturesArgs::default();
@@ -507,7 +305,7 @@ mod krates_utils_tests {
             .exec()
             .unwrap();
 
-        let krates = Builder::new()
+        let krates = KratesBuilder::new()
             .build_with_metadata(metadata.clone(), |_| ())
             .unwrap();
 

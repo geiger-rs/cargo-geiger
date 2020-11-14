@@ -1,17 +1,14 @@
 use crate::format::print_config::PrintConfig;
-use crate::krates_utils::{
-    CargoMetadataParameters, GetRoot, ToCargoMetadataPackage, ToPackageId,
-};
 use crate::scan::rs_file::{
     into_is_entry_point_and_path_buf, into_rs_code_file, into_target_kind,
     is_file_with_ext, RsFile, RsFileMetricsWrapper,
 };
 use crate::scan::PackageMetrics;
+use crate::utils::{CargoMetadataParameters, GetRoot, ToCargoMetadataPackage};
 
 use super::{GeigerContext, ScanMode};
 
 use cargo::core::package::PackageSet;
-use cargo::core::PackageId;
 use cargo::util::CargoResult;
 use cargo::{CliError, Config};
 use geiger::{find_unsafe_in_file, IncludeTests, RsFileMetrics, ScanFileError};
@@ -96,15 +93,9 @@ where
     let cargo_core_package_metrics = package_id_to_metrics
         .iter()
         .map(|(cargo_metadata_package_id, package_metrics)| {
-            (
-                cargo_metadata_package_id.clone().to_package_id(
-                    cargo_metadata_parameters.krates,
-                    package_set,
-                ),
-                package_metrics.clone(),
-            )
+            (cargo_metadata_package_id.clone(), package_metrics.clone())
         })
-        .collect::<HashMap<PackageId, PackageMetrics>>();
+        .collect::<HashMap<cargo_metadata::PackageId, PackageMetrics>>();
 
     GeigerContext {
         package_id_to_metrics: cargo_core_package_metrics,

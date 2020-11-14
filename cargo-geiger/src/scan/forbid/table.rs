@@ -3,15 +3,17 @@ use crate::format::pattern::Pattern;
 use crate::format::print_config::PrintConfig;
 use crate::format::{get_kind_group_name, SymbolKind};
 use crate::graph::Graph;
-use crate::krates_utils::{CargoMetadataParameters, ToCargoMetadataPackageId};
 use crate::tree::traversal::walk_dependency_tree;
 use crate::tree::TextTreeLine;
+use crate::utils::{
+    CargoMetadataParameters, GetManifestMetadataFromCargoMetadataPackageId,
+};
 
 use super::super::find::find_unsafe;
 use super::super::ScanMode;
 
 use crate::scan::GeigerContext;
-use cargo::core::{Package, PackageId, PackageSet};
+use cargo::core::PackageSet;
 use cargo::{CliResult, Config};
 use colored::Colorize;
 
@@ -21,7 +23,7 @@ pub fn scan_forbid_to_table(
     graph: &Graph,
     package_set: &PackageSet,
     print_config: &PrintConfig,
-    root_package_id: PackageId,
+    root_package_id: cargo_metadata::PackageId,
 ) -> CliResult {
     let mut scan_output_lines = Vec::<String>::new();
     let emoji_symbols = EmojiSymbols::new(print_config.charset);
@@ -34,9 +36,9 @@ pub fn scan_forbid_to_table(
         &graph,
         package_set,
         &print_config,
-        root_package_id
-            .to_cargo_metadata_package_id(cargo_metadata_parameters.metadata),
+        root_package_id,
     );
+
     for tree_line in tree_lines {
         match tree_line {
             TextTreeLine::ExtraDepsGroup { kind, tree_vines } => {
@@ -61,6 +63,7 @@ pub fn scan_forbid_to_table(
                 )?;
 
                 handle_package_text_tree_line(
+                    cargo_metadata_parameters,
                     &emoji_symbols,
                     &geiger_ctx,
                     package_id,
@@ -106,17 +109,33 @@ fn construct_key_lines(emoji_symbols: &EmojiSymbols) -> Vec<String> {
     output_key_lines
 }
 
-fn format_package_name(package: &Package, pattern: &Pattern) -> String {
+fn format_package_name(
+    cargo_metadata_parameters: &CargoMetadataParameters,
+    package_id: &cargo_metadata::PackageId,
+    package_set: &PackageSet,
+    pattern: &Pattern,
+) -> String {
     format!(
         "{}",
-        pattern.display(&package.package_id(), package.manifest().metadata())
+        pattern.display(
+            cargo_metadata_parameters,
+            &cargo_metadata_parameters
+                .krates
+                .get_manifest_metadata_from_cargo_metadata_package_id(
+                    package_id,
+                    package_set
+                ),
+            &package_id
+        )
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_package_text_tree_line(
+    cargo_metadata_parameters: &CargoMetadataParameters,
     emoji_symbols: &EmojiSymbols,
     geiger_ctx: &GeigerContext,
-    package_id: PackageId,
+    package_id: cargo_metadata::PackageId,
     package_set: &PackageSet,
     print_config: &PrintConfig,
     scan_output_lines: &mut Vec<String>,
@@ -125,8 +144,12 @@ fn handle_package_text_tree_line(
     let sym_lock = emoji_symbols.emoji(SymbolKind::Lock);
     let sym_qmark = emoji_symbols.emoji(SymbolKind::QuestionMark);
 
-    let package = package_set.get_one(package_id).unwrap(); // FIXME
-    let name = format_package_name(package, &print_config.format);
+    let name = format_package_name(
+        cargo_metadata_parameters,
+        &package_id,
+        package_set,
+        &print_config.format,
+    );
     let package_metrics = geiger_ctx.package_id_to_metrics.get(&package_id);
     let package_forbids_unsafe = match package_metrics {
         None => false, // no metrics available, .rs parsing failed?
@@ -149,11 +172,7 @@ fn handle_package_text_tree_line(
 #[cfg(test)]
 mod forbid_tests {
     use super::*;
-
     use crate::format::Charset;
-
-    use cargo::core::Workspace;
-    use cargo::util::important_paths;
     use rstest::*;
 
     #[rstest]
@@ -162,23 +181,5 @@ mod forbid_tests {
         let output_key_lines = construct_key_lines(&emoji_symbols);
 
         assert_eq!(output_key_lines.len(), 5);
-    }
-
-    #[rstest]
-    fn format_package_name_test() {
-        let pattern = Pattern::try_build("{p}").unwrap();
-
-        let config = Config::default().unwrap();
-        let workspace = Workspace::new(
-            &important_paths::find_root_manifest_for_wd(config.cwd()).unwrap(),
-            &config,
-        )
-        .unwrap();
-
-        let package = workspace.current().unwrap();
-
-        let formatted_package_name = format_package_name(&package, &pattern);
-
-        assert_eq!(formatted_package_name, "cargo-geiger 0.10.2");
     }
 }

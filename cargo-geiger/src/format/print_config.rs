@@ -122,8 +122,10 @@ mod print_config_tests {
         input_invert_bool: bool,
         expected_edge_direction: EdgeDirection,
     ) {
-        let mut args = Args::default();
-        args.invert = input_invert_bool;
+        let args = Args {
+            invert: input_invert_bool,
+            ..Default::default()
+        };
 
         let print_config_result = PrintConfig::new(&args);
 
@@ -144,8 +146,10 @@ mod print_config_tests {
         input_include_tests_bool: bool,
         expected_include_tests: IncludeTests,
     ) {
-        let mut args = Args::default();
-        args.include_tests = input_include_tests_bool;
+        let args = Args {
+            include_tests: input_include_tests_bool,
+            ..Default::default()
+        };
 
         let print_config_result = PrintConfig::new(&args);
 
@@ -170,9 +174,11 @@ mod print_config_tests {
         input_no_indent_bool: bool,
         expected_output_prefix: Prefix,
     ) {
-        let mut args = Args::default();
-        args.prefix_depth = input_prefix_depth_bool;
-        args.no_indent = input_no_indent_bool;
+        let args = Args {
+            no_indent: input_no_indent_bool,
+            prefix_depth: input_prefix_depth_bool,
+            ..Default::default()
+        };
 
         let print_config_result = PrintConfig::new(&args);
 
@@ -191,8 +197,10 @@ mod print_config_tests {
         input_verbosity_u32: u32,
         expected_verbosity: Verbosity,
     ) {
-        let mut args = Args::default();
-        args.verbose = input_verbosity_u32;
+        let args = Args {
+            verbose: input_verbosity_u32,
+            ..Default::default()
+        };
 
         let print_config_result = PrintConfig::new(&args);
 

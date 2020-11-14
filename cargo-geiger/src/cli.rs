@@ -22,7 +22,8 @@ use cargo::util::{self, important_paths, CargoResult};
 use cargo::Config;
 use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
 use cargo_platform::Cfg;
-use krates::{Builder, Krates};
+use krates::Builder as KratesBuilder;
+use krates::Krates;
 use std::path::PathBuf;
 use std::str::{self, FromStr};
 
@@ -83,7 +84,8 @@ pub fn get_cfgs(
 }
 
 pub fn get_krates(cargo_metadata: &Metadata) -> CargoResult<Krates> {
-    Ok(Builder::new().build_with_metadata(cargo_metadata.clone(), |_| ())?)
+    Ok(KratesBuilder::new()
+        .build_with_metadata(cargo_metadata.clone(), |_| ())?)
 }
 
 pub fn get_registry<'a>(

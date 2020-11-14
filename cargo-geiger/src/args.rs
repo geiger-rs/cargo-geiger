@@ -173,7 +173,7 @@ fn parse_features(raw_features: Option<String>) -> Vec<String> {
         .unwrap_or_else(String::new)
         .split(' ')
         .map(str::to_owned)
-        .filter(|f| f != "")
+        .filter(|f| !f.is_empty())
         .collect::<Vec<String>>()
 }
 

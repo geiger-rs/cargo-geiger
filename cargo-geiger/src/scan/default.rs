@@ -3,8 +3,8 @@ mod table;
 use crate::args::FeaturesArgs;
 use crate::format::print_config::OutputFormat;
 use crate::graph::Graph;
-use crate::krates_utils::CargoMetadataParameters;
 use crate::scan::rs_file::resolve_rs_file_deps;
+use crate::utils::CargoMetadataParameters;
 
 use super::find::find_unsafe;
 use super::{
@@ -15,7 +15,7 @@ use super::{
 use table::scan_to_table;
 
 use cargo::core::compiler::CompileMode;
-use cargo::core::{PackageId, PackageSet, Workspace};
+use cargo::core::{PackageSet, Workspace};
 use cargo::ops::CompileOptions;
 use cargo::{CliError, CliResult, Config};
 use cargo_geiger_serde::{ReportEntry, SafetyReport};
@@ -24,7 +24,7 @@ pub fn scan_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
     package_set: &PackageSet,
-    root_package_id: PackageId,
+    root_package_id: cargo_metadata::PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
 ) -> CliResult {
@@ -117,7 +117,7 @@ fn scan_to_report(
     graph: &Graph,
     output_format: OutputFormat,
     package_set: &PackageSet,
-    root_package_id: PackageId,
+    root_package_id: cargo_metadata::PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
 ) -> CliResult {
@@ -188,10 +188,11 @@ mod default_tests {
         input_features: Vec<String>,
         expected_compile_features: Vec<&str>,
     ) {
-        let mut args = FeaturesArgs::default();
-        args.all_features = rand::random();
-        args.features = input_features;
-        args.no_default_features = rand::random();
+        let args = FeaturesArgs {
+            all_features: rand::random(),
+            features: input_features,
+            no_default_features: rand::random(),
+        };
 
         let config = Config::default().unwrap();
         let compile_options = build_compile_options(&args, &config);

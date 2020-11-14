@@ -3,21 +3,21 @@ mod dependency_node;
 
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
-use crate::krates_utils::{CargoMetadataParameters, ToPackageId};
 use crate::tree::TextTreeLine;
+use crate::utils::CargoMetadataParameters;
 
 use super::construct_tree_vines_string;
 use dependency_kind::walk_dependency_kind;
 use dependency_node::walk_dependency_node;
 
-use cargo::core::{PackageId, PackageSet};
+use cargo::core::PackageSet;
 use std::collections::HashSet;
 
 pub struct WalkDependencyParameters<'a> {
     pub graph: &'a Graph,
     pub levels_continue: &'a mut Vec<bool>,
     pub print_config: &'a PrintConfig,
-    pub visited_deps: &'a mut HashSet<PackageId>,
+    pub visited_deps: &'a mut HashSet<cargo_metadata::PackageId>,
 }
 
 /// Printing the returned TextTreeLines in order is expected to produce a nice
@@ -46,7 +46,7 @@ pub fn walk_dependency_tree(
     let node = &graph.graph[graph.nodes[&root_package_id]];
     walk_dependency_node(
         cargo_metadata_parameters,
-        &node.to_package_id(cargo_metadata_parameters.krates, package_set),
+        &node,
         package_set,
         &mut walk_dependency_paramters,
     )
