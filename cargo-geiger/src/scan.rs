@@ -6,7 +6,9 @@ mod rs_file;
 use crate::args::Args;
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
-use crate::utils::{CargoMetadataParameters, ToCargoCoreDepKind, ToPackageId};
+use crate::utils::{
+    CargoMetadataParameters, ToCargoCoreDepKind, ToCargoGeigerPackageId,
+};
 
 pub use rs_file::RsFileMetricsWrapper;
 
@@ -22,7 +24,6 @@ use cargo_geiger_serde::{
 use petgraph::visit::EdgeRef;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use url::Url;
 
 /// Provides a more terse and searchable name for the wrapped generic
 /// collection.
@@ -179,21 +180,21 @@ fn package_metrics(
     while !indices.is_empty() {
         let i = indices.pop().unwrap();
         let package_id = graph.graph[i].clone();
-        let mut package = PackageInfo::new(from_cargo_package_id(
-            cargo_metadata_parameters,
-            package_id.clone(),
-            package_set,
-        ));
+        let mut package =
+            PackageInfo::new(package_id.to_cargo_geiger_package_id(
+                cargo_metadata_parameters.krates,
+                package_set,
+            ));
         for edge in graph.graph.edges(i) {
             let dep_index = edge.target();
             if visited.insert(dep_index) {
                 indices.push(dep_index);
             }
-            let dep = from_cargo_package_id(
-                cargo_metadata_parameters,
-                graph.graph[dep_index].clone(),
+            let dep = graph.graph[dep_index].to_cargo_geiger_package_id(
+                cargo_metadata_parameters.krates,
                 package_set,
             );
+
             package.add_dependency(
                 dep,
                 from_cargo_dependency_kind(
@@ -214,55 +215,6 @@ fn package_metrics(
     }
 
     package_metrics
-}
-
-fn from_cargo_package_id(
-    cargo_metadata_parameters: &CargoMetadataParameters,
-    cargo_metadata_package_id: cargo_metadata::PackageId,
-    package_set: &PackageSet,
-) -> cargo_geiger_serde::PackageId {
-    let package_id = cargo_metadata_package_id
-        .to_package_id(cargo_metadata_parameters.krates, package_set);
-    let source = package_id.source_id();
-    let source_url = source.url();
-    // Canonicalize paths as cargo does not seem to do so on all platforms.
-    let source_url = if source_url.scheme() == "file" {
-        match source_url.to_file_path() {
-            Ok(p) => {
-                let p = p
-                    .canonicalize()
-                    .expect("A package source path could not be canonicalized");
-                Url::from_file_path(p)
-                    .expect("A URL could not be created from a file path")
-            }
-            Err(_) => source_url.clone(),
-        }
-    } else {
-        source_url.clone()
-    };
-    let source = if source.is_git() {
-        cargo_geiger_serde::Source::Git {
-            url: source_url,
-            rev: source
-                .precise()
-                .expect("Git revision should be known")
-                .to_string(),
-        }
-    } else if source.is_path() {
-        cargo_geiger_serde::Source::Path(source_url)
-    } else if source.is_registry() {
-        cargo_geiger_serde::Source::Registry {
-            name: source.display_registry_name(),
-            url: source_url,
-        }
-    } else {
-        panic!("Unsupported source type: {:?}", source)
-    };
-    cargo_geiger_serde::PackageId {
-        name: package_id.name().to_string(),
-        version: package_id.version().clone(),
-        source,
-    }
 }
 
 fn from_cargo_dependency_kind(kind: DepKind) -> DependencyKind {
