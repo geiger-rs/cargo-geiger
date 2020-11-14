@@ -188,10 +188,11 @@ mod default_tests {
         input_features: Vec<String>,
         expected_compile_features: Vec<&str>,
     ) {
-        let mut args = FeaturesArgs::default();
-        args.all_features = rand::random();
-        args.features = input_features;
-        args.no_default_features = rand::random();
+        let args = FeaturesArgs {
+            all_features: rand::random(),
+            features: input_features,
+            no_default_features: rand::random(),
+        };
 
         let config = Config::default().unwrap();
         let compile_options = build_compile_options(&args, &config);

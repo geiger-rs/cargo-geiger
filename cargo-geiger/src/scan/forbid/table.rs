@@ -144,12 +144,6 @@ fn handle_package_text_tree_line(
     let sym_lock = emoji_symbols.emoji(SymbolKind::Lock);
     let sym_qmark = emoji_symbols.emoji(SymbolKind::QuestionMark);
 
-    /*let package = package_set
-    .get_one(
-        package_id
-            .to_package_id(cargo_metadata_parameters.krates, package_set),
-    )
-    .unwrap(); // FIXME*/
     let name = format_package_name(
         cargo_metadata_parameters,
         &package_id,

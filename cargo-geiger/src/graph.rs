@@ -26,6 +26,8 @@ pub enum ExtraDeps {
 }
 
 impl ExtraDeps {
+    // This clippy recommendation is valid, but makes this function much harder to read
+    #[allow(clippy::match_like_matches_macro)]
     pub fn allows(&self, dep: DependencyKind) -> bool {
         match (self, dep) {
             (_, DependencyKind::Normal) => true,

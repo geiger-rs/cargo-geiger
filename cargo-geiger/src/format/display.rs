@@ -61,7 +61,7 @@ pub mod display_tests {
 
     use cargo::core::manifest::ManifestMetadata;
     use cargo_metadata::{CargoOpt, MetadataCommand};
-    use krates::Builder;
+    use krates::Builder as KratesBuilder;
     use rstest::*;
 
     #[rstest(
@@ -94,7 +94,7 @@ pub mod display_tests {
             .exec()
             .unwrap();
 
-        let krates = Builder::new()
+        let krates = KratesBuilder::new()
             .build_with_metadata(metadata.clone(), |_| ())
             .unwrap();
 

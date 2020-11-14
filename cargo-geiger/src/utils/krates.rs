@@ -44,7 +44,7 @@ mod krates_tests {
     use super::*;
 
     use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
-    use krates::Builder;
+    use krates::Builder as KratesBuilder;
     use rstest::*;
 
     #[rstest]
@@ -72,7 +72,7 @@ mod krates_tests {
             .exec()
             .unwrap();
 
-        let krates = Builder::new()
+        let krates = KratesBuilder::new()
             .build_with_metadata(metadata.clone(), |_| ())
             .unwrap();
 

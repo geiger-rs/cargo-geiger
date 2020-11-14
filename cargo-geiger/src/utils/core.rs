@@ -66,7 +66,8 @@ mod core_tests {
 
     use cargo::Config;
     use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
-    use krates::{Builder, Krates};
+    use krates::Builder as KratesBuilder;
+    use krates::Krates;
     use rstest::*;
     use std::path::PathBuf;
 
@@ -130,7 +131,7 @@ mod core_tests {
             .exec()
             .unwrap();
 
-        let krates = Builder::new()
+        let krates = KratesBuilder::new()
             .build_with_metadata(metadata.clone(), |_| ())
             .unwrap();
 
