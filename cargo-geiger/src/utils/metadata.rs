@@ -3,16 +3,16 @@ use super::{
     GetPackageNameFromCargoMetadataPackageId,
     GetPackageVersionFromCargoMetadataPackageId, GetRoot,
     MatchesIgnoringSource, Replacement, ToCargoCoreDepKind,
-    ToCargoMetadataPackageId, ToPackageId,
+    ToCargoGeigerPackageId, ToCargoMetadataPackageId, ToPackage, ToPackageId,
 };
 
-use crate::utils::ToPackage;
 use cargo::core::dependency::DepKind;
 use cargo::core::{Package, PackageId, PackageSet, Resolve};
 use cargo_metadata::DependencyKind;
 use krates::Krates;
 use std::collections::HashSet;
 use std::path::PathBuf;
+use url::Url;
 
 impl DepsNotReplaced for cargo_metadata::Metadata {
     fn deps_not_replaced(
@@ -91,6 +91,56 @@ impl ToCargoCoreDepKind for DependencyKind {
             DependencyKind::Development => DepKind::Development,
             DependencyKind::Normal => DepKind::Normal,
             _ => panic!("Unknown dependency kind"),
+        }
+    }
+}
+
+impl ToCargoGeigerPackageId for cargo_metadata::PackageId {
+    fn to_cargo_geiger_package_id(
+        &self,
+        krates: &Krates,
+        package_set: &PackageSet,
+    ) -> cargo_geiger_serde::PackageId {
+        let package_id = self.to_package_id(krates, package_set);
+        let source = package_id.source_id();
+        let source_url = source.url();
+        // Canonicalize paths as cargo does not seem to do so on all platforms.
+        let source_url = if source_url.scheme() == "file" {
+            match source_url.to_file_path() {
+                Ok(p) => {
+                    let p = p.canonicalize().expect(
+                        "A package source path could not be canonicalized",
+                    );
+                    Url::from_file_path(p)
+                        .expect("A URL could not be created from a file path")
+                }
+                Err(_) => source_url.clone(),
+            }
+        } else {
+            source_url.clone()
+        };
+        let source = if source.is_git() {
+            cargo_geiger_serde::Source::Git {
+                url: source_url,
+                rev: source
+                    .precise()
+                    .expect("Git revision should be known")
+                    .to_string(),
+            }
+        } else if source.is_path() {
+            cargo_geiger_serde::Source::Path(source_url)
+        } else if source.is_registry() {
+            cargo_geiger_serde::Source::Registry {
+                name: source.display_registry_name(),
+                url: source_url,
+            }
+        } else {
+            panic!("Unsupported source type: {:?}", source)
+        };
+        cargo_geiger_serde::PackageId {
+            name: package_id.name().to_string(),
+            version: package_id.version().clone(),
+            source,
         }
     }
 }
@@ -272,6 +322,43 @@ mod metadata_tests {
             input_dependency_kind.to_cargo_core_dep_kind(),
             expected_dep_kind
         )
+    }
+
+    #[rstest]
+    fn to_cargo_geiger_package_id_test() {
+        let args = FeaturesArgs::default();
+        let config = Config::default().unwrap();
+        let manifest_path: Option<PathBuf> = None;
+        let workspace = get_workspace(&config, manifest_path).unwrap();
+        let package = workspace.current().unwrap();
+        let mut registry = get_registry(&config, &package).unwrap();
+
+        let (package_set, _) =
+            resolve(&args, package.package_id(), &mut registry, &workspace)
+                .unwrap();
+
+        let (krates, metadata) = construct_krates_and_metadata();
+
+        let root_package = metadata.root_package().unwrap();
+
+        let cargo_geiger_package_id = root_package
+            .id
+            .to_cargo_geiger_package_id(&krates, &package_set);
+
+        assert_eq!(cargo_geiger_package_id.name, root_package.name);
+
+        assert_eq!(
+            cargo_geiger_package_id.version.major,
+            root_package.version.major
+        );
+        assert_eq!(
+            cargo_geiger_package_id.version.minor,
+            root_package.version.minor
+        );
+        assert_eq!(
+            cargo_geiger_package_id.version.patch,
+            root_package.version.patch
+        );
     }
 
     #[rstest]
