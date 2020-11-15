@@ -3,7 +3,7 @@ use crate::format::{Chunk, RawChunk};
 
 use super::display::Display;
 
-use crate::utils::CargoMetadataParameters;
+use crate::mapping::CargoMetadataParameters;
 use cargo::core::manifest::ManifestMetadata;
 use std::error::Error;
 

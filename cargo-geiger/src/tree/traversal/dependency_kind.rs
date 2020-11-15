@@ -4,7 +4,7 @@ use crate::tree::{get_tree_symbols, TextTreeLine, TreeSymbols};
 
 use super::dependency_node::walk_dependency_node;
 
-use crate::utils::CargoMetadataParameters;
+use crate::mapping::CargoMetadataParameters;
 use cargo::core::dependency::DepKind;
 use cargo::core::PackageSet;
 use std::iter::Peekable;

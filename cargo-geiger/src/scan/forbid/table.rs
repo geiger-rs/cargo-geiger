@@ -3,11 +3,11 @@ use crate::format::pattern::Pattern;
 use crate::format::print_config::PrintConfig;
 use crate::format::{get_kind_group_name, SymbolKind};
 use crate::graph::Graph;
-use crate::tree::traversal::walk_dependency_tree;
-use crate::tree::TextTreeLine;
-use crate::utils::{
+use crate::mapping::{
     CargoMetadataParameters, GetManifestMetadataFromCargoMetadataPackageId,
 };
+use crate::tree::traversal::walk_dependency_tree;
+use crate::tree::TextTreeLine;
 
 use super::super::find::find_unsafe;
 use super::super::ScanMode;

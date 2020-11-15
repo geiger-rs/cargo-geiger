@@ -1,8 +1,8 @@
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
+use crate::mapping::{CargoMetadataParameters, ToCargoCoreDepKind};
 use crate::tree::traversal::WalkDependencyParameters;
 use crate::tree::TextTreeLine;
-use crate::utils::{CargoMetadataParameters, ToCargoCoreDepKind};
 
 use super::construct_tree_vines_string;
 use super::walk_dependency_kind;

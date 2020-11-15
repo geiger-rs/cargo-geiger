@@ -1,6 +1,6 @@
 use super::ToCargoMetadataDependencyKind;
 
-use crate::utils::{ToCargoMetadataPackage, ToCargoMetadataPackageId};
+use crate::mapping::{ToCargoMetadataPackage, ToCargoMetadataPackageId};
 
 use cargo::core::dependency::DepKind;
 use cargo::core::{Package, PackageId};

@@ -12,7 +12,7 @@ use super::super::{
 };
 use super::scan;
 
-use crate::utils::CargoMetadataParameters;
+use crate::mapping::CargoMetadataParameters;
 use cargo::core::shell::Verbosity;
 use cargo::core::{PackageSet, Workspace};
 use cargo::{CliError, CliResult};

@@ -1,10 +1,12 @@
 use crate::format::print_config::PrintConfig;
+use crate::mapping::{
+    CargoMetadataParameters, GetRoot, ToCargoMetadataPackage,
+};
 use crate::scan::rs_file::{
     into_is_entry_point_and_path_buf, into_rs_code_file, into_target_kind,
     is_file_with_ext, RsFile, RsFileMetricsWrapper,
 };
 use crate::scan::PackageMetrics;
-use crate::utils::{CargoMetadataParameters, GetRoot, ToCargoMetadataPackage};
 
 use super::{GeigerContext, ScanMode};
 

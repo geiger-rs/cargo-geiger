@@ -3,8 +3,8 @@ mod dependency_node;
 
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
+use crate::mapping::CargoMetadataParameters;
 use crate::tree::TextTreeLine;
-use crate::utils::CargoMetadataParameters;
 
 use super::construct_tree_vines_string;
 use dependency_kind::walk_dependency_kind;

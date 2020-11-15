@@ -3,8 +3,8 @@ mod table;
 use crate::args::FeaturesArgs;
 use crate::format::print_config::OutputFormat;
 use crate::graph::Graph;
+use crate::mapping::CargoMetadataParameters;
 use crate::scan::rs_file::resolve_rs_file_deps;
-use crate::utils::CargoMetadataParameters;
 
 use super::find::find_unsafe;
 use super::{

@@ -8,7 +8,7 @@ use super::{package_metrics, ScanMode, ScanParameters};
 
 use table::scan_forbid_to_table;
 
-use crate::utils::CargoMetadataParameters;
+use crate::mapping::CargoMetadataParameters;
 use cargo::core::PackageSet;
 use cargo::{CliResult, Config};
 use cargo_geiger_serde::{QuickReportEntry, QuickSafetyReport};
