@@ -188,6 +188,8 @@ mod metadata_tests {
     use crate::args::FeaturesArgs;
     use crate::cli::{get_registry, get_workspace, resolve};
 
+    use cargo::core::registry::PackageRegistry;
+    use cargo::core::Workspace;
     use cargo::Config;
     use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
     use krates::Builder as KratesBuilder;
@@ -198,10 +200,8 @@ mod metadata_tests {
     fn deps_not_replaced_test() {
         let args = FeaturesArgs::default();
         let config = Config::default().unwrap();
-        let manifest_path: Option<PathBuf> = None;
-        let workspace = get_workspace(&config, manifest_path).unwrap();
-        let package = workspace.current().unwrap();
-        let mut registry = get_registry(&config, &package).unwrap();
+        let (package, mut registry, workspace) =
+            construct_package_registry_workspace_tuple(&config);
 
         let (package_set, resolve) =
             resolve(&args, package.package_id(), &mut registry, &workspace)
@@ -280,10 +280,8 @@ mod metadata_tests {
     fn replace_test() {
         let args = FeaturesArgs::default();
         let config = Config::default().unwrap();
-        let manifest_path: Option<PathBuf> = None;
-        let workspace = get_workspace(&config, manifest_path).unwrap();
-        let package = workspace.current().unwrap();
-        let mut registry = get_registry(&config, &package).unwrap();
+        let (package, mut registry, workspace) =
+            construct_package_registry_workspace_tuple(&config);
 
         let (package_set, resolve) =
             resolve(&args, package.package_id(), &mut registry, &workspace)
@@ -328,10 +326,8 @@ mod metadata_tests {
     fn to_cargo_geiger_package_id_test() {
         let args = FeaturesArgs::default();
         let config = Config::default().unwrap();
-        let manifest_path: Option<PathBuf> = None;
-        let workspace = get_workspace(&config, manifest_path).unwrap();
-        let package = workspace.current().unwrap();
-        let mut registry = get_registry(&config, &package).unwrap();
+        let (package, mut registry, workspace) =
+            construct_package_registry_workspace_tuple(&config);
 
         let (package_set, _) =
             resolve(&args, package.package_id(), &mut registry, &workspace)
@@ -365,10 +361,8 @@ mod metadata_tests {
     fn to_package_id_test() {
         let args = FeaturesArgs::default();
         let config = Config::default().unwrap();
-        let manifest_path: Option<PathBuf> = None;
-        let workspace = get_workspace(&config, manifest_path).unwrap();
-        let package = workspace.current().unwrap();
-        let mut registry = get_registry(&config, &package).unwrap();
+        let (package, mut registry, workspace) =
+            construct_package_registry_workspace_tuple(&config);
 
         let (package_set, _) =
             resolve(&args, package.package_id(), &mut registry, &workspace)
@@ -397,5 +391,16 @@ mod metadata_tests {
             .unwrap();
 
         (krates, metadata)
+    }
+
+    fn construct_package_registry_workspace_tuple(
+        config: &Config,
+    ) -> (Package, PackageRegistry, Workspace) {
+        let manifest_path: Option<PathBuf> = None;
+        let workspace = get_workspace(config, manifest_path).unwrap();
+        let package = workspace.current().unwrap().clone();
+        let registry = get_registry(&config, &package).unwrap();
+
+        (package, registry, workspace)
     }
 }

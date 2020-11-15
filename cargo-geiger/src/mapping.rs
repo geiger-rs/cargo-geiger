@@ -67,6 +67,10 @@ pub trait MatchesIgnoringSource {
     ) -> bool;
 }
 
+pub trait QueryResolve {
+    fn query_resolve(&self, query: &str) -> cargo_metadata::PackageId;
+}
+
 pub trait Replacement {
     fn replace(
         &self,

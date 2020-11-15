@@ -1,6 +1,8 @@
 use crate::format::print_config::OutputFormat;
 use crate::format::Charset;
 
+use cargo::core::shell::ColorChoice;
+use cargo::{CliResult, Config};
 use pico_args::Arguments;
 use std::path::PathBuf;
 
@@ -144,6 +146,29 @@ impl Args {
         };
         Ok(args)
     }
+
+    pub fn update_config(&self, config: &mut Config) -> CliResult {
+        let target_dir = None; // Doesn't add any value for cargo-geiger.
+        config.configure(
+            self.verbose,
+            self.quiet,
+            self.color.as_deref(),
+            self.frozen,
+            self.locked,
+            self.offline,
+            &target_dir,
+            &self.unstable_flags,
+            &[], // Some cargo API change, TODO: Look closer at this later.
+        )?;
+
+        match config.shell().color_choice() {
+            ColorChoice::Always => colored::control::set_override(true),
+            ColorChoice::Never => colored::control::set_override(false),
+            ColorChoice::CargoAuto => {}
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -181,6 +206,8 @@ fn parse_features(raw_features: Option<String>) -> Vec<String> {
 pub mod args_tests {
     use super::*;
 
+    use cargo::core::shell::ColorChoice;
+    use cargo::core::Verbosity;
     use rstest::*;
     use std::ffi::OsString;
 
@@ -267,5 +294,98 @@ pub mod args_tests {
         expected_features: Vec<String>,
     ) {
         assert_eq!(parse_features(input_raw_features), expected_features);
+    }
+
+    #[rstest(
+        input_quiet,
+        input_verbose,
+        expected_extra_verbose,
+        expected_shell_verbosity,
+        case(true, 0, false, Verbosity::Quiet),
+        case(false, 0, false, Verbosity::Normal),
+        case(false, 1, false, Verbosity::Verbose),
+        case(false, 2, true, Verbosity::Verbose)
+    )]
+    fn update_config_test_verbosity(
+        input_quiet: bool,
+        input_verbose: u32,
+        expected_extra_verbose: bool,
+        expected_shell_verbosity: Verbosity,
+    ) {
+        let offline = rand::random();
+        let args = Args {
+            offline,
+            quiet: input_quiet,
+            verbose: input_verbose,
+            ..Default::default()
+        };
+        let mut config = Config::default().unwrap();
+        let update_config_result = args.update_config(&mut config);
+
+        assert!(update_config_result.is_ok());
+        assert_eq!(config.extra_verbose(), expected_extra_verbose);
+        assert_eq!(config.shell().verbosity(), expected_shell_verbosity);
+        assert_eq!(config.offline(), offline);
+        assert!(config.target_dir().unwrap().is_none());
+    }
+
+    #[rstest(
+        input_color,
+        expected_shell_color_choice,
+        case(Some(String::from("always")), ColorChoice::Always),
+        case(Some(String::from("auto")), ColorChoice::CargoAuto),
+        case(Some(String::from("never")), ColorChoice::Never),
+        case(None, ColorChoice::CargoAuto)
+    )]
+    fn update_config_test_color_choice(
+        input_color: Option<String>,
+        expected_shell_color_choice: ColorChoice,
+    ) {
+        let offline = rand::random();
+        let args = Args {
+            color: input_color,
+            offline,
+            ..Default::default()
+        };
+        let mut config = Config::default().unwrap();
+        let update_config_result = args.update_config(&mut config);
+
+        assert!(update_config_result.is_ok());
+        assert_eq!(config.shell().color_choice(), expected_shell_color_choice);
+        assert_eq!(config.offline(), offline);
+        assert!(config.target_dir().unwrap().is_none());
+    }
+
+    #[rstest(
+        input_frozen,
+        input_locked,
+        expected_frozen,
+        expected_lock_update_allowed,
+        case(true, true, true, false),
+        case(true, false, true, false),
+        case(false, true, false, false),
+        case(false, false, false, true)
+    )]
+    fn update_config_test_frozen_locked(
+        input_frozen: bool,
+        input_locked: bool,
+        expected_frozen: bool,
+        expected_lock_update_allowed: bool,
+    ) {
+        let offline = rand::random();
+        let args = Args {
+            frozen: input_frozen,
+            locked: input_locked,
+            offline,
+            ..Default::default()
+        };
+        let mut config = Config::default().unwrap();
+        let update_config_result = args.update_config(&mut config);
+
+        assert!(update_config_result.is_ok());
+        assert_eq!(config.frozen(), expected_frozen);
+        assert_eq!(config.lock_update_allowed(), expected_lock_update_allowed);
+        assert_eq!(config.offline(), offline);
+        assert!(config.target_dir().unwrap().is_none());
     }
 }
