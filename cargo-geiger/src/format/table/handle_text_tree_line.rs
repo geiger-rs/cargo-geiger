@@ -1,8 +1,8 @@
 use crate::format::emoji_symbols::EmojiSymbols;
 use crate::format::print_config::colorize;
 use crate::format::{get_kind_group_name, CrateDetectionStatus, SymbolKind};
+use crate::mapping::{CargoMetadataParameters, ToPackage};
 use crate::scan::unsafe_stats;
-use crate::utils::{CargoMetadataParameters, ToPackage};
 
 use super::total_package_counts::TotalPackageCounts;
 use super::TableParameters;

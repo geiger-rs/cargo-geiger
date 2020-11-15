@@ -1,4 +1,4 @@
-use crate::utils::{
+use crate::mapping::{
     GetManifestMetadataFromCargoMetadataPackageId,
     GetPackageNameFromCargoMetadataPackageId,
     GetPackageVersionFromCargoMetadataPackageId, ToPackage,

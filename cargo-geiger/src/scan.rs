@@ -6,7 +6,7 @@ mod rs_file;
 use crate::args::Args;
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
-use crate::utils::{
+use crate::mapping::{
     CargoMetadataParameters, ToCargoCoreDepKind, ToCargoGeigerPackageId,
 };
 

@@ -14,9 +14,9 @@ mod args;
 mod cli;
 mod format;
 mod graph;
+mod mapping;
 mod scan;
 mod tree;
-mod utils;
 
 use crate::args::{Args, HELP};
 use crate::cli::{
@@ -25,7 +25,7 @@ use crate::cli::{
 use crate::graph::build_graph;
 use crate::scan::scan;
 
-use crate::utils::{
+use crate::mapping::{
     CargoMetadataParameters, ToCargoMetadataPackage, ToCargoMetadataPackageId,
 };
 use cargo::core::shell::{ColorChoice, Shell};

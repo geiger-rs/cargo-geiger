@@ -13,7 +13,7 @@ use handle_text_tree_line::{
 };
 use total_package_counts::TotalPackageCounts;
 
-use crate::utils::CargoMetadataParameters;
+use crate::mapping::CargoMetadataParameters;
 use cargo::core::package::PackageSet;
 use cargo_geiger_serde::{Count, CounterBlock};
 use std::collections::HashSet;

@@ -1,7 +1,7 @@
 use crate::format::pattern::Pattern;
 use crate::format::Chunk;
 
-use crate::utils::{
+use crate::mapping::{
     CargoMetadataParameters, GetPackageNameFromCargoMetadataPackageId,
     GetPackageVersionFromCargoMetadataPackageId,
 };
