@@ -4,6 +4,7 @@ mod total_package_counts;
 use crate::format::emoji_symbols::EmojiSymbols;
 use crate::format::print_config::{colorize, PrintConfig};
 use crate::format::CrateDetectionStatus;
+use crate::mapping::CargoMetadataParameters;
 use crate::scan::GeigerContext;
 use crate::tree::TextTreeLine;
 
@@ -13,8 +14,6 @@ use handle_text_tree_line::{
 };
 use total_package_counts::TotalPackageCounts;
 
-use crate::mapping::CargoMetadataParameters;
-use cargo::core::package::PackageSet;
 use cargo_geiger_serde::{Count, CounterBlock};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -33,7 +32,6 @@ pub const UNSAFE_COUNTERS_HEADER: [&str; 6] = [
 
 pub fn create_table_from_text_tree_lines(
     cargo_metadata_parameters: &CargoMetadataParameters,
-    package_set: &PackageSet,
     table_parameters: &TableParameters,
     text_tree_lines: Vec<TextTreeLine>,
 ) -> (Vec<String>, u64) {
@@ -67,7 +65,6 @@ pub fn create_table_from_text_tree_lines(
                 &emoji_symbols,
                 &mut handle_package_parameters,
                 package_id,
-                package_set,
                 &mut table_lines,
                 table_parameters,
                 tree_vines,

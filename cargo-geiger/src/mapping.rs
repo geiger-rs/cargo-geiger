@@ -4,7 +4,6 @@ mod metadata;
 
 use ::krates::Krates;
 use cargo::core::dependency::DepKind;
-use cargo::core::manifest::ManifestMetadata;
 use cargo::core::{Package, PackageId, PackageSet, Resolve};
 use cargo_metadata::{DependencyKind, Metadata};
 use std::collections::HashSet;
@@ -28,12 +27,11 @@ pub trait DepsNotReplaced {
     )>;
 }
 
-pub trait GetManifestMetadataFromCargoMetadataPackageId {
-    fn get_manifest_metadata_from_cargo_metadata_package_id(
+pub trait GetLicenceFromCargoMetadataPackageId {
+    fn get_licence_from_cargo_metadata_package_id(
         &self,
         package_id: &cargo_metadata::PackageId,
-        package_set: &PackageSet,
-    ) -> ManifestMetadata;
+    ) -> Option<String>;
 }
 
 pub trait GetPackageNameFromCargoMetadataPackageId {
@@ -48,6 +46,13 @@ pub trait GetPackageVersionFromCargoMetadataPackageId {
         &self,
         package_id: &cargo_metadata::PackageId,
     ) -> cargo_metadata::Version;
+}
+
+pub trait GetRepositoryFromCargoMetadataPackageId {
+    fn get_repository_from_cargo_metadata_package_id(
+        &self,
+        package_id: &cargo_metadata::PackageId,
+    ) -> Option<String>;
 }
 
 pub trait GetRoot {

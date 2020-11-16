@@ -1,18 +1,18 @@
 use crate::format::pattern::Pattern;
 use crate::format::Chunk;
-
 use crate::mapping::{
-    CargoMetadataParameters, GetPackageNameFromCargoMetadataPackageId,
+    CargoMetadataParameters, GetLicenceFromCargoMetadataPackageId,
+    GetPackageNameFromCargoMetadataPackageId,
     GetPackageVersionFromCargoMetadataPackageId,
+    GetRepositoryFromCargoMetadataPackageId,
 };
-use cargo::core::manifest::ManifestMetadata;
+
 use std::fmt;
 
 pub struct Display<'a> {
     pub cargo_metadata_parameters: &'a CargoMetadataParameters<'a>,
     pub pattern: &'a Pattern,
     pub package: &'a cargo_metadata::PackageId,
-    pub metadata: &'a ManifestMetadata,
 }
 
 impl<'a> fmt::Display for Display<'a> {
@@ -20,7 +20,13 @@ impl<'a> fmt::Display for Display<'a> {
         for chunk in &self.pattern.0 {
             match *chunk {
                 Chunk::License => {
-                    if let Some(ref license) = self.metadata.license {
+                    if let Some(ref license) = self
+                        .cargo_metadata_parameters
+                        .krates
+                        .get_licence_from_cargo_metadata_package_id(
+                            self.package,
+                        )
+                    {
                         (write!(fmt, "{}", license))?
                     }
                 }
@@ -42,7 +48,13 @@ impl<'a> fmt::Display for Display<'a> {
                 }
                 Chunk::Raw(ref s) => (fmt.write_str(s))?,
                 Chunk::Repository => {
-                    if let Some(ref repository) = self.metadata.repository {
+                    if let Some(ref repository) = self
+                        .cargo_metadata_parameters
+                        .krates
+                        .get_repository_from_cargo_metadata_package_id(
+                            self.package,
+                        )
+                    {
                         (write!(fmt, "{}", repository))?
                     }
                 }
@@ -59,7 +71,6 @@ pub mod display_tests {
     use crate::format::pattern::Pattern;
     use crate::format::Chunk;
 
-    use cargo::core::manifest::ManifestMetadata;
     use cargo_metadata::{CargoOpt, MetadataCommand};
     use krates::Builder as KratesBuilder;
     use rstest::*;
@@ -69,7 +80,7 @@ pub mod display_tests {
         expected_formatted_string,
         case(
             Pattern(vec![Chunk::License]),
-            "licence_string"
+            "Apache-2.0/MIT"
         ),
         case(
             Pattern(vec![Chunk::Package]),
@@ -81,7 +92,7 @@ pub mod display_tests {
         ),
         case(
             Pattern(vec![Chunk::Repository]),
-            "repository_string"
+            "https://github.com/rust-secure-code/cargo-geiger"
         )
     )]
     fn display_format_fmt_test(
@@ -100,21 +111,6 @@ pub mod display_tests {
 
         let package_id = metadata.root_package().unwrap().id.clone();
 
-        let manifest_metadata = ManifestMetadata {
-            authors: vec![],
-            keywords: vec![],
-            categories: vec![],
-            license: Some(String::from("licence_string")),
-            license_file: None,
-            description: None,
-            readme: None,
-            homepage: None,
-            repository: Some(String::from("repository_string")),
-            documentation: None,
-            badges: Default::default(),
-            links: None,
-        };
-
         let display = Display {
             cargo_metadata_parameters: &CargoMetadataParameters {
                 krates: &krates,
@@ -122,7 +118,6 @@ pub mod display_tests {
             },
             pattern: &input_pattern,
             package: &package_id,
-            metadata: &manifest_metadata,
         };
 
         assert_eq!(format!("{}", display), expected_formatted_string);

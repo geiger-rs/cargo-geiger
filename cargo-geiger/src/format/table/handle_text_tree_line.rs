@@ -1,7 +1,7 @@
 use crate::format::emoji_symbols::EmojiSymbols;
 use crate::format::print_config::colorize;
 use crate::format::{get_kind_group_name, CrateDetectionStatus, SymbolKind};
-use crate::mapping::{CargoMetadataParameters, ToPackage};
+use crate::mapping::CargoMetadataParameters;
 use crate::scan::unsafe_stats;
 
 use super::total_package_counts::TotalPackageCounts;
@@ -9,7 +9,6 @@ use super::TableParameters;
 use super::{table_row, table_row_empty};
 
 use cargo::core::dependency::DepKind;
-use cargo::core::package::PackageSet;
 use std::collections::HashSet;
 
 pub struct HandlePackageParameters<'a> {
@@ -33,13 +32,11 @@ pub fn handle_text_tree_line_extra_deps_group(
     table_lines.push(format!("{}{}{}", table_row_empty(), tree_vines, name));
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn handle_text_tree_line_package(
     cargo_metadata_parameters: &CargoMetadataParameters,
     emoji_symbols: &EmojiSymbols,
     handle_package_parameters: &mut HandlePackageParameters,
     package_id: cargo_metadata::PackageId,
-    package_set: &PackageSet,
     table_lines: &mut Vec<String>,
     table_parameters: &TableParameters,
     tree_vines: String,
@@ -47,9 +44,6 @@ pub fn handle_text_tree_line_package(
     let package_is_new = handle_package_parameters
         .visited_package_ids
         .insert(package_id.clone());
-
-    let package =
-        package_id.to_package(cargo_metadata_parameters.krates, package_set);
 
     let package_metrics = match table_parameters
         .geiger_context
@@ -99,11 +93,10 @@ pub fn handle_text_tree_line_package(
     let package_name = colorize(
         format!(
             "{}",
-            table_parameters.print_config.format.display(
-                cargo_metadata_parameters,
-                package.manifest().metadata(),
-                &package_id
-            )
+            table_parameters
+                .print_config
+                .format
+                .display(cargo_metadata_parameters, &package_id)
         ),
         &crate_detection_status,
     );
