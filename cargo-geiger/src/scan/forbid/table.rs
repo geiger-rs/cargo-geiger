@@ -3,9 +3,7 @@ use crate::format::pattern::Pattern;
 use crate::format::print_config::PrintConfig;
 use crate::format::{get_kind_group_name, SymbolKind};
 use crate::graph::Graph;
-use crate::mapping::{
-    CargoMetadataParameters, GetManifestMetadataFromCargoMetadataPackageId,
-};
+use crate::mapping::CargoMetadataParameters;
 use crate::tree::traversal::walk_dependency_tree;
 use crate::tree::TextTreeLine;
 
@@ -67,7 +65,6 @@ pub fn scan_forbid_to_table(
                     &emoji_symbols,
                     &geiger_ctx,
                     package_id,
-                    package_set,
                     print_config,
                     &mut scan_output_lines,
                     tree_vines,
@@ -112,31 +109,19 @@ fn construct_key_lines(emoji_symbols: &EmojiSymbols) -> Vec<String> {
 fn format_package_name(
     cargo_metadata_parameters: &CargoMetadataParameters,
     package_id: &cargo_metadata::PackageId,
-    package_set: &PackageSet,
     pattern: &Pattern,
 ) -> String {
     format!(
         "{}",
-        pattern.display(
-            cargo_metadata_parameters,
-            &cargo_metadata_parameters
-                .krates
-                .get_manifest_metadata_from_cargo_metadata_package_id(
-                    package_id,
-                    package_set
-                ),
-            &package_id
-        )
+        pattern.display(cargo_metadata_parameters, &package_id)
     )
 }
 
-#[allow(clippy::too_many_arguments)]
 fn handle_package_text_tree_line(
     cargo_metadata_parameters: &CargoMetadataParameters,
     emoji_symbols: &EmojiSymbols,
     geiger_ctx: &GeigerContext,
     package_id: cargo_metadata::PackageId,
-    package_set: &PackageSet,
     print_config: &PrintConfig,
     scan_output_lines: &mut Vec<String>,
     tree_vines: String,
@@ -147,7 +132,6 @@ fn handle_package_text_tree_line(
     let name = format_package_name(
         cargo_metadata_parameters,
         &package_id,
-        package_set,
         &print_config.format,
     );
     let package_metrics = geiger_ctx.package_id_to_metrics.get(&package_id);

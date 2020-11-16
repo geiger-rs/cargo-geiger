@@ -66,7 +66,6 @@ pub fn scan_to_table(
     let (mut table_lines, mut warning_count) =
         create_table_from_text_tree_lines(
             cargo_metadata_parameters,
-            package_set,
             &table_parameters,
             text_tree_lines,
         );

@@ -1,21 +1,19 @@
 use crate::mapping::{
-    GetManifestMetadataFromCargoMetadataPackageId,
+    GetLicenceFromCargoMetadataPackageId,
     GetPackageNameFromCargoMetadataPackageId,
-    GetPackageVersionFromCargoMetadataPackageId, ToPackage,
+    GetPackageVersionFromCargoMetadataPackageId,
+    GetRepositoryFromCargoMetadataPackageId,
 };
 
-use cargo::core::manifest::ManifestMetadata;
-use cargo::core::PackageSet;
 use krates::Krates;
 
-impl GetManifestMetadataFromCargoMetadataPackageId for Krates {
-    fn get_manifest_metadata_from_cargo_metadata_package_id(
+impl GetLicenceFromCargoMetadataPackageId for Krates {
+    fn get_licence_from_cargo_metadata_package_id(
         &self,
         package_id: &cargo_metadata::PackageId,
-        package_set: &PackageSet,
-    ) -> ManifestMetadata {
-        let package = package_id.to_package(self, package_set);
-        package.manifest().metadata().clone()
+    ) -> Option<String> {
+        let package = self.node_for_kid(package_id);
+        package.unwrap().krate.clone().license
     }
 }
 
@@ -39,6 +37,16 @@ impl GetPackageVersionFromCargoMetadataPackageId for Krates {
     }
 }
 
+impl GetRepositoryFromCargoMetadataPackageId for Krates {
+    fn get_repository_from_cargo_metadata_package_id(
+        &self,
+        package_id: &cargo_metadata::PackageId,
+    ) -> Option<String> {
+        let package = self.node_for_kid(package_id);
+        package.unwrap().krate.clone().repository
+    }
+}
+
 #[cfg(test)]
 mod krates_tests {
     use super::*;
@@ -46,6 +54,17 @@ mod krates_tests {
     use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
     use krates::Builder as KratesBuilder;
     use rstest::*;
+
+    #[rstest]
+    fn get_licence_from_cargo_metadata_package_id_test() {
+        let (krates, metadata) = construct_krates_and_metadata();
+        let package = metadata.root_package().unwrap();
+        let licence_option =
+            krates.get_licence_from_cargo_metadata_package_id(&package.id);
+        assert!(licence_option.is_some());
+        let licence = licence_option.unwrap();
+        assert_eq!(licence, String::from("Apache-2.0/MIT"))
+    }
 
     #[rstest]
     fn get_package_name_from_cargo_metadata_package_id_test() {
@@ -63,6 +82,20 @@ mod krates_tests {
         let package_version = krates
             .get_package_version_from_cargo_metadata_package_id(&package.id);
         assert_eq!(package_version, package.version);
+    }
+
+    #[rstest]
+    fn get_repository_from_cargo_metadata_package_id_test() {
+        let (krates, metadata) = construct_krates_and_metadata();
+        let package = metadata.root_package().unwrap();
+        let repository_option =
+            krates.get_repository_from_cargo_metadata_package_id(&package.id);
+        assert!(repository_option.is_some());
+        let repository = repository_option.unwrap();
+        assert_eq!(
+            repository,
+            String::from("https://github.com/rust-secure-code/cargo-geiger")
+        );
     }
 
     fn construct_krates_and_metadata() -> (Krates, Metadata) {
