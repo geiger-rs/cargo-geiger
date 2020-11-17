@@ -23,12 +23,10 @@ use crate::cli::{
     get_cargo_metadata, get_krates, get_registry, get_workspace, resolve,
 };
 use crate::graph::build_graph;
+use crate::mapping::{CargoMetadataParameters, QueryResolve};
 use crate::scan::scan;
 
-use crate::mapping::{
-    CargoMetadataParameters, ToCargoMetadataPackage, ToCargoMetadataPackageId,
-};
-use cargo::core::shell::{ColorChoice, Shell};
+use cargo::core::shell::Shell;
 use cargo::{CliResult, Config};
 
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
@@ -43,24 +41,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         return Ok(());
     }
 
-    let target_dir = None; // Doesn't add any value for cargo-geiger.
-    config.configure(
-        args.verbose,
-        args.quiet,
-        args.color.as_deref(),
-        args.frozen,
-        args.locked,
-        args.offline,
-        &target_dir,
-        &args.unstable_flags,
-        &[], // Some cargo API change, TODO: Look closer at this later.
-    )?;
-
-    match config.shell().color_choice() {
-        ColorChoice::Always => colored::control::set_override(true),
-        ColorChoice::Never => colored::control::set_override(false),
-        ColorChoice::CargoAuto => {}
-    }
+    args.update_config(config)?;
 
     let cargo_metadata = get_cargo_metadata(&args, config)?;
     let krates = get_krates(&cargo_metadata)?;
@@ -74,11 +55,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let root_package = workspace.current()?;
     let mut registry = get_registry(config, &root_package)?;
 
-    // `cargo_metadata.root_package()` will return `None` when called on a virtual
-    // manifest
-    let cargo_metadata_root_package_id = root_package
-        .to_cargo_metadata_package(cargo_metadata_parameters.metadata)
-        .id;
+    let cargo_metadata_root_package_id =
+        cargo_metadata.root_package().unwrap().id.clone();
 
     let (package_set, resolve) = resolve(
         &args.features_args,
@@ -90,20 +68,20 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let package_ids = package_set.package_ids().collect::<Vec<_>>();
     let package_set = registry.get(&package_ids)?;
 
-    let root_package_id = match args.package {
-        Some(ref pkg) => resolve.query(pkg)?,
-        None => root_package.package_id(),
-    };
-
     let graph = build_graph(
         args,
         &cargo_metadata_parameters,
         config,
         &resolve,
         &package_set,
-        cargo_metadata_root_package_id,
+        cargo_metadata_root_package_id.clone(),
         &workspace,
     )?;
+
+    let cargo_metadata_root_package_id = match args.package {
+        Some(ref package_query) => krates.query_resolve(package_query),
+        None => cargo_metadata_root_package_id,
+    };
 
     scan(
         args,
@@ -111,8 +89,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         config,
         &graph,
         &package_set,
-        root_package_id
-            .to_cargo_metadata_package_id(cargo_metadata_parameters.metadata),
+        cargo_metadata_root_package_id,
         &workspace,
     )
 }

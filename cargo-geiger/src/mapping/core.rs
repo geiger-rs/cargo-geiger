@@ -62,8 +62,10 @@ impl ToCargoMetadataPackageId for PackageId {
 mod core_tests {
     use super::*;
 
-    use crate::cli::get_workspace;
+    use crate::cli::{get_registry, get_workspace};
 
+    use cargo::core::registry::PackageRegistry;
+    use cargo::core::Workspace;
     use cargo::Config;
     use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
     use krates::Builder as KratesBuilder;
@@ -91,9 +93,8 @@ mod core_tests {
     #[rstest]
     fn to_cargo_metadata_package_test() {
         let config = Config::default().unwrap();
-        let manifest_path: Option<PathBuf> = None;
-        let workspace = get_workspace(&config, manifest_path).unwrap();
-        let package = workspace.current().unwrap();
+        let (package, _, _) =
+            construct_package_registry_workspace_tuple(&config);
 
         let (_, metadata) = construct_krates_and_metadata();
 
@@ -113,9 +114,8 @@ mod core_tests {
     #[rstest]
     fn to_cargo_metadata_package_id_test() {
         let config = Config::default().unwrap();
-        let manifest_path: Option<PathBuf> = None;
-        let workspace = get_workspace(&config, manifest_path).unwrap();
-        let package = workspace.current().unwrap();
+        let (package, _, _) =
+            construct_package_registry_workspace_tuple(&config);
 
         let (_, metadata) = construct_krates_and_metadata();
         let cargo_metadata_package_id =
@@ -136,5 +136,16 @@ mod core_tests {
             .unwrap();
 
         (krates, metadata)
+    }
+
+    fn construct_package_registry_workspace_tuple(
+        config: &Config,
+    ) -> (Package, PackageRegistry, Workspace) {
+        let manifest_path: Option<PathBuf> = None;
+        let workspace = get_workspace(config, manifest_path).unwrap();
+        let package = workspace.current().unwrap().clone();
+        let registry = get_registry(&config, &package).unwrap();
+
+        (package, registry, workspace)
     }
 }
