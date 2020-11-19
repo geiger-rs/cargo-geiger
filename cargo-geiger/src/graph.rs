@@ -143,13 +143,9 @@ fn add_package_dependencies_to_graph<'a>(
         .krate
         .clone();
 
-    for (raw_dependency_package_id, _) in
-        cargo_metadata_parameters.metadata.deps_not_replaced(
-            cargo_metadata_parameters.krates,
-            package_id,
-            package_set,
-            resolve,
-        )
+    for (raw_dependency_package_id, _) in cargo_metadata_parameters
+        .metadata
+        .deps_not_replaced(package_id)
     {
         let dependency_iterator = package
             .dependencies

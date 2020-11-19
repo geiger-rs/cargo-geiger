@@ -58,6 +58,7 @@ where
         .iter()
         .map(|p| {
             p.to_cargo_metadata_package(cargo_metadata_parameters.metadata)
+                .unwrap()
         })
         .collect::<Vec<cargo_metadata::Package>>();
     let package_code_files: Vec<_> =

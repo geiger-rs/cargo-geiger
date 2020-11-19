@@ -78,10 +78,14 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         &workspace,
     )?;
 
-    let cargo_metadata_root_package_id = match args.package {
-        Some(ref package_query) => krates.query_resolve(package_query),
-        None => cargo_metadata_root_package_id,
-    };
+    let query_resolve_root_package_id = args.package.as_ref().map_or(
+        cargo_metadata_root_package_id.clone(),
+        |ref package_query| {
+            krates
+                .query_resolve(package_query)
+                .map_or(cargo_metadata_root_package_id, |package_id| package_id)
+        },
+    );
 
     scan(
         args,
@@ -89,7 +93,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         config,
         &graph,
         &package_set,
-        cargo_metadata_root_package_id,
+        query_resolve_root_package_id,
         &workspace,
     )
 }
