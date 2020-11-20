@@ -38,12 +38,14 @@ impl<'a> fmt::Display for Display<'a> {
                             .krates
                             .get_package_name_from_cargo_metadata_package_id(
                                 self.package
-                            ),
+                            )
+                            .unwrap(),
                         self.cargo_metadata_parameters
                             .krates
                             .get_package_version_from_cargo_metadata_package_id(
                                 self.package
                             )
+                            .unwrap()
                     ))?
                 }
                 Chunk::Raw(ref s) => (fmt.write_str(s))?,

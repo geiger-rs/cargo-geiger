@@ -17,10 +17,7 @@ pub struct CargoMetadataParameters<'a> {
 pub trait DepsNotReplaced {
     fn deps_not_replaced(
         &self,
-        krates: &Krates,
         package_id: cargo_metadata::PackageId,
-        package_set: &PackageSet,
-        resolve: &Resolve,
     ) -> Vec<(
         cargo_metadata::PackageId,
         HashSet<cargo_metadata::Dependency>,
@@ -38,14 +35,14 @@ pub trait GetPackageNameFromCargoMetadataPackageId {
     fn get_package_name_from_cargo_metadata_package_id(
         &self,
         package_id: &cargo_metadata::PackageId,
-    ) -> String;
+    ) -> Option<String>;
 }
 
 pub trait GetPackageVersionFromCargoMetadataPackageId {
     fn get_package_version_from_cargo_metadata_package_id(
         &self,
         package_id: &cargo_metadata::PackageId,
-    ) -> cargo_metadata::Version;
+    ) -> Option<cargo_metadata::Version>;
 }
 
 pub trait GetRepositoryFromCargoMetadataPackageId {
@@ -68,7 +65,7 @@ pub trait MatchesIgnoringSource {
 }
 
 pub trait QueryResolve {
-    fn query_resolve(&self, query: &str) -> cargo_metadata::PackageId;
+    fn query_resolve(&self, query: &str) -> Option<cargo_metadata::PackageId>;
 }
 
 pub trait Replacement {
@@ -100,18 +97,22 @@ pub trait ToCargoMetadataPackage {
     fn to_cargo_metadata_package(
         &self,
         metadata: &Metadata,
-    ) -> cargo_metadata::Package;
+    ) -> Option<cargo_metadata::Package>;
 }
 
 pub trait ToCargoMetadataPackageId {
     fn to_cargo_metadata_package_id(
         &self,
         metadata: &Metadata,
-    ) -> cargo_metadata::PackageId;
+    ) -> Option<cargo_metadata::PackageId>;
 }
 
 pub trait ToPackage {
-    fn to_package(&self, krates: &Krates, package_set: &PackageSet) -> Package;
+    fn to_package(
+        &self,
+        krates: &Krates,
+        package_set: &PackageSet,
+    ) -> Option<Package>;
 }
 
 pub trait ToPackageId {
@@ -119,5 +120,5 @@ pub trait ToPackageId {
         &self,
         krates: &Krates,
         package_set: &PackageSet,
-    ) -> PackageId;
+    ) -> Option<PackageId>;
 }

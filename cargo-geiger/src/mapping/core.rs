@@ -20,7 +20,7 @@ impl ToCargoMetadataPackage for Package {
     fn to_cargo_metadata_package(
         &self,
         metadata: &Metadata,
-    ) -> cargo_metadata::Package {
+    ) -> Option<cargo_metadata::Package> {
         metadata
             .packages
             .iter()
@@ -33,7 +33,6 @@ impl ToCargoMetadataPackage for Package {
             .cloned()
             .collect::<Vec<cargo_metadata::Package>>()
             .pop()
-            .unwrap()
     }
 }
 
@@ -41,7 +40,7 @@ impl ToCargoMetadataPackageId for PackageId {
     fn to_cargo_metadata_package_id(
         &self,
         metadata: &Metadata,
-    ) -> cargo_metadata::PackageId {
+    ) -> Option<cargo_metadata::PackageId> {
         metadata
             .packages
             .iter()
@@ -54,7 +53,6 @@ impl ToCargoMetadataPackageId for PackageId {
             .map(|p| p.id.clone())
             .collect::<Vec<cargo_metadata::PackageId>>()
             .pop()
-            .unwrap()
     }
 }
 
@@ -99,7 +97,7 @@ mod core_tests {
         let (_, metadata) = construct_krates_and_metadata();
 
         let cargo_metadata_package =
-            package.to_cargo_metadata_package(&metadata);
+            package.to_cargo_metadata_package(&metadata).unwrap();
 
         assert_eq!(cargo_metadata_package.name, package.name().to_string());
         assert!(
@@ -118,8 +116,10 @@ mod core_tests {
             construct_package_registry_workspace_tuple(&config);
 
         let (_, metadata) = construct_krates_and_metadata();
-        let cargo_metadata_package_id =
-            package.package_id().to_cargo_metadata_package_id(&metadata);
+        let cargo_metadata_package_id = package
+            .package_id()
+            .to_cargo_metadata_package_id(&metadata)
+            .unwrap();
 
         assert!(cargo_metadata_package_id.repr.contains("cargo-geiger"));
     }

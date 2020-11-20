@@ -13,8 +13,8 @@ impl GetLicenceFromCargoMetadataPackageId for Krates {
         &self,
         package_id: &cargo_metadata::PackageId,
     ) -> Option<String> {
-        let package = self.node_for_kid(package_id);
-        package.unwrap().krate.clone().license
+        self.node_for_kid(package_id)
+            .and_then(|package| package.krate.clone().license)
     }
 }
 
@@ -22,9 +22,9 @@ impl GetPackageNameFromCargoMetadataPackageId for Krates {
     fn get_package_name_from_cargo_metadata_package_id(
         &self,
         package_id: &cargo_metadata::PackageId,
-    ) -> String {
-        let package = self.node_for_kid(package_id);
-        package.unwrap().krate.clone().name
+    ) -> Option<String> {
+        self.node_for_kid(package_id)
+            .map(|package| package.krate.clone().name)
     }
 }
 
@@ -32,9 +32,9 @@ impl GetPackageVersionFromCargoMetadataPackageId for Krates {
     fn get_package_version_from_cargo_metadata_package_id(
         &self,
         package_id: &cargo_metadata::PackageId,
-    ) -> cargo_metadata::Version {
-        let package = self.node_for_kid(package_id);
-        package.unwrap().krate.clone().version
+    ) -> Option<cargo_metadata::Version> {
+        self.node_for_kid(package_id)
+            .map(|package| package.krate.clone().version)
     }
 }
 
@@ -43,21 +43,19 @@ impl GetRepositoryFromCargoMetadataPackageId for Krates {
         &self,
         package_id: &cargo_metadata::PackageId,
     ) -> Option<String> {
-        let package = self.node_for_kid(package_id);
-        package.unwrap().krate.clone().repository
+        self.node_for_kid(package_id)
+            .and_then(|package| package.krate.clone().repository)
     }
 }
 
 impl QueryResolve for Krates {
-    fn query_resolve(&self, query: &str) -> cargo_metadata::PackageId {
+    fn query_resolve(&self, query: &str) -> Option<cargo_metadata::PackageId> {
         let package_spec = PkgSpec::from_str(query).unwrap();
         self.krates_by_name(package_spec.name.as_str())
             .filter(|(_, node)| package_spec.matches(&node.krate))
-            .map(|(_, node)| node.krate.clone())
-            .collect::<Vec<cargo_metadata::Package>>()
+            .map(|(_, node)| node.krate.clone().id)
+            .collect::<Vec<cargo_metadata::PackageId>>()
             .pop()
-            .unwrap()
-            .id
     }
 }
 
@@ -84,8 +82,9 @@ mod krates_tests {
     fn get_package_name_from_cargo_metadata_package_id_test() {
         let (krates, metadata) = construct_krates_and_metadata();
         let package = metadata.root_package().unwrap();
-        let package_name =
-            krates.get_package_name_from_cargo_metadata_package_id(&package.id);
+        let package_name = krates
+            .get_package_name_from_cargo_metadata_package_id(&package.id)
+            .unwrap();
         assert_eq!(package_name, package.name);
     }
 
@@ -94,7 +93,8 @@ mod krates_tests {
         let (krates, metadata) = construct_krates_and_metadata();
         let package = metadata.root_package().unwrap();
         let package_version = krates
-            .get_package_version_from_cargo_metadata_package_id(&package.id);
+            .get_package_version_from_cargo_metadata_package_id(&package.id)
+            .unwrap();
         assert_eq!(package_version, package.version);
     }
 
@@ -145,17 +145,19 @@ mod krates_tests {
         expected_package_version: Version,
     ) {
         let (krates, _) = construct_krates_and_metadata();
-        let package_id = krates.query_resolve(input_query_string);
+        let package_id = krates.query_resolve(input_query_string).unwrap();
 
         assert_eq!(
-            krates.get_package_name_from_cargo_metadata_package_id(&package_id),
+            krates
+                .get_package_name_from_cargo_metadata_package_id(&package_id)
+                .unwrap(),
             expected_package_name
         );
 
         assert_eq!(
-            krates.get_package_version_from_cargo_metadata_package_id(
-                &package_id
-            ),
+            krates
+                .get_package_version_from_cargo_metadata_package_id(&package_id)
+                .unwrap(),
             expected_package_version
         );
     }
