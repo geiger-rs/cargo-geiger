@@ -9,9 +9,8 @@ name = "test1_package_with_no_deps"
 version = "0.1.0"
 
 [[package]]
-name = "test4_workspace_with_virtual_manifest"
+name = "test4_workspace_with_top_level_package"
 version = "0.1.0"
 dependencies = [
- "test1_package_with_no_deps 0.1.0",
+ "test1_package_with_no_deps",
 ]
-

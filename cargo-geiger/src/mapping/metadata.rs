@@ -2,18 +2,16 @@ use super::{
     DepsNotReplaced, GetPackageNameFromCargoMetadataPackageId,
     GetPackageVersionFromCargoMetadataPackageId, GetRoot,
     MatchesIgnoringSource, ToCargoCoreDepKind, ToCargoGeigerPackageId,
-    ToCargoMetadataPackageId, ToPackage, ToPackageId,
+    ToCargoMetadataPackageId,
 };
 
-use crate::mapping::ToCargoMetadataPackage;
+use crate::mapping::{ToCargoGeigerSource, ToCargoMetadataPackage};
 
 use cargo::core::dependency::DepKind;
-use cargo::core::{Package, PackageId, PackageSet};
 use cargo_metadata::{DependencyKind, Metadata};
 use krates::Krates;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use url::Url;
 
 impl DepsNotReplaced for cargo_metadata::Metadata {
     fn deps_not_replaced(
@@ -82,49 +80,15 @@ impl ToCargoCoreDepKind for DependencyKind {
 impl ToCargoGeigerPackageId for cargo_metadata::PackageId {
     fn to_cargo_geiger_package_id(
         &self,
-        krates: &Krates,
-        package_set: &PackageSet,
+        metadata: &Metadata,
     ) -> cargo_geiger_serde::PackageId {
-        let package_id = self.to_package_id(krates, package_set).unwrap();
-        let source = package_id.source_id();
-        let source_url = source.url();
-        // Canonicalize paths as cargo does not seem to do so on all platforms.
-        let source_url = if source_url.scheme() == "file" {
-            match source_url.to_file_path() {
-                Ok(p) => {
-                    let p = p.canonicalize().expect(
-                        "A package source path could not be canonicalized",
-                    );
-                    Url::from_file_path(p)
-                        .expect("A URL could not be created from a file path")
-                }
-                Err(_) => source_url.clone(),
-            }
-        } else {
-            source_url.clone()
-        };
-        let source = if source.is_git() {
-            cargo_geiger_serde::Source::Git {
-                url: source_url,
-                rev: source
-                    .precise()
-                    .expect("Git revision should be known")
-                    .to_string(),
-            }
-        } else if source.is_path() {
-            cargo_geiger_serde::Source::Path(source_url)
-        } else if source.is_registry() {
-            cargo_geiger_serde::Source::Registry {
-                name: source.display_registry_name(),
-                url: source_url,
-            }
-        } else {
-            panic!("Unsupported source type: {:?}", source)
-        };
+        let package = self.to_cargo_metadata_package(metadata).unwrap();
+        let metadata_source = self.to_cargo_geiger_source(metadata);
+
         cargo_geiger_serde::PackageId {
-            name: package_id.name().to_string(),
-            version: package_id.version().clone(),
-            source,
+            name: package.name,
+            version: package.version,
+            source: metadata_source,
         }
     }
 }
@@ -159,49 +123,6 @@ impl ToCargoMetadataPackage for cargo_metadata::PackageId {
     }
 }
 
-impl ToPackage for cargo_metadata::PackageId {
-    fn to_package(
-        &self,
-        krates: &Krates,
-        package_set: &PackageSet,
-    ) -> Option<Package> {
-        let package_id = self.to_package_id(krates, package_set).unwrap();
-        Some(
-            package_set
-                .get_one(package_id)
-                .unwrap_or_else(|_| {
-                    // TODO: Avoid panic, return Result.
-                    panic!("Expected to find package by id: {}", package_id);
-                })
-                .clone(),
-        )
-    }
-}
-
-impl ToPackageId for cargo_metadata::PackageId {
-    fn to_package_id(
-        &self,
-        krates: &Krates,
-        package_set: &PackageSet,
-    ) -> Option<PackageId> {
-        krates.node_for_kid(&self).and_then(|package| {
-            package_set
-                .package_ids()
-                .filter(|package_id| {
-                    package_id.name().to_string() == package.krate.name
-                        && package_id.version().major
-                            == package.krate.version.major
-                        && package_id.version().minor
-                            == package.krate.version.minor
-                        && package_id.version().patch
-                            == package.krate.version.patch
-                })
-                .collect::<Vec<PackageId>>()
-                .pop()
-        })
-    }
-}
-
 #[cfg(test)]
 mod metadata_tests {
     use super::*;
@@ -212,7 +133,7 @@ mod metadata_tests {
     use crate::cli::{get_registry, get_workspace, resolve};
 
     use cargo::core::registry::PackageRegistry;
-    use cargo::core::Workspace;
+    use cargo::core::{Package, Workspace};
     use cargo::Config;
     use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
     use krates::Builder as KratesBuilder;
@@ -318,22 +239,12 @@ mod metadata_tests {
 
     #[rstest]
     fn to_cargo_geiger_package_id_test() {
-        let args = FeaturesArgs::default();
-        let config = Config::default().unwrap();
-        let (package, mut registry, workspace) =
-            construct_package_registry_workspace_tuple(&config);
-
-        let (package_set, _) =
-            resolve(&args, package.package_id(), &mut registry, &workspace)
-                .unwrap();
-
-        let (krates, metadata) = construct_krates_and_metadata();
+        let (_, metadata) = construct_krates_and_metadata();
 
         let root_package = metadata.root_package().unwrap();
 
-        let cargo_geiger_package_id = root_package
-            .id
-            .to_cargo_geiger_package_id(&krates, &package_set);
+        let cargo_geiger_package_id =
+            root_package.id.to_cargo_geiger_package_id(&metadata);
 
         assert_eq!(cargo_geiger_package_id.name, root_package.name);
 
@@ -349,29 +260,6 @@ mod metadata_tests {
             cargo_geiger_package_id.version.patch,
             root_package.version.patch
         );
-    }
-
-    #[rstest]
-    fn to_package_id_test() {
-        let args = FeaturesArgs::default();
-        let config = Config::default().unwrap();
-        let (package, mut registry, workspace) =
-            construct_package_registry_workspace_tuple(&config);
-
-        let (package_set, _) =
-            resolve(&args, package.package_id(), &mut registry, &workspace)
-                .unwrap();
-
-        let (krates, metadata) = construct_krates_and_metadata();
-
-        let cargo_metadata_package = metadata.root_package().unwrap();
-        let package_id = cargo_metadata_package
-            .id
-            .clone()
-            .to_package_id(&krates, &package_set)
-            .unwrap();
-
-        assert_eq!(cargo_metadata_package.name, package_id.name().to_string());
     }
 
     fn construct_krates_and_metadata() -> (Krates, Metadata) {

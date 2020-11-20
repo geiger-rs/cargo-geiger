@@ -1,10 +1,10 @@
 mod core;
+mod geiger;
 mod krates;
 mod metadata;
 
 use ::krates::Krates;
 use cargo::core::dependency::DepKind;
-use cargo::core::{Package, PackageId, PackageSet};
 use cargo_metadata::{DependencyKind, Metadata};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -75,9 +75,15 @@ pub trait ToCargoCoreDepKind {
 pub trait ToCargoGeigerPackageId {
     fn to_cargo_geiger_package_id(
         &self,
-        krates: &Krates,
-        package_set: &PackageSet,
+        metadata: &Metadata,
     ) -> cargo_geiger_serde::PackageId;
+}
+
+pub trait ToCargoGeigerSource {
+    fn to_cargo_geiger_source(
+        &self,
+        metadata: &Metadata,
+    ) -> cargo_geiger_serde::Source;
 }
 
 pub trait ToCargoMetadataDependencyKind {
@@ -96,20 +102,4 @@ pub trait ToCargoMetadataPackageId {
         &self,
         metadata: &Metadata,
     ) -> Option<cargo_metadata::PackageId>;
-}
-
-pub trait ToPackage {
-    fn to_package(
-        &self,
-        krates: &Krates,
-        package_set: &PackageSet,
-    ) -> Option<Package>;
-}
-
-pub trait ToPackageId {
-    fn to_package_id(
-        &self,
-        krates: &Krates,
-        package_set: &PackageSet,
-    ) -> Option<PackageId>;
 }

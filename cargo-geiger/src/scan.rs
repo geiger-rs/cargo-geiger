@@ -168,7 +168,6 @@ fn package_metrics(
     cargo_metadata_parameters: &CargoMetadataParameters,
     geiger_context: &GeigerContext,
     graph: &Graph,
-    package_set: &PackageSet,
     root_package_id: cargo_metadata::PackageId,
 ) -> Vec<(PackageInfo, Option<PackageMetrics>)> {
     let mut package_metrics =
@@ -180,20 +179,17 @@ fn package_metrics(
     while !indices.is_empty() {
         let i = indices.pop().unwrap();
         let package_id = graph.graph[i].clone();
-        let mut package =
-            PackageInfo::new(package_id.to_cargo_geiger_package_id(
-                cargo_metadata_parameters.krates,
-                package_set,
-            ));
+        let mut package = PackageInfo::new(
+            package_id
+                .to_cargo_geiger_package_id(cargo_metadata_parameters.metadata),
+        );
         for edge in graph.graph.edges(i) {
             let dep_index = edge.target();
             if visited.insert(dep_index) {
                 indices.push(dep_index);
             }
-            let dep = graph.graph[dep_index].to_cargo_geiger_package_id(
-                cargo_metadata_parameters.krates,
-                package_set,
-            );
+            let dep = graph.graph[dep_index]
+                .to_cargo_geiger_package_id(cargo_metadata_parameters.metadata);
 
             package.add_dependency(
                 dep,

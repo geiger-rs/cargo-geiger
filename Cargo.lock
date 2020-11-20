@@ -207,7 +207,7 @@ dependencies = [
  "rand",
  "regex",
  "rstest",
- "semver 0.10.0",
+ "semver 0.11.0",
  "serde",
  "serde_json",
  "strum",
@@ -221,7 +221,7 @@ dependencies = [
 name = "cargo-geiger-serde"
 version = "0.1.0"
 dependencies = [
- "semver 0.10.0",
+ "semver 0.11.0",
  "serde",
  "url",
 ]
