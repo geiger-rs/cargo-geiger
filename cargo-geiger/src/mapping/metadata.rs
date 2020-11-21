@@ -1,15 +1,14 @@
 use super::{
-    CargoMetadataParameters, DepsNotReplaced,
-    GetPackageNameFromCargoMetadataPackageId,
+    DepsNotReplaced, GetPackageNameFromCargoMetadataPackageId,
     GetPackageVersionFromCargoMetadataPackageId, GetRoot,
-    MatchesIgnoringSource, Replacement, ToCargoCoreDepKind,
-    ToCargoGeigerPackageId, ToCargoMetadataPackageId, ToPackage, ToPackageId,
+    MatchesIgnoringSource, ToCargoCoreDepKind, ToCargoGeigerPackageId,
+    ToCargoMetadataPackageId, ToPackage, ToPackageId,
 };
 
 use crate::mapping::ToCargoMetadataPackage;
 
 use cargo::core::dependency::DepKind;
-use cargo::core::{Package, PackageId, PackageSet, Resolve};
+use cargo::core::{Package, PackageId, PackageSet};
 use cargo_metadata::{DependencyKind, Metadata};
 use krates::Krates;
 use std::collections::HashSet;
@@ -66,27 +65,6 @@ impl MatchesIgnoringSource for cargo_metadata::Dependency {
                     )
                     .unwrap(),
             )
-    }
-}
-
-impl Replacement for cargo_metadata::PackageId {
-    fn replace(
-        &self,
-        cargo_metadata_parameters: &CargoMetadataParameters,
-        package_set: &PackageSet,
-        resolve: &Resolve,
-    ) -> cargo_metadata::PackageId {
-        let package_id = self
-            .to_package_id(cargo_metadata_parameters.krates, package_set)
-            .unwrap();
-        match resolve.replacement(package_id) {
-            Some(id) => id
-                .to_cargo_metadata_package_id(
-                    cargo_metadata_parameters.metadata,
-                )
-                .unwrap(),
-            None => self.clone(),
-        }
     }
 }
 
@@ -319,37 +297,6 @@ mod metadata_tests {
             dependency.matches_ignoring_source(&krates, dependency_package_id),
             true
         );
-    }
-
-    #[rstest]
-    fn replace_test() {
-        let args = FeaturesArgs::default();
-        let config = Config::default().unwrap();
-        let (package, mut registry, workspace) =
-            construct_package_registry_workspace_tuple(&config);
-
-        let (package_set, resolve) =
-            resolve(&args, package.package_id(), &mut registry, &workspace)
-                .unwrap();
-
-        let (krates, metadata) = construct_krates_and_metadata();
-        let cargo_metadata_package_id = package
-            .package_id()
-            .to_cargo_metadata_package_id(&metadata)
-            .unwrap();
-        let cargo_metadata_parameters = CargoMetadataParameters {
-            krates: &krates,
-            metadata: &metadata,
-        };
-
-        assert_eq!(
-            cargo_metadata_package_id,
-            cargo_metadata_package_id.replace(
-                &cargo_metadata_parameters,
-                &package_set,
-                &resolve
-            )
-        )
     }
 
     #[rstest(

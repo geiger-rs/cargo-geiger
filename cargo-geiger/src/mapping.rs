@@ -4,7 +4,7 @@ mod metadata;
 
 use ::krates::Krates;
 use cargo::core::dependency::DepKind;
-use cargo::core::{Package, PackageId, PackageSet, Resolve};
+use cargo::core::{Package, PackageId, PackageSet};
 use cargo_metadata::{DependencyKind, Metadata};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -66,15 +66,6 @@ pub trait MatchesIgnoringSource {
 
 pub trait QueryResolve {
     fn query_resolve(&self, query: &str) -> Option<cargo_metadata::PackageId>;
-}
-
-pub trait Replacement {
-    fn replace(
-        &self,
-        cargo_metadata_parameters: &CargoMetadataParameters,
-        package_set: &PackageSet,
-        resolve: &Resolve,
-    ) -> cargo_metadata::PackageId;
 }
 
 pub trait ToCargoCoreDepKind {
