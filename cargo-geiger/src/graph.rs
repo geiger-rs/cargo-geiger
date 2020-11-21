@@ -2,11 +2,9 @@ use crate::args::{Args, DepsArgs, TargetArgs};
 use crate::cli::get_cfgs;
 use crate::mapping::{
     CargoMetadataParameters, DepsNotReplaced, MatchesIgnoringSource,
-    Replacement,
 };
 
-use cargo::core::package::PackageSet;
-use cargo::core::{Resolve, Workspace};
+use cargo::core::Workspace;
 use cargo::util::interning::InternedString;
 use cargo::util::CargoResult;
 use cargo::Config;
@@ -55,8 +53,6 @@ pub fn build_graph<'a>(
     args: &Args,
     cargo_metadata_parameters: &'a CargoMetadataParameters,
     config: &Config,
-    resolve: &'a Resolve,
-    package_set: &'a PackageSet,
     root_package_id: cargo_metadata::PackageId,
     workspace: &Workspace,
 ) -> CargoResult<Graph> {
@@ -89,8 +85,6 @@ pub fn build_graph<'a>(
         add_package_dependencies_to_graph(
             cargo_metadata_parameters,
             package_id,
-            package_set,
-            resolve,
             &graph_configuration,
             &mut graph,
             &mut pending_packages,
@@ -126,11 +120,9 @@ fn add_graph_node_if_not_present_and_edge(
         .add_edge(index, dependency_index, dependency.kind);
 }
 
-fn add_package_dependencies_to_graph<'a>(
+fn add_package_dependencies_to_graph(
     cargo_metadata_parameters: &CargoMetadataParameters,
     package_id: cargo_metadata::PackageId,
-    package_set: &'a PackageSet,
-    resolve: &'a Resolve,
     graph_configuration: &GraphConfiguration,
     graph: &mut Graph,
     pending_packages: &mut Vec<cargo_metadata::PackageId>,
@@ -143,7 +135,7 @@ fn add_package_dependencies_to_graph<'a>(
         .krate
         .clone();
 
-    for (raw_dependency_package_id, _) in cargo_metadata_parameters
+    for (dependency_package_id, _) in cargo_metadata_parameters
         .metadata
         .deps_not_replaced(package_id)
     {
@@ -153,7 +145,7 @@ fn add_package_dependencies_to_graph<'a>(
             .filter(|d| {
                 d.matches_ignoring_source(
                     cargo_metadata_parameters.krates,
-                    raw_dependency_package_id.clone(),
+                    dependency_package_id.clone(),
                 )
             })
             .filter(|d| graph_configuration.extra_deps.allows(d.kind))
@@ -174,12 +166,6 @@ fn add_package_dependencies_to_graph<'a>(
                     })
                     .unwrap_or(true)
             });
-
-        let dependency_package_id = raw_dependency_package_id.replace(
-            cargo_metadata_parameters,
-            package_set,
-            resolve,
-        );
 
         for dependency in dependency_iterator {
             add_graph_node_if_not_present_and_edge(

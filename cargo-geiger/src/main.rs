@@ -58,7 +58,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     let cargo_metadata_root_package_id =
         cargo_metadata.root_package().unwrap().id.clone();
 
-    let (package_set, resolve) = resolve(
+    let (package_set, _) = resolve(
         &args.features_args,
         root_package.package_id(),
         &mut registry,
@@ -72,8 +72,6 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         args,
         &cargo_metadata_parameters,
         config,
-        &resolve,
-        &package_set,
         cargo_metadata_root_package_id.clone(),
         &workspace,
     )?;
