@@ -1,7 +1,5 @@
 use crate::format::print_config::PrintConfig;
-use crate::mapping::{
-    CargoMetadataParameters, GetRoot, ToCargoMetadataPackage,
-};
+use crate::mapping::{CargoMetadataParameters, GetRoot};
 use crate::scan::rs_file::{
     into_is_entry_point_and_path_buf, into_rs_code_file, into_target_kind,
     is_file_with_ext, RsFile, RsFileMetricsWrapper,
@@ -10,7 +8,6 @@ use crate::scan::PackageMetrics;
 
 use super::{GeigerContext, ScanMode};
 
-use cargo::core::package::PackageSet;
 use cargo::util::CargoResult;
 use cargo::{CliError, Config};
 use geiger::{find_unsafe_in_file, IncludeTests, RsFileMetrics, ScanFileError};
@@ -23,7 +20,6 @@ pub fn find_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
     config: &Config,
     mode: ScanMode,
-    package_set: &PackageSet,
     print_config: &PrintConfig,
 ) -> Result<GeigerContext, CliError> {
     let mut progress = cargo::util::Progress::new("Scanning", config);
@@ -32,7 +28,6 @@ pub fn find_unsafe(
         cargo_metadata_parameters,
         print_config.include_tests,
         mode,
-        package_set,
         |i, count| -> CargoResult<()> { progress.tick(i, count) },
     );
     progress.clear();
@@ -45,22 +40,13 @@ fn find_unsafe_in_packages<F>(
     cargo_metadata_parameters: &CargoMetadataParameters,
     include_tests: IncludeTests,
     mode: ScanMode,
-    package_set: &PackageSet,
     mut progress_step: F,
 ) -> GeigerContext
 where
     F: FnMut(usize, usize) -> CargoResult<()>,
 {
     let mut package_id_to_metrics = HashMap::new();
-    let packages = package_set
-        .get_many(package_set.package_ids())
-        .unwrap()
-        .iter()
-        .map(|p| {
-            p.to_cargo_metadata_package(cargo_metadata_parameters.metadata)
-                .unwrap()
-        })
-        .collect::<Vec<cargo_metadata::Package>>();
+    let packages = cargo_metadata_parameters.metadata.packages.to_vec();
     let package_code_files: Vec<_> =
         find_rs_files_in_packages(&packages).collect();
     let package_code_file_count = package_code_files.len();

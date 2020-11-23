@@ -60,11 +60,11 @@ impl ToCargoMetadataPackageId for PackageId {
 mod core_tests {
     use super::*;
 
-    use crate::cli::{get_registry, get_workspace};
+    use crate::cli::get_workspace;
 
     use cargo::core::registry::PackageRegistry;
     use cargo::core::Workspace;
-    use cargo::Config;
+    use cargo::{CargoResult, Config};
     use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
     use krates::Builder as KratesBuilder;
     use krates::Krates;
@@ -147,5 +147,14 @@ mod core_tests {
         let registry = get_registry(&config, &package).unwrap();
 
         (package, registry, workspace)
+    }
+
+    fn get_registry<'a>(
+        config: &'a Config,
+        package: &Package,
+    ) -> CargoResult<PackageRegistry<'a>> {
+        let mut registry = PackageRegistry::new(config)?;
+        registry.add_sources(Some(package.package_id().source_id()))?;
+        Ok(registry)
     }
 }

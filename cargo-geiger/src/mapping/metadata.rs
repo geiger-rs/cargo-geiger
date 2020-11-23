@@ -5,7 +5,9 @@ use super::{
     ToCargoMetadataPackageId,
 };
 
-use crate::mapping::{ToCargoGeigerSource, ToCargoMetadataPackage};
+use crate::mapping::{
+    ToCargoGeigerDependencyKind, ToCargoGeigerSource, ToCargoMetadataPackage,
+};
 
 use cargo::core::dependency::DepKind;
 use cargo_metadata::{DependencyKind, Metadata};
@@ -77,6 +79,23 @@ impl ToCargoCoreDepKind for DependencyKind {
     }
 }
 
+impl ToCargoGeigerDependencyKind for cargo_metadata::DependencyKind {
+    fn to_cargo_geiger_dependency_kind(
+        &self,
+    ) -> cargo_geiger_serde::DependencyKind {
+        match self {
+            DependencyKind::Build => cargo_geiger_serde::DependencyKind::Build,
+            DependencyKind::Development => {
+                cargo_geiger_serde::DependencyKind::Development
+            }
+            DependencyKind::Normal => {
+                cargo_geiger_serde::DependencyKind::Normal
+            }
+            _ => panic!("Unrecognised Dependency Kind"),
+        }
+    }
+}
+
 impl ToCargoGeigerPackageId for cargo_metadata::PackageId {
     fn to_cargo_geiger_package_id(
         &self,
@@ -130,11 +149,14 @@ mod metadata_tests {
     use super::super::GetPackageNameFromCargoMetadataPackageId;
 
     use crate::args::FeaturesArgs;
-    use crate::cli::{get_registry, get_workspace, resolve};
+    use crate::cli::get_workspace;
 
     use cargo::core::registry::PackageRegistry;
-    use cargo::core::{Package, Workspace};
-    use cargo::Config;
+    use cargo::core::resolver::ResolveOpts;
+    use cargo::core::{
+        Package, PackageId, PackageIdSpec, PackageSet, Resolve, Workspace,
+    };
+    use cargo::{ops, CargoResult, Config};
     use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
     use krates::Builder as KratesBuilder;
     use rstest::*;
@@ -285,5 +307,45 @@ mod metadata_tests {
         let registry = get_registry(&config, &package).unwrap();
 
         (package, registry, workspace)
+    }
+
+    fn get_registry<'a>(
+        config: &'a Config,
+        package: &Package,
+    ) -> CargoResult<PackageRegistry<'a>> {
+        let mut registry = PackageRegistry::new(config)?;
+        registry.add_sources(Some(package.package_id().source_id()))?;
+        Ok(registry)
+    }
+
+    fn resolve<'a, 'cfg>(
+        args: &FeaturesArgs,
+        package_id: PackageId,
+        registry: &mut PackageRegistry<'cfg>,
+        workspace: &'a Workspace<'cfg>,
+    ) -> CargoResult<(PackageSet<'a>, Resolve)> {
+        let dev_deps = true; // TODO: Review this.
+        let uses_default_features = !args.no_default_features;
+        let opts = ResolveOpts::new(
+            dev_deps,
+            &args.features.clone(),
+            args.all_features,
+            uses_default_features,
+        );
+        let prev = ops::load_pkg_lockfile(workspace)?;
+        let resolve = ops::resolve_with_previous(
+            registry,
+            workspace,
+            &opts,
+            prev.as_ref(),
+            None,
+            &[PackageIdSpec::from_package_id(package_id)],
+            true,
+        )?;
+        let packages = ops::get_resolved_packages(
+            &resolve,
+            PackageRegistry::new(workspace.config())?,
+        )?;
+        Ok((packages, resolve))
     }
 }

@@ -1,17 +1,17 @@
 use crate::format::print_config::Prefix;
+use crate::mapping::CargoMetadataParameters;
 use crate::tree::traversal::WalkDependencyParameters;
 use crate::tree::{get_tree_symbols, TextTreeLine, TreeSymbols};
 
 use super::dependency_node::walk_dependency_node;
 
-use crate::mapping::CargoMetadataParameters;
-use cargo::core::dependency::DepKind;
+use cargo_metadata::DependencyKind;
 use std::iter::Peekable;
 use std::slice::Iter;
 
 pub fn walk_dependency_kind(
     cargo_metadata_parameters: &CargoMetadataParameters,
-    dep_kind: DepKind,
+    dep_kind: DependencyKind,
     deps: &mut Vec<cargo_metadata::PackageId>,
     walk_dependency_parameters: &mut WalkDependencyParameters,
 ) -> Vec<TextTreeLine> {
@@ -66,13 +66,13 @@ fn handle_walk_dependency_node(
 }
 
 fn push_extra_deps_group_text_tree_line_for_non_normal_dependencies(
-    dep_kind: DepKind,
+    dep_kind: DependencyKind,
     levels_continue: &[bool],
     tree_symbols: &TreeSymbols,
     text_tree_lines: &mut Vec<TextTreeLine>,
 ) {
     match dep_kind {
-        DepKind::Normal => (),
+        DependencyKind::Normal => (),
         _ => {
             let mut tree_vines = String::new();
             for &continues in &*levels_continue {
@@ -101,21 +101,21 @@ mod traversal_tests {
         input_levels_continue,
         expected_text_tree_lines,
         case(
-            DepKind::Build,
+            DependencyKind::Build,
             vec![],
             vec![
                 ExtraDepsGroup {
-                    kind: DepKind::Build,
+                    kind: DependencyKind::Build,
                     tree_vines: String::from("")
                 }
             ]
         ),
         case(
-            DepKind::Build,
+            DependencyKind::Build,
             vec![false, true],
             vec![
                 ExtraDepsGroup {
-                    kind: DepKind::Build,
+                    kind: DependencyKind::Build,
                     tree_vines: format!(
                     "    {}   ",
                     get_tree_symbols(Charset::Utf8).down
@@ -124,11 +124,11 @@ mod traversal_tests {
             ]
         ),
         case(
-            DepKind::Development,
+            DependencyKind::Development,
             vec![true],
             vec![
                 ExtraDepsGroup {
-                    kind: DepKind::Development,
+                    kind: DependencyKind::Development,
                     tree_vines: format!(
                     "{}   ",
                     get_tree_symbols(Charset::Utf8).down
@@ -137,23 +137,23 @@ mod traversal_tests {
             ]
         ),
         case(
-            DepKind::Development,
+            DependencyKind::Development,
             vec![false],
             vec![
                 ExtraDepsGroup {
-                    kind: DepKind::Development,
+                    kind: DependencyKind::Development,
                     tree_vines: String::from("    ")
                 }
             ]
         ),
         case(
-            DepKind::Normal,
+            DependencyKind::Normal,
             vec![],
             vec![]
         )
     )]
     fn push_extra_deps_group_text_tree_line_for_non_normal_dependencies_test(
-        input_dep_kind: DepKind,
+        input_dep_kind: DependencyKind,
         input_levels_continue: Vec<bool>,
         expected_text_tree_lines: Vec<TextTreeLine>,
     ) {

@@ -14,7 +14,7 @@ use super::scan;
 
 use crate::mapping::CargoMetadataParameters;
 use cargo::core::shell::Verbosity;
-use cargo::core::{PackageSet, Workspace};
+use cargo::core::Workspace;
 use cargo::{CliError, CliResult};
 use colored::Colorize;
 use std::error::Error;
@@ -23,7 +23,6 @@ use std::fmt;
 pub fn scan_to_table(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
-    package_set: &PackageSet,
     root_package_id: cargo_metadata::PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
@@ -33,12 +32,7 @@ pub fn scan_to_table(
     let ScanDetails {
         rs_files_used,
         geiger_context,
-    } = scan(
-        cargo_metadata_parameters,
-        package_set,
-        scan_parameters,
-        workspace,
-    )?;
+    } = scan(cargo_metadata_parameters, scan_parameters, workspace)?;
 
     if scan_parameters.print_config.verbosity == Verbosity::Verbose {
         let mut rs_files_used_lines =
