@@ -10,7 +10,6 @@ use super::construct_tree_vines_string;
 use dependency_kind::walk_dependency_kind;
 use dependency_node::walk_dependency_node;
 
-use cargo::core::PackageSet;
 use std::collections::HashSet;
 
 pub struct WalkDependencyParameters<'a> {
@@ -29,7 +28,6 @@ pub struct WalkDependencyParameters<'a> {
 pub fn walk_dependency_tree(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
-    package_set: &PackageSet,
     print_config: &PrintConfig,
     root_package_id: cargo_metadata::PackageId,
 ) -> Vec<TextTreeLine> {
@@ -47,7 +45,6 @@ pub fn walk_dependency_tree(
     walk_dependency_node(
         cargo_metadata_parameters,
         &node,
-        package_set,
         &mut walk_dependency_paramters,
     )
 }

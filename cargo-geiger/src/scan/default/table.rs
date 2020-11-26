@@ -53,7 +53,6 @@ pub fn scan_to_table(
     let text_tree_lines = walk_dependency_tree(
         cargo_metadata_parameters,
         &graph,
-        package_set,
         &scan_parameters.print_config,
         root_package_id,
     );

@@ -656,7 +656,7 @@ mod external {
                     "https://github.com/rust-itertools/itertools.git",
                 )
                 .unwrap(),
-                rev: "8761fbefb3b209cf41829f8dba38044b69c1d8dd".into(),
+                rev: "8761fbefb3b209".into(),
             },
         }
     }

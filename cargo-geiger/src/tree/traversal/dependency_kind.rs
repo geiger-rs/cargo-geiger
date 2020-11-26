@@ -6,7 +6,6 @@ use super::dependency_node::walk_dependency_node;
 
 use crate::mapping::CargoMetadataParameters;
 use cargo::core::dependency::DepKind;
-use cargo::core::PackageSet;
 use std::iter::Peekable;
 use std::slice::Iter;
 
@@ -14,7 +13,6 @@ pub fn walk_dependency_kind(
     cargo_metadata_parameters: &CargoMetadataParameters,
     dep_kind: DepKind,
     deps: &mut Vec<cargo_metadata::PackageId>,
-    package_set: &PackageSet,
     walk_dependency_parameters: &mut WalkDependencyParameters,
 ) -> Vec<TextTreeLine> {
     if deps.is_empty() {
@@ -42,7 +40,6 @@ pub fn walk_dependency_kind(
             cargo_metadata_parameters,
             dependency,
             &mut node_iterator,
-            package_set,
             &mut text_tree_lines,
             walk_dependency_parameters,
         );
@@ -54,7 +51,6 @@ fn handle_walk_dependency_node(
     cargo_metadata_parameters: &CargoMetadataParameters,
     dependency: &cargo_metadata::PackageId,
     node_iterator: &mut Peekable<Iter<cargo_metadata::PackageId>>,
-    package_set: &PackageSet,
     text_tree_lines: &mut Vec<TextTreeLine>,
     walk_dependency_parameters: &mut WalkDependencyParameters,
 ) {
@@ -64,7 +60,6 @@ fn handle_walk_dependency_node(
     text_tree_lines.append(&mut walk_dependency_node(
         cargo_metadata_parameters,
         dependency,
-        package_set,
         walk_dependency_parameters,
     ));
     walk_dependency_parameters.levels_continue.pop();

@@ -135,7 +135,6 @@ fn scan_to_report(
         cargo_metadata_parameters,
         &geiger_context,
         graph,
-        package_set,
         root_package_id,
     ) {
         let package_metrics = match package_metrics_option {

@@ -32,7 +32,6 @@ pub fn scan_forbid_to_table(
     let tree_lines = walk_dependency_tree(
         cargo_metadata_parameters,
         &graph,
-        package_set,
         &print_config,
         root_package_id,
     );

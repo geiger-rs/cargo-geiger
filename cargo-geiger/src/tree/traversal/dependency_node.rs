@@ -8,7 +8,6 @@ use super::construct_tree_vines_string;
 use super::walk_dependency_kind;
 
 use cargo::core::dependency::DepKind;
-use cargo::core::PackageSet;
 use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;
 use std::collections::HashMap;
@@ -16,7 +15,6 @@ use std::collections::HashMap;
 pub fn walk_dependency_node(
     cargo_metadata_parameters: &CargoMetadataParameters,
     package: &cargo_metadata::PackageId,
-    package_set: &PackageSet,
     walk_dependency_parameters: &mut WalkDependencyParameters,
 ) -> Vec<TextTreeLine> {
     let new = walk_dependency_parameters.print_config.all
@@ -48,7 +46,6 @@ pub fn walk_dependency_node(
             cargo_metadata_parameters,
             *dep_kind,
             nodes,
-            package_set,
             walk_dependency_parameters,
         );
 
