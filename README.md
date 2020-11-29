@@ -22,7 +22,9 @@ Try to find and use a system-wide installed OpenSSL library:
 cargo install cargo-geiger
 ```
 
-Or, build and statically link OpenSSL as part of the cargo-geiger executable:
+Or, use OpenSSL from the
+[openssl-sys crate](https://docs.rs/openssl/0.10.30/openssl/).
+This works on macOS.  Run:
 ```
 cargo install cargo-geiger --features vendored-openssl
 ```
