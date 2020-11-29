@@ -1,6 +1,8 @@
 //! The outer CLI parts of the `cargo-geiger` cargo plugin executable.
 //! TODO: Refactor this file to only deal with command line argument processing.
 
+#![deny(clippy::cargo)]
+#![deny(clippy::doc_markdown)]
 #![forbid(unsafe_code)]
 #![forbid(warnings)]
 
@@ -10,25 +12,18 @@ extern crate petgraph;
 extern crate strum;
 extern crate strum_macros;
 
-mod args;
-mod cli;
-mod format;
-mod graph;
-mod mapping;
-mod readme;
-mod scan;
-mod tree;
-
-use crate::args::{Args, HELP};
-use crate::cli::{get_cargo_metadata, get_krates, get_workspace};
-use crate::graph::build_graph;
-use crate::mapping::{CargoMetadataParameters, QueryResolve};
-use crate::scan::scan;
+use cargo_geiger::args::{Args, HELP};
+use cargo_geiger::cli::{get_cargo_metadata, get_krates, get_workspace};
+use cargo_geiger::graph::build_graph;
+use cargo_geiger::mapping::{CargoMetadataParameters, QueryResolve};
+use cargo_geiger::readme::{
+    create_or_replace_section_in_readme, README_FILENAME,
+};
+use cargo_geiger::scan::scan;
 
 use cargo::core::shell::Shell;
 use cargo::util::important_paths;
 use cargo::{CliError, CliResult, Config};
-use readme::create_or_replace_section_in_readme;
 
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
@@ -98,7 +93,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 
     if args.update_readme {
         let mut current_dir_path_buf = std::env::current_dir().unwrap();
-        current_dir_path_buf.push(readme::README_FILENAME);
+        current_dir_path_buf.push(README_FILENAME);
 
         create_or_replace_section_in_readme(
             current_dir_path_buf,

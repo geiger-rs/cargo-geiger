@@ -20,7 +20,7 @@ use walkdir::{DirEntry, WalkDir};
 
 /// Provides information needed to scan for crate root
 /// `#![forbid(unsafe_code)]`.
-/// The wrapped PathBufs are canonicalized.
+/// The wrapped `PathBufs` are canonicalized.
 #[derive(Debug, PartialEq)]
 pub enum RsFile {
     /// Executable entry point source file, usually src/main.rs
@@ -247,7 +247,7 @@ fn compile_with_exec(
     Ok(())
 }
 
-/// Copy-pasted (almost) from the private module cargo::core::compiler::fingerprint.
+/// Copy-pasted (almost) from the private module `cargo::core::compiler::fingerprint`.
 ///
 /// TODO: Make a PR to the cargo project to expose this function or to expose
 /// the dependency data in some other way.

@@ -8,6 +8,8 @@ use cargo_metadata::Metadata;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
+/// Holds a pointer to both a `Krates` graph, and the `Metadata` struct
+/// which are often required together
 pub struct CargoMetadataParameters<'a> {
     pub krates: &'a Krates,
     pub metadata: &'a Metadata,

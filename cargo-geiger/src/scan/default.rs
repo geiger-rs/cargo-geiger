@@ -47,7 +47,7 @@ pub fn scan_unsafe(
     }
 }
 
-/// Based on code from cargo-bloat. It seems weird that CompileOptions can be
+/// Based on code from cargo-bloat. It seems weird that `CompileOptions` can be
 /// constructed without providing all standard cargo options, TODO: Open an issue
 /// in cargo?
 fn build_compile_options<'a>(

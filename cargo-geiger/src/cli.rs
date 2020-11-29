@@ -1,5 +1,3 @@
-//! This module provides the bulk of the code for the `cargo-geiger` executable.
-
 // TODO: Review the module structure in this crate. There is very tight coupling
 // between the main.rs and this module. Should this module be split into smaller
 // parts? The printing and scanning can probably be further decoupled to provide
@@ -8,7 +6,7 @@
 // TODO: Investigate how cargo-clippy is implemented. Is it using syn?  Is is
 // using rustc? Is it implementing a compiler plugin?
 
-use crate::Args;
+use crate::args::Args;
 
 // TODO: Consider making this a lib.rs (again) and expose a full API, excluding
 // only the terminal output..? That API would be dependent on cargo.
@@ -53,7 +51,7 @@ pub fn get_cargo_metadata(
 
 /// TODO: Write proper documentation for this.
 /// This function seems to be looking up the active flags for conditional
-/// compilation (cargo_platform::Cfg instances).
+/// compilation (`cargo_platform::Cfg` instances).
 pub fn get_cfgs(
     config: &Config,
     target: &Option<String>,

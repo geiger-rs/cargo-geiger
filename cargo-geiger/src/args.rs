@@ -6,6 +6,7 @@ use cargo::{CliResult, Config};
 use pico_args::Arguments;
 use std::path::PathBuf;
 
+/// Constant `&str` containing help text
 pub const HELP: &str =
     "Detects usage of unsafe Rust in a Rust crate and its dependencies.
 
@@ -89,6 +90,13 @@ pub struct Args {
 }
 
 impl Args {
+    /// Construct `Args` struct from `pico_args::Arguments` loaded from command line arguments
+    /// provided by the user
+    /// ```
+    /// # use cargo_geiger::args::Args;
+    /// let pico_arguments = pico_args::Arguments::from_env();
+    /// let args = Args::parse_args(pico_arguments);
+    /// ```
     pub fn parse_args(
         mut raw_args: Arguments,
     ) -> Result<Args, Box<dyn std::error::Error>> {
@@ -152,6 +160,17 @@ impl Args {
         Ok(args)
     }
 
+    /// Update `cargo::util::Config` with values from `Args` struct, and set the shell
+    /// colour choice
+    /// ```
+    /// # use cargo::Config;
+    /// # use cargo_geiger::args::Args;
+    /// let args = Args::parse_args(
+    ///     pico_args::Arguments::from_env()
+    /// ).unwrap();
+    /// let mut config = Config::default().unwrap();
+    /// args.update_config(&mut config);
+    /// ```
     pub fn update_config(&self, config: &mut Config) -> CliResult {
         let target_dir = None; // Doesn't add any value for cargo-geiger.
         config.configure(
