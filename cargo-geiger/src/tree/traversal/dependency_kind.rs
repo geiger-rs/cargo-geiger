@@ -5,14 +5,14 @@ use crate::tree::{get_tree_symbols, TextTreeLine, TreeSymbols};
 
 use super::dependency_node::walk_dependency_node;
 
-use cargo_metadata::DependencyKind;
+use cargo_metadata::{DependencyKind, PackageId};
 use std::iter::Peekable;
 use std::slice::Iter;
 
 pub fn walk_dependency_kind(
     cargo_metadata_parameters: &CargoMetadataParameters,
     dep_kind: DependencyKind,
-    deps: &mut Vec<cargo_metadata::PackageId>,
+    deps: &mut Vec<PackageId>,
     walk_dependency_parameters: &mut WalkDependencyParameters,
 ) -> Vec<TextTreeLine> {
     if deps.is_empty() {
@@ -49,8 +49,8 @@ pub fn walk_dependency_kind(
 
 fn handle_walk_dependency_node(
     cargo_metadata_parameters: &CargoMetadataParameters,
-    dependency: &cargo_metadata::PackageId,
-    node_iterator: &mut Peekable<Iter<cargo_metadata::PackageId>>,
+    dependency: &PackageId,
+    node_iterator: &mut Peekable<Iter<PackageId>>,
     text_tree_lines: &mut Vec<TextTreeLine>,
     walk_dependency_parameters: &mut WalkDependencyParameters,
 ) {

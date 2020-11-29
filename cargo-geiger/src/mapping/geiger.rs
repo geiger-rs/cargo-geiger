@@ -1,6 +1,4 @@
-use super::ToCargoGeigerSource;
-
-use crate::mapping::ToCargoMetadataPackage;
+use super::{ToCargoGeigerSource, ToCargoMetadataPackage};
 
 use cargo_metadata::Metadata;
 use url::Url;

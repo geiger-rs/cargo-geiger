@@ -4,6 +4,7 @@ use crate::format::table::{
 };
 use crate::format::SymbolKind;
 use crate::graph::Graph;
+use crate::mapping::CargoMetadataParameters;
 use crate::tree::traversal::walk_dependency_tree;
 
 use super::super::{
@@ -12,10 +13,10 @@ use super::super::{
 };
 use super::scan;
 
-use crate::mapping::CargoMetadataParameters;
 use cargo::core::shell::Verbosity;
 use cargo::core::Workspace;
 use cargo::{CliError, CliResult};
+use cargo_metadata::PackageId;
 use colored::Colorize;
 use std::error::Error;
 use std::fmt;
@@ -23,7 +24,7 @@ use std::fmt;
 pub fn scan_to_table(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
-    root_package_id: cargo_metadata::PackageId,
+    root_package_id: PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
 ) -> CliResult {

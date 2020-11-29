@@ -19,6 +19,7 @@ use forbid::scan_forbid_unsafe;
 use cargo::core::Workspace;
 use cargo::{CliResult, Config};
 use cargo_geiger_serde::{CounterBlock, PackageInfo, UnsafeInfo};
+use cargo_metadata::PackageId;
 use petgraph::visit::EdgeRef;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -26,8 +27,7 @@ use std::path::PathBuf;
 /// Provides a more terse and searchable name for the wrapped generic
 /// collection.
 pub struct GeigerContext {
-    pub package_id_to_metrics:
-        HashMap<cargo_metadata::PackageId, PackageMetrics>,
+    pub package_id_to_metrics: HashMap<PackageId, PackageMetrics>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -57,7 +57,7 @@ pub fn scan(
     cargo_metadata_parameters: &CargoMetadataParameters,
     config: &Config,
     graph: &Graph,
-    root_package_id: cargo_metadata::PackageId,
+    root_package_id: PackageId,
     workspace: &Workspace,
 ) -> CliResult {
     let print_config = PrintConfig::new(args)?;
@@ -163,7 +163,7 @@ fn package_metrics(
     cargo_metadata_parameters: &CargoMetadataParameters,
     geiger_context: &GeigerContext,
     graph: &Graph,
-    root_package_id: cargo_metadata::PackageId,
+    root_package_id: PackageId,
 ) -> Vec<(PackageInfo, Option<PackageMetrics>)> {
     let mut package_metrics =
         Vec::<(PackageInfo, Option<PackageMetrics>)>::new();

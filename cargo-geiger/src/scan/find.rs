@@ -10,6 +10,7 @@ use super::{GeigerContext, ScanMode};
 
 use cargo::util::CargoResult;
 use cargo::{CliError, Config};
+use cargo_metadata::PackageId;
 use geiger::{find_unsafe_in_file, IncludeTests, RsFileMetrics, ScanFileError};
 use std::collections::HashMap;
 use std::path::Path;
@@ -84,7 +85,7 @@ where
         .map(|(cargo_metadata_package_id, package_metrics)| {
             (cargo_metadata_package_id.clone(), package_metrics.clone())
         })
-        .collect::<HashMap<cargo_metadata::PackageId, PackageMetrics>>();
+        .collect::<HashMap<PackageId, PackageMetrics>>();
 
     GeigerContext {
         package_id_to_metrics: cargo_core_package_metrics,
@@ -145,7 +146,7 @@ fn find_rs_files_in_package(package: &cargo_metadata::Package) -> Vec<RsFile> {
 
 fn find_rs_files_in_packages(
     packages: &[cargo_metadata::Package],
-) -> impl Iterator<Item = (cargo_metadata::PackageId, RsFile)> + '_ {
+) -> impl Iterator<Item = (PackageId, RsFile)> + '_ {
     packages.iter().flat_map(|package| {
         find_rs_files_in_package(package)
             .into_iter()
@@ -167,11 +168,8 @@ fn handle_unsafe_in_file_error(
 
 fn update_package_id_to_metrics_with_rs_file_metrics(
     is_entry_point: bool,
-    package_id: cargo_metadata::PackageId,
-    package_id_to_metrics: &mut HashMap<
-        cargo_metadata::PackageId,
-        PackageMetrics,
-    >,
+    package_id: PackageId,
+    package_id_to_metrics: &mut HashMap<PackageId, PackageMetrics>,
     path_buf: PathBuf,
     rs_file_metrics: RsFileMetrics,
 ) {
@@ -294,7 +292,7 @@ mod find_tests {
         package: cargo_metadata::Package,
     ) {
         let mut package_id_to_metrics =
-            HashMap::<cargo_metadata::PackageId, PackageMetrics>::new();
+            HashMap::<PackageId, PackageMetrics>::new();
 
         let mut rs_files_in_package = find_rs_files_in_package(&package);
         let rs_file = rs_files_in_package.pop().unwrap();
