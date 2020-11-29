@@ -1,13 +1,13 @@
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
-use crate::mapping::{CargoMetadataParameters, ToCargoCoreDepKind};
+use crate::mapping::CargoMetadataParameters;
 use crate::tree::traversal::WalkDependencyParameters;
 use crate::tree::TextTreeLine;
 
 use super::construct_tree_vines_string;
 use super::walk_dependency_kind;
 
-use cargo::core::dependency::DepKind;
+use cargo_metadata::DependencyKind;
 use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;
 use std::collections::HashMap;
@@ -44,7 +44,7 @@ pub fn walk_dependency_node(
     for (dep_kind, nodes) in dependency_type_nodes.iter_mut() {
         let mut dep_kind_out = walk_dependency_kind(
             cargo_metadata_parameters,
-            *dep_kind,
+            dep_kind.to_dependency_kind(),
             nodes,
             walk_dependency_parameters,
         );
@@ -59,14 +59,14 @@ fn construct_dependency_type_nodes_hashmap<'a>(
     graph: &'a Graph,
     package: &cargo_metadata::PackageId,
     print_config: &PrintConfig,
-) -> HashMap<DepKind, Vec<cargo_metadata::PackageId>> {
+) -> HashMap<PrivateDepKind, Vec<cargo_metadata::PackageId>> {
     let mut dependency_type_nodes: HashMap<
-        DepKind,
+        PrivateDepKind,
         Vec<cargo_metadata::PackageId>,
     > = [
-        (DepKind::Build, vec![]),
-        (DepKind::Development, vec![]),
-        (DepKind::Normal, vec![]),
+        (PrivateDepKind::Build, vec![]),
+        (PrivateDepKind::Development, vec![]),
+        (PrivateDepKind::Normal, vec![]),
     ]
     .iter()
     .cloned()
@@ -82,12 +82,42 @@ fn construct_dependency_type_nodes_hashmap<'a>(
         };
 
         dependency_type_nodes
-            .get_mut(&edge.weight().to_cargo_core_dep_kind())
+            .get_mut(&PrivateDepKind::from_dependency_kind(&edge.weight()))
             .unwrap()
             .push(dependency.clone());
     }
 
     dependency_type_nodes
+}
+
+// cargo_metadata::DependencyKind doesn't implement Eq or Hash, and so can't
+// be used in a HashMap
+#[derive(Clone, Eq, Hash, PartialEq)]
+enum PrivateDepKind {
+    Build,
+    Development,
+    Normal,
+}
+
+impl PrivateDepKind {
+    fn from_dependency_kind(
+        dependency_kind: &DependencyKind,
+    ) -> PrivateDepKind {
+        match dependency_kind {
+            DependencyKind::Build => PrivateDepKind::Build,
+            DependencyKind::Development => PrivateDepKind::Development,
+            DependencyKind::Normal => PrivateDepKind::Normal,
+            _ => panic!("Unrecognised DependencyKind"),
+        }
+    }
+
+    fn to_dependency_kind(&self) -> DependencyKind {
+        match self {
+            PrivateDepKind::Build => DependencyKind::Build,
+            PrivateDepKind::Development => DependencyKind::Development,
+            PrivateDepKind::Normal => DependencyKind::Normal,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -182,15 +212,15 @@ mod dependency_node_tests {
             );
 
         assert_eq!(
-            dependency_type_nodes_hashmap[&DepKind::Build].len(),
+            dependency_type_nodes_hashmap[&PrivateDepKind::Build].len(),
             expected_build_nodes_length
         );
         assert_eq!(
-            dependency_type_nodes_hashmap[&DepKind::Development].len(),
+            dependency_type_nodes_hashmap[&PrivateDepKind::Development].len(),
             expected_development_nodes_length
         );
         assert_eq!(
-            dependency_type_nodes_hashmap[&DepKind::Normal].len(),
+            dependency_type_nodes_hashmap[&PrivateDepKind::Normal].len(),
             expected_normal_nodes_length
         );
     }

@@ -15,7 +15,7 @@ use super::{
 use table::scan_to_table;
 
 use cargo::core::compiler::CompileMode;
-use cargo::core::{PackageSet, Workspace};
+use cargo::core::Workspace;
 use cargo::ops::CompileOptions;
 use cargo::{CliError, CliResult, Config};
 use cargo_geiger_serde::{ReportEntry, SafetyReport};
@@ -23,7 +23,6 @@ use cargo_geiger_serde::{ReportEntry, SafetyReport};
 pub fn scan_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
-    package_set: &PackageSet,
     root_package_id: cargo_metadata::PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
@@ -33,7 +32,6 @@ pub fn scan_unsafe(
             cargo_metadata_parameters,
             graph,
             output_format,
-            package_set,
             root_package_id,
             scan_parameters,
             workspace,
@@ -41,7 +39,6 @@ pub fn scan_unsafe(
         None => scan_to_table(
             cargo_metadata_parameters,
             graph,
-            package_set,
             root_package_id,
             scan_parameters,
             workspace,
@@ -89,7 +86,6 @@ fn build_compile_options<'a>(
 
 fn scan(
     cargo_metadata_parameters: &CargoMetadataParameters,
-    package_set: &PackageSet,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
 ) -> Result<ScanDetails, CliError> {
@@ -103,7 +99,6 @@ fn scan(
         cargo_metadata_parameters,
         scan_parameters.config,
         ScanMode::Full,
-        package_set,
         scan_parameters.print_config,
     )?;
     Ok(ScanDetails {
@@ -116,7 +111,6 @@ fn scan_to_report(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
     output_format: OutputFormat,
-    package_set: &PackageSet,
     root_package_id: cargo_metadata::PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
@@ -124,12 +118,7 @@ fn scan_to_report(
     let ScanDetails {
         rs_files_used,
         geiger_context,
-    } = scan(
-        cargo_metadata_parameters,
-        package_set,
-        scan_parameters,
-        workspace,
-    )?;
+    } = scan(cargo_metadata_parameters, scan_parameters, workspace)?;
     let mut report = SafetyReport::default();
     for (package, package_metrics_option) in package_metrics(
         cargo_metadata_parameters,

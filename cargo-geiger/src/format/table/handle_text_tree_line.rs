@@ -8,7 +8,7 @@ use super::total_package_counts::TotalPackageCounts;
 use super::TableParameters;
 use super::{table_row, table_row_empty};
 
-use cargo::core::dependency::DepKind;
+use cargo_metadata::DependencyKind;
 use std::collections::HashSet;
 
 pub struct HandlePackageParameters<'a> {
@@ -18,7 +18,7 @@ pub struct HandlePackageParameters<'a> {
 }
 
 pub fn handle_text_tree_line_extra_deps_group(
-    dep_kind: DepKind,
+    dep_kind: DependencyKind,
     table_lines: &mut Vec<String>,
     tree_vines: String,
 ) {
@@ -162,12 +162,18 @@ mod handle_text_tree_line_tests {
     #[rstest(
         input_dep_kind,
         expected_kind_group_name,
-        case(DepKind::Build, Some(String::from("[build-dependencies]"))),
-        case(DepKind::Development, Some(String::from("[dev-dependencies]"))),
-        case(DepKind::Normal, None)
+        case(
+            DependencyKind::Build,
+            Some(String::from("[build-dependencies]"))
+        ),
+        case(
+            DependencyKind::Development,
+            Some(String::from("[dev-dependencies]"))
+        ),
+        case(DependencyKind::Normal, None)
     )]
     fn handle_text_tree_line_extra_deps_group_test(
-        input_dep_kind: DepKind,
+        input_dep_kind: DependencyKind,
         expected_kind_group_name: Option<String>,
     ) {
         let mut table_lines = Vec::<String>::new();

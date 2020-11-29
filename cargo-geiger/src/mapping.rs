@@ -72,6 +72,12 @@ pub trait ToCargoCoreDepKind {
     fn to_cargo_core_dep_kind(&self) -> DepKind;
 }
 
+pub trait ToCargoGeigerDependencyKind {
+    fn to_cargo_geiger_dependency_kind(
+        &self,
+    ) -> cargo_geiger_serde::DependencyKind;
+}
+
 pub trait ToCargoGeigerPackageId {
     fn to_cargo_geiger_package_id(
         &self,

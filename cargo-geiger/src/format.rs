@@ -6,7 +6,7 @@ pub mod table;
 mod display;
 mod parse;
 
-use cargo::core::dependency::DepKind;
+use cargo_metadata::DependencyKind;
 use std::fmt;
 use std::str::{self, FromStr};
 use strum_macros::EnumIter;
@@ -79,11 +79,12 @@ impl fmt::Display for FormatError {
     }
 }
 
-pub fn get_kind_group_name(dep_kind: DepKind) -> Option<&'static str> {
+pub fn get_kind_group_name(dep_kind: DependencyKind) -> Option<&'static str> {
     match dep_kind {
-        DepKind::Build => Some("[build-dependencies]"),
-        DepKind::Development => Some("[dev-dependencies]"),
-        DepKind::Normal => None,
+        DependencyKind::Build => Some("[build-dependencies]"),
+        DependencyKind::Development => Some("[dev-dependencies]"),
+        DependencyKind::Normal => None,
+        _ => panic!("Unrecognised Dependency Kind"),
     }
 }
 
@@ -103,15 +104,15 @@ mod format_tests {
     #[rstest]
     fn get_kind_group_name_test() {
         assert_eq!(
-            get_kind_group_name(DepKind::Build),
+            get_kind_group_name(DependencyKind::Build),
             Some("[build-dependencies]")
         );
 
         assert_eq!(
-            get_kind_group_name(DepKind::Development),
+            get_kind_group_name(DependencyKind::Development),
             Some("[dev-dependencies]")
         );
 
-        assert_eq!(get_kind_group_name(DepKind::Normal), None);
+        assert_eq!(get_kind_group_name(DependencyKind::Normal), None);
     }
 }

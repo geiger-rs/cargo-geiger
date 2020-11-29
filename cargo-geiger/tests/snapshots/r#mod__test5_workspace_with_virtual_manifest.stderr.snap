@@ -1,8 +1,6 @@
 ---
-created: "2019-11-05T20:25:00.366323Z"
-creator: insta@0.10.1
 source: cargo-geiger/tests/mod.rs
 expression: stderr
 ---
-error: manifest path `{MANIFEST_PATH}` is a virtual manifest, but this command requires running against an actual package in this workspace
+manifest path `{MANIFEST_PATH}` is a virtual manifest, but this command requires running against an actual package in this workspace
 

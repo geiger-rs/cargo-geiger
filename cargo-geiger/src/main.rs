@@ -19,15 +19,14 @@ mod scan;
 mod tree;
 
 use crate::args::{Args, HELP};
-use crate::cli::{
-    get_cargo_metadata, get_krates, get_registry, get_workspace, resolve,
-};
+use crate::cli::{get_cargo_metadata, get_krates, get_workspace};
 use crate::graph::build_graph;
 use crate::mapping::{CargoMetadataParameters, QueryResolve};
 use crate::scan::scan;
 
 use cargo::core::shell::Shell;
-use cargo::{CliResult, Config};
+use cargo::util::important_paths;
+use cargo::{CliError, CliResult, Config};
 
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
@@ -52,21 +51,22 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     };
 
     let workspace = get_workspace(config, args.manifest_path.clone())?;
-    let root_package = workspace.current()?;
-    let mut registry = get_registry(config, &root_package)?;
 
-    let cargo_metadata_root_package_id =
-        cargo_metadata.root_package().unwrap().id.clone();
+    let cargo_metadata_root_package_id;
 
-    let (package_set, _) = resolve(
-        &args.features_args,
-        root_package.package_id(),
-        &mut registry,
-        &workspace,
-    )?;
+    if let Some(cargo_metadata_root_package) = cargo_metadata.root_package() {
+        cargo_metadata_root_package_id = cargo_metadata_root_package.id.clone();
+    } else {
+        eprintln!(
+            "manifest path `{}` is a virtual manifest, but this command requires running against an actual package in this workspace",
+            match args.manifest_path.clone() {
+                Some(path) => path,
+                None => important_paths::find_root_manifest_for_wd(config.cwd())?,
+            }.as_os_str().to_str().unwrap()
+        );
 
-    let package_ids = package_set.package_ids().collect::<Vec<_>>();
-    let package_set = registry.get(&package_ids)?;
+        return CliResult::Err(CliError::code(1));
+    }
 
     let graph = build_graph(
         args,
@@ -90,7 +90,6 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         &cargo_metadata_parameters,
         config,
         &graph,
-        &package_set,
         query_resolve_root_package_id,
         &workspace,
     )

@@ -3,7 +3,7 @@ pub mod traversal;
 use crate::format::print_config::{Prefix, PrintConfig};
 use crate::format::Charset;
 
-use cargo::core::dependency::DepKind;
+use cargo_metadata::DependencyKind;
 
 /// A step towards decoupling some parts of the table-tree printing from the
 /// dependency graph traversal.
@@ -16,7 +16,10 @@ pub enum TextTreeLine {
     },
     /// There are extra dependencies coming and we should print a group header,
     /// eg. "[build-dependencies]".
-    ExtraDepsGroup { kind: DepKind, tree_vines: String },
+    ExtraDepsGroup {
+        kind: DependencyKind,
+        tree_vines: String,
+    },
 }
 
 #[derive(Debug, PartialEq)]

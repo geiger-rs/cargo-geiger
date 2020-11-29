@@ -7,7 +7,8 @@ use crate::args::Args;
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
 use crate::mapping::{
-    CargoMetadataParameters, ToCargoCoreDepKind, ToCargoGeigerPackageId,
+    CargoMetadataParameters, ToCargoGeigerDependencyKind,
+    ToCargoGeigerPackageId,
 };
 
 pub use rs_file::RsFileMetricsWrapper;
@@ -15,12 +16,9 @@ pub use rs_file::RsFileMetricsWrapper;
 use default::scan_unsafe;
 use forbid::scan_forbid_unsafe;
 
-use cargo::core::dependency::DepKind;
-use cargo::core::{PackageSet, Workspace};
+use cargo::core::Workspace;
 use cargo::{CliResult, Config};
-use cargo_geiger_serde::{
-    CounterBlock, DependencyKind, PackageInfo, UnsafeInfo,
-};
+use cargo_geiger_serde::{CounterBlock, PackageInfo, UnsafeInfo};
 use petgraph::visit::EdgeRef;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -59,7 +57,6 @@ pub fn scan(
     cargo_metadata_parameters: &CargoMetadataParameters,
     config: &Config,
     graph: &Graph,
-    package_set: &PackageSet,
     root_package_id: cargo_metadata::PackageId,
     workspace: &Workspace,
 ) -> CliResult {
@@ -75,7 +72,6 @@ pub fn scan(
         scan_forbid_unsafe(
             cargo_metadata_parameters,
             &graph,
-            package_set,
             root_package_id,
             &scan_parameters,
         )
@@ -83,7 +79,6 @@ pub fn scan(
         scan_unsafe(
             cargo_metadata_parameters,
             &graph,
-            package_set,
             root_package_id,
             &scan_parameters,
             workspace,
@@ -193,9 +188,7 @@ fn package_metrics(
 
             package.add_dependency(
                 dep,
-                from_cargo_dependency_kind(
-                    edge.weight().to_cargo_core_dep_kind(),
-                ),
+                edge.weight().to_cargo_geiger_dependency_kind(),
             );
         }
         match geiger_context.package_id_to_metrics.get(&package_id) {
@@ -211,14 +204,6 @@ fn package_metrics(
     }
 
     package_metrics
-}
-
-fn from_cargo_dependency_kind(kind: DepKind) -> DependencyKind {
-    match kind {
-        DepKind::Normal => DependencyKind::Normal,
-        DepKind::Development => DependencyKind::Development,
-        DepKind::Build => DependencyKind::Build,
-    }
 }
 
 #[cfg(test)]

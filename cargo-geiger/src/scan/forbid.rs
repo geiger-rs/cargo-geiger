@@ -9,14 +9,12 @@ use super::{package_metrics, ScanMode, ScanParameters};
 use table::scan_forbid_to_table;
 
 use crate::mapping::CargoMetadataParameters;
-use cargo::core::PackageSet;
 use cargo::{CliResult, Config};
 use cargo_geiger_serde::{QuickReportEntry, QuickSafetyReport};
 
 pub fn scan_forbid_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
-    package_set: &PackageSet,
     root_package_id: cargo_metadata::PackageId,
     scan_parameters: &ScanParameters,
 ) -> CliResult {
@@ -26,7 +24,6 @@ pub fn scan_forbid_unsafe(
             scan_parameters.config,
             graph,
             output_format,
-            package_set,
             scan_parameters.print_config,
             root_package_id,
         ),
@@ -34,7 +31,6 @@ pub fn scan_forbid_unsafe(
             cargo_metadata_parameters,
             scan_parameters.config,
             graph,
-            package_set,
             scan_parameters.print_config,
             root_package_id,
         ),
@@ -46,7 +42,6 @@ fn scan_forbid_to_report(
     config: &Config,
     graph: &Graph,
     output_format: OutputFormat,
-    package_set: &PackageSet,
     print_config: &PrintConfig,
     root_package_id: cargo_metadata::PackageId,
 ) -> CliResult {
@@ -54,7 +49,6 @@ fn scan_forbid_to_report(
         cargo_metadata_parameters,
         config,
         ScanMode::EntryPointsOnly,
-        package_set,
         print_config,
     )?;
     let mut report = QuickSafetyReport::default();

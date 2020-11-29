@@ -61,7 +61,7 @@ pub fn build_graph<'a>(
         &config_host,
         &args.deps_args,
         &args.target_args,
-    )?;
+    );
     let cfgs = get_cfgs(config, &args.target_args.target, &workspace)?;
 
     let mut graph = Graph {
@@ -88,7 +88,7 @@ pub fn build_graph<'a>(
             &graph_configuration,
             &mut graph,
             &mut pending_packages,
-        )?;
+        );
     }
 
     Ok(graph)
@@ -126,7 +126,7 @@ fn add_package_dependencies_to_graph(
     graph_configuration: &GraphConfiguration,
     graph: &mut Graph,
     pending_packages: &mut Vec<cargo_metadata::PackageId>,
-) -> CargoResult<()> {
+) {
     let index = graph.nodes[&package_id];
     let package = cargo_metadata_parameters
         .krates
@@ -177,15 +177,13 @@ fn add_package_dependencies_to_graph(
             );
         }
     }
-
-    Ok(())
 }
 
 fn build_graph_prerequisites<'a>(
     config_host: &'a InternedString,
     deps_args: &'a DepsArgs,
     target_args: &'a TargetArgs,
-) -> CargoResult<(ExtraDeps, Option<&'a str>)> {
+) -> (ExtraDeps, Option<&'a str>) {
     let extra_deps = if deps_args.all_deps {
         ExtraDeps::All
     } else if deps_args.build_deps {
@@ -202,7 +200,7 @@ fn build_graph_prerequisites<'a>(
         Some(target_args.target.as_deref().unwrap_or(&config_host))
     };
 
-    Ok((extra_deps, target))
+    (extra_deps, target)
 }
 
 #[cfg(test)]
@@ -279,14 +277,12 @@ mod graph_tests {
         let config_host = InternedString::new("config_host");
         let target_args = TargetArgs::default();
 
-        let result = build_graph_prerequisites(
+        let (extra_deps, _) = build_graph_prerequisites(
             &config_host,
             &input_deps_args,
             &target_args,
         );
 
-        assert!(result.is_ok());
-        let (extra_deps, _) = result.unwrap();
         assert_eq!(extra_deps, expected_extra_deps);
     }
 
@@ -321,14 +317,12 @@ mod graph_tests {
         let config_host = InternedString::new("default_config_host");
         let deps_args = DepsArgs::default();
 
-        let result = build_graph_prerequisites(
+        let (_, target) = build_graph_prerequisites(
             &config_host,
             &deps_args,
             &input_target_args,
         );
 
-        assert!(result.is_ok());
-        let (_, target) = result.unwrap();
         assert_eq!(target, expected_target);
     }
 }

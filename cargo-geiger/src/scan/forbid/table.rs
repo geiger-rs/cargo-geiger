@@ -11,7 +11,6 @@ use super::super::find::find_unsafe;
 use super::super::ScanMode;
 
 use crate::scan::GeigerContext;
-use cargo::core::PackageSet;
 use cargo::{CliResult, Config};
 use colored::Colorize;
 
@@ -19,7 +18,6 @@ pub fn scan_forbid_to_table(
     cargo_metadata_parameters: &CargoMetadataParameters,
     config: &Config,
     graph: &Graph,
-    package_set: &PackageSet,
     print_config: &PrintConfig,
     root_package_id: cargo_metadata::PackageId,
 ) -> CliResult {
@@ -55,7 +53,6 @@ pub fn scan_forbid_to_table(
                     cargo_metadata_parameters,
                     config,
                     ScanMode::EntryPointsOnly,
-                    package_set,
                     print_config,
                 )?;
 
@@ -67,7 +64,7 @@ pub fn scan_forbid_to_table(
                     print_config,
                     &mut scan_output_lines,
                     tree_vines,
-                )?;
+                );
             }
         }
     }
@@ -124,7 +121,7 @@ fn handle_package_text_tree_line(
     print_config: &PrintConfig,
     scan_output_lines: &mut Vec<String>,
     tree_vines: String,
-) -> CliResult {
+) {
     let sym_lock = emoji_symbols.emoji(SymbolKind::Lock);
     let sym_qmark = emoji_symbols.emoji(SymbolKind::QuestionMark);
 
@@ -148,8 +145,6 @@ fn handle_package_text_tree_line(
         (&sym_qmark, name.red())
     };
     scan_output_lines.push(format!("{} {}{}", symbol, tree_vines, name));
-
-    Ok(())
 }
 
 #[cfg(test)]
