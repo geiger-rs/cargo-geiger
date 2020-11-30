@@ -10,13 +10,14 @@ use super::construct_tree_vines_string;
 use dependency_kind::walk_dependency_kind;
 use dependency_node::walk_dependency_node;
 
+use cargo_metadata::PackageId;
 use std::collections::HashSet;
 
 pub struct WalkDependencyParameters<'a> {
     pub graph: &'a Graph,
     pub levels_continue: &'a mut Vec<bool>,
     pub print_config: &'a PrintConfig,
-    pub visited_deps: &'a mut HashSet<cargo_metadata::PackageId>,
+    pub visited_deps: &'a mut HashSet<PackageId>,
 }
 
 /// Printing the returned TextTreeLines in order is expected to produce a nice
@@ -29,7 +30,7 @@ pub fn walk_dependency_tree(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
     print_config: &PrintConfig,
-    root_package_id: cargo_metadata::PackageId,
+    root_package_id: PackageId,
 ) -> Vec<TextTreeLine> {
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];

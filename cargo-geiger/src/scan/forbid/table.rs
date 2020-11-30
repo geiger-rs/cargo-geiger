@@ -4,14 +4,15 @@ use crate::format::print_config::PrintConfig;
 use crate::format::{get_kind_group_name, SymbolKind};
 use crate::graph::Graph;
 use crate::mapping::CargoMetadataParameters;
+use crate::scan::GeigerContext;
 use crate::tree::traversal::walk_dependency_tree;
 use crate::tree::TextTreeLine;
 
 use super::super::find::find_unsafe;
 use super::super::ScanMode;
 
-use crate::scan::GeigerContext;
 use cargo::{CliResult, Config};
+use cargo_metadata::PackageId;
 use colored::Colorize;
 
 pub fn scan_forbid_to_table(
@@ -19,7 +20,7 @@ pub fn scan_forbid_to_table(
     config: &Config,
     graph: &Graph,
     print_config: &PrintConfig,
-    root_package_id: cargo_metadata::PackageId,
+    root_package_id: PackageId,
 ) -> CliResult {
     let mut scan_output_lines = Vec::<String>::new();
     let emoji_symbols = EmojiSymbols::new(print_config.charset);
@@ -104,7 +105,7 @@ fn construct_key_lines(emoji_symbols: &EmojiSymbols) -> Vec<String> {
 
 fn format_package_name(
     cargo_metadata_parameters: &CargoMetadataParameters,
-    package_id: &cargo_metadata::PackageId,
+    package_id: &PackageId,
     pattern: &Pattern,
 ) -> String {
     format!(
@@ -117,7 +118,7 @@ fn handle_package_text_tree_line(
     cargo_metadata_parameters: &CargoMetadataParameters,
     emoji_symbols: &EmojiSymbols,
     geiger_ctx: &GeigerContext,
-    package_id: cargo_metadata::PackageId,
+    package_id: PackageId,
     print_config: &PrintConfig,
     scan_output_lines: &mut Vec<String>,
     tree_vines: String,

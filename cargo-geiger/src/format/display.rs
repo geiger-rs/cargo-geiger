@@ -7,12 +7,13 @@ use crate::mapping::{
     GetRepositoryFromCargoMetadataPackageId,
 };
 
+use cargo_metadata::PackageId;
 use std::fmt;
 
 pub struct Display<'a> {
     pub cargo_metadata_parameters: &'a CargoMetadataParameters<'a>,
     pub pattern: &'a Pattern,
-    pub package: &'a cargo_metadata::PackageId,
+    pub package: &'a PackageId,
 }
 
 impl<'a> fmt::Display for Display<'a> {

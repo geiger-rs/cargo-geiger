@@ -19,11 +19,12 @@ use cargo::core::Workspace;
 use cargo::ops::CompileOptions;
 use cargo::{CliError, CliResult, Config};
 use cargo_geiger_serde::{ReportEntry, SafetyReport};
+use cargo_metadata::PackageId;
 
 pub fn scan_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
-    root_package_id: cargo_metadata::PackageId,
+    root_package_id: PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
 ) -> CliResult {
@@ -111,7 +112,7 @@ fn scan_to_report(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
     output_format: OutputFormat,
-    root_package_id: cargo_metadata::PackageId,
+    root_package_id: PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
 ) -> CliResult {
