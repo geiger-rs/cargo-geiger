@@ -8,7 +8,7 @@ use cargo::core::Workspace;
 use cargo::util::interning::InternedString;
 use cargo::util::CargoResult;
 use cargo::Config;
-use cargo_metadata::DependencyKind;
+use cargo_metadata::{DependencyKind, PackageId};
 use cargo_platform::{Cfg, Platform};
 use petgraph::graph::NodeIndex;
 use std::collections::hash_map::Entry;
@@ -39,11 +39,8 @@ impl ExtraDeps {
 
 /// Representation of the package dependency graph
 pub struct Graph {
-    pub graph: petgraph::Graph<
-        cargo_metadata::PackageId,
-        cargo_metadata::DependencyKind,
-    >,
-    pub nodes: HashMap<cargo_metadata::PackageId, NodeIndex>,
+    pub graph: petgraph::Graph<PackageId, cargo_metadata::DependencyKind>,
+    pub nodes: HashMap<PackageId, NodeIndex>,
 }
 
 // Almost unmodified compared to the original in cargo-tree, should be fairly
@@ -53,7 +50,7 @@ pub fn build_graph<'a>(
     args: &Args,
     cargo_metadata_parameters: &'a CargoMetadataParameters,
     config: &Config,
-    root_package_id: cargo_metadata::PackageId,
+    root_package_id: PackageId,
     workspace: &Workspace,
 ) -> CargoResult<Graph> {
     let config_host = config.load_global_rustc(Some(&workspace))?.host;
@@ -102,10 +99,10 @@ struct GraphConfiguration<'a> {
 
 fn add_graph_node_if_not_present_and_edge(
     dependency: &cargo_metadata::Dependency,
-    dependency_package_id: cargo_metadata::PackageId,
+    dependency_package_id: PackageId,
     graph: &mut Graph,
     index: NodeIndex,
-    pending_packages: &mut Vec<cargo_metadata::PackageId>,
+    pending_packages: &mut Vec<PackageId>,
 ) {
     let dependency_index =
         match graph.nodes.entry(dependency_package_id.clone()) {
@@ -122,10 +119,10 @@ fn add_graph_node_if_not_present_and_edge(
 
 fn add_package_dependencies_to_graph(
     cargo_metadata_parameters: &CargoMetadataParameters,
-    package_id: cargo_metadata::PackageId,
+    package_id: PackageId,
     graph_configuration: &GraphConfiguration,
     graph: &mut Graph,
-    pending_packages: &mut Vec<cargo_metadata::PackageId>,
+    pending_packages: &mut Vec<PackageId>,
 ) {
     let index = graph.nodes[&package_id];
     let package = cargo_metadata_parameters

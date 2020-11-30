@@ -2,22 +2,23 @@ mod table;
 
 use crate::format::print_config::{OutputFormat, PrintConfig};
 use crate::graph::Graph;
+use crate::mapping::CargoMetadataParameters;
 
 use super::find::find_unsafe;
 use super::{package_metrics, ScanMode, ScanParameters};
 
 use table::scan_forbid_to_table;
 
-use crate::mapping::CargoMetadataParameters;
-use cargo::{CliResult, Config};
+use cargo::{CliError, Config};
 use cargo_geiger_serde::{QuickReportEntry, QuickSafetyReport};
+use cargo_metadata::PackageId;
 
 pub fn scan_forbid_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
     graph: &Graph,
-    root_package_id: cargo_metadata::PackageId,
+    root_package_id: PackageId,
     scan_parameters: &ScanParameters,
-) -> CliResult {
+) -> Result<Vec<String>, CliError> {
     match scan_parameters.args.output_format {
         Some(output_format) => scan_forbid_to_report(
             cargo_metadata_parameters,
@@ -43,8 +44,8 @@ fn scan_forbid_to_report(
     graph: &Graph,
     output_format: OutputFormat,
     print_config: &PrintConfig,
-    root_package_id: cargo_metadata::PackageId,
-) -> CliResult {
+    root_package_id: PackageId,
+) -> Result<Vec<String>, CliError> {
     let geiger_context = find_unsafe(
         cargo_metadata_parameters,
         config,
@@ -79,6 +80,6 @@ fn scan_forbid_to_report(
     let s = match output_format {
         OutputFormat::Json => serde_json::to_string(&report).unwrap(),
     };
-    println!("{}", s);
-    Ok(())
+
+    Ok(vec![s])
 }

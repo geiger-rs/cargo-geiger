@@ -1,9 +1,10 @@
 use crate::format::parse::Parser;
 use crate::format::{Chunk, RawChunk};
+use crate::mapping::CargoMetadataParameters;
 
 use super::display::Display;
 
-use crate::mapping::CargoMetadataParameters;
+use cargo_metadata::PackageId;
 use std::error::Error;
 
 #[derive(Debug, PartialEq)]
@@ -13,7 +14,7 @@ impl Pattern {
     pub fn display<'a>(
         &'a self,
         cargo_metadata_parameters: &'a CargoMetadataParameters,
-        package: &'a cargo_metadata::PackageId,
+        package: &'a PackageId,
     ) -> Display<'a> {
         Display {
             cargo_metadata_parameters,

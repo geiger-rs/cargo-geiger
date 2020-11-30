@@ -25,6 +25,7 @@ geiger = { path = "../geiger", version = "0.4.5" }
 krates = "0.5.0"
 petgraph = "0.5.1"
 pico-args = "0.3.3"
+regex = "1.4.2"
 serde = { version = "1.0.116", features = ["derive"] }
 serde_json = "1.0.57"
 strum = "0.19.2"

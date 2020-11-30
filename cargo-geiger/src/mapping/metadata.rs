@@ -1,16 +1,14 @@
 use super::{
     DepsNotReplaced, GetPackageNameFromCargoMetadataPackageId,
     GetPackageVersionFromCargoMetadataPackageId, GetRoot,
-    MatchesIgnoringSource, ToCargoCoreDepKind, ToCargoGeigerPackageId,
-    ToCargoMetadataPackageId,
+    MatchesIgnoringSource, ToCargoGeigerPackageId, ToCargoMetadataPackageId,
 };
 
 use crate::mapping::{
     ToCargoGeigerDependencyKind, ToCargoGeigerSource, ToCargoMetadataPackage,
 };
 
-use cargo::core::dependency::DepKind;
-use cargo_metadata::{DependencyKind, Metadata};
+use cargo_metadata::{DependencyKind, Metadata, PackageId};
 use krates::Krates;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -24,6 +22,7 @@ impl DepsNotReplaced for cargo_metadata::Metadata {
         HashSet<cargo_metadata::Dependency>,
     )> {
         let mut cargo_metadata_deps_not_replaced = vec![];
+        let mut package_id_hashset = HashSet::<PackageId>::new();
 
         for dep in package_id
             .to_cargo_metadata_package(self)
@@ -31,10 +30,13 @@ impl DepsNotReplaced for cargo_metadata::Metadata {
             .dependencies
         {
             if let Some(package_id) = dep.to_cargo_metadata_package_id(self) {
-                cargo_metadata_deps_not_replaced.push((
-                    package_id,
-                    HashSet::<cargo_metadata::Dependency>::new(),
-                ))
+                if !package_id_hashset.contains(&package_id) {
+                    cargo_metadata_deps_not_replaced.push((
+                        package_id.clone(),
+                        HashSet::<cargo_metadata::Dependency>::new(),
+                    ));
+                    package_id_hashset.insert(package_id);
+                }
             }
         }
 
@@ -65,17 +67,6 @@ impl MatchesIgnoringSource for cargo_metadata::Dependency {
                     )
                     .unwrap(),
             )
-    }
-}
-
-impl ToCargoCoreDepKind for DependencyKind {
-    fn to_cargo_core_dep_kind(&self) -> DepKind {
-        match self {
-            DependencyKind::Build => DepKind::Build,
-            DependencyKind::Development => DepKind::Development,
-            DependencyKind::Normal => DepKind::Normal,
-            _ => panic!("Unknown dependency kind"),
-        }
     }
 }
 
@@ -146,11 +137,14 @@ impl ToCargoMetadataPackage for cargo_metadata::PackageId {
 mod metadata_tests {
     use super::*;
 
-    use super::super::GetPackageNameFromCargoMetadataPackageId;
+    use super::super::{
+        GetPackageNameFromCargoMetadataPackageId, ToCargoCoreDepKind,
+    };
 
     use crate::args::FeaturesArgs;
     use crate::cli::get_workspace;
 
+    use cargo::core::dependency::DepKind;
     use cargo::core::registry::PackageRegistry;
     use cargo::core::resolver::ResolveOpts;
     use cargo::core::{
@@ -347,5 +341,36 @@ mod metadata_tests {
             PackageRegistry::new(workspace.config())?,
         )?;
         Ok((packages, resolve))
+    }
+
+    impl ToCargoCoreDepKind for DependencyKind {
+        fn to_cargo_core_dep_kind(&self) -> DepKind {
+            match self {
+                DependencyKind::Build => DepKind::Build,
+                DependencyKind::Development => DepKind::Development,
+                DependencyKind::Normal => DepKind::Normal,
+                _ => panic!("Unknown dependency kind"),
+            }
+        }
+    }
+
+    impl ToCargoMetadataPackageId for PackageId {
+        fn to_cargo_metadata_package_id(
+            &self,
+            metadata: &Metadata,
+        ) -> Option<cargo_metadata::PackageId> {
+            metadata
+                .packages
+                .iter()
+                .filter(|p| {
+                    p.name == self.name().to_string()
+                        && p.version.major == self.version().major
+                        && p.version.minor == self.version().minor
+                        && p.version.patch == self.version().patch
+                })
+                .map(|p| p.id.clone())
+                .collect::<Vec<cargo_metadata::PackageId>>()
+                .pop()
+        }
     }
 }
