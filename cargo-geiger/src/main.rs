@@ -15,6 +15,7 @@ mod cli;
 mod format;
 mod graph;
 mod mapping;
+mod readme;
 mod scan;
 mod tree;
 
@@ -27,6 +28,7 @@ use crate::scan::scan;
 use cargo::core::shell::Shell;
 use cargo::util::important_paths;
 use cargo::{CliError, CliResult, Config};
+use readme::create_or_replace_section_in_readme;
 
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
@@ -85,14 +87,30 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         },
     );
 
-    scan(
+    let scan_output_lines = scan(
         args,
         &cargo_metadata_parameters,
         config,
         &graph,
         query_resolve_root_package_id,
         &workspace,
-    )
+    )?;
+
+    if args.update_readme {
+        let mut current_dir_path_buf = std::env::current_dir().unwrap();
+        current_dir_path_buf.push(readme::README_FILENAME);
+
+        create_or_replace_section_in_readme(
+            current_dir_path_buf,
+            &scan_output_lines,
+        )?;
+    } else {
+        for scan_output_line in scan_output_lines {
+            println!("{}", scan_output_line);
+        }
+    }
+
+    Ok(())
 }
 
 fn main() {

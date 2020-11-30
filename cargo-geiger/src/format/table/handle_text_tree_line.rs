@@ -8,12 +8,12 @@ use super::total_package_counts::TotalPackageCounts;
 use super::TableParameters;
 use super::{table_row, table_row_empty};
 
-use cargo_metadata::DependencyKind;
+use cargo_metadata::{DependencyKind, PackageId};
 use std::collections::HashSet;
 
 pub struct HandlePackageParameters<'a> {
     pub total_package_counts: &'a mut TotalPackageCounts,
-    pub visited_package_ids: &'a mut HashSet<cargo_metadata::PackageId>,
+    pub visited_package_ids: &'a mut HashSet<PackageId>,
     pub warning_count: &'a mut u64,
 }
 
@@ -36,7 +36,7 @@ pub fn handle_text_tree_line_package(
     cargo_metadata_parameters: &CargoMetadataParameters,
     emoji_symbols: &EmojiSymbols,
     handle_package_parameters: &mut HandlePackageParameters,
-    package_id: cargo_metadata::PackageId,
+    package_id: PackageId,
     table_lines: &mut Vec<String>,
     table_parameters: &TableParameters,
     tree_vines: String,
