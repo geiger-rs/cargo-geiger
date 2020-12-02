@@ -15,7 +15,7 @@ const CARGO_GEIGER_SAFETY_REPORT_SECTION_HEADER: &str =
 /// the section if it already exists
 pub fn create_or_replace_section_in_readme(
     readme_file_path: PathBuf,
-    scan_output_lines: &Vec<String>,
+    scan_output_lines: &[String],
 ) -> CliResult {
     if !readme_file_path.exists() {
         eprintln!(
@@ -33,7 +33,7 @@ pub fn create_or_replace_section_in_readme(
 
     update_readme_content(&mut readme_content, scan_output_lines);
 
-    let mut readme_file = File::create(readme_file_path.clone()).unwrap();
+    let mut readme_file = File::create(readme_file_path).unwrap();
 
     for line in readme_content {
         writeln!(readme_file, "{}", line).unwrap();
@@ -46,7 +46,7 @@ pub fn create_or_replace_section_in_readme(
 /// the Section is not present, -1 is returned for both values, and if the Section is the last
 /// section present, then the last index is -1
 fn find_start_and_end_lines_of_safety_report_section(
-    readme_content: &Vec<String>,
+    readme_content: &[String],
 ) -> (i32, i32) {
     let mut start_line_number = -1;
     let mut end_line_number = -1;
@@ -76,7 +76,7 @@ fn find_start_and_end_lines_of_safety_report_section(
 /// header
 fn update_readme_content(
     readme_content: &mut Vec<String>,
-    scan_result: &Vec<String>,
+    scan_result: &[String],
 ) {
     let (start_line_number, end_line_number) =
         find_start_and_end_lines_of_safety_report_section(&readme_content);
@@ -152,7 +152,7 @@ mod readme_tests {
         assert!(result.is_ok());
 
         let updated_file_content =
-            BufReader::new(File::open(readme_file_path.clone()).unwrap())
+            BufReader::new(File::open(readme_file_path).unwrap())
                 .lines()
                 .map(|l| l.unwrap())
                 .collect::<Vec<String>>();
