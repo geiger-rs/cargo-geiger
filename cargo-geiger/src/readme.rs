@@ -71,7 +71,9 @@ fn find_start_and_end_lines_of_safety_report_section(
     (start_line_number, end_line_number)
 }
 
-/// Update the content of a README.md with a Scan Result
+/// Update the content of a README.md with a Scan Result. When the section doesn't exist, it will
+/// be created with an `h2` level header, otherwise it will preserve the level of the existing
+/// header
 fn update_readme_content(
     readme_content: &mut Vec<String>,
     scan_result: &Vec<String>,
