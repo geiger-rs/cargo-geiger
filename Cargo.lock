@@ -569,7 +569,9 @@ version = "0.4.5"
 dependencies = [
  "cargo-geiger-serde",
  "proc-macro2",
+ "rstest",
  "syn",
+ "tempfile",
 ]
 
 [[package]]
