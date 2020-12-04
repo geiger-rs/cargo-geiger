@@ -17,7 +17,7 @@ use default::scan_unsafe;
 use forbid::scan_forbid_unsafe;
 
 use cargo::core::Workspace;
-use cargo::{CliResult, Config};
+use cargo::{CliError, Config};
 use cargo_geiger_serde::{CounterBlock, PackageInfo, UnsafeInfo};
 use cargo_metadata::PackageId;
 use petgraph::visit::EdgeRef;
@@ -59,7 +59,7 @@ pub fn scan(
     graph: &Graph,
     root_package_id: PackageId,
     workspace: &Workspace,
-) -> CliResult {
+) -> Result<Vec<String>, CliError> {
     let print_config = PrintConfig::new(args)?;
 
     let scan_parameters = ScanParameters {

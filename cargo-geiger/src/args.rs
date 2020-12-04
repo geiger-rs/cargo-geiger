@@ -33,6 +33,9 @@ OPTIONS:
     --format <FORMAT>             Format string used for printing dependencies
                                   [default: {p}].
     --json                        Output in JSON format.
+    --update-readme               Writes output to README.md. Looks for a Safety
+                                  Report section, replaces if found, adds if not.
+                                  Throws an error if no README.md exists.
     -v, --verbose                 Use verbose output (-vv very verbose/build.rs
                                   output).
     -q, --quiet                   No output printed to stdout other than the
@@ -79,6 +82,7 @@ pub struct Args {
     pub quiet: bool,
     pub target_args: TargetArgs,
     pub unstable_flags: Vec<String>,
+    pub update_readme: bool,
     pub verbose: u32,
     pub version: bool,
     pub output_format: Option<OutputFormat>,
@@ -129,6 +133,7 @@ impl Args {
                 .opt_value_from_str("-Z")?
                 .map(|s: String| s.split(' ').map(|s| s.to_owned()).collect())
                 .unwrap_or_else(Vec::new),
+            update_readme: raw_args.contains("--update-readme"),
             verbose: match (
                 raw_args.contains("-vv"),
                 raw_args.contains(["-v", "--verbose"]),

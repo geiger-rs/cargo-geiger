@@ -11,7 +11,7 @@ use crate::tree::TextTreeLine;
 use super::super::find::find_unsafe;
 use super::super::ScanMode;
 
-use cargo::{CliResult, Config};
+use cargo::{CliError, Config};
 use cargo_metadata::PackageId;
 use colored::Colorize;
 
@@ -21,7 +21,7 @@ pub fn scan_forbid_to_table(
     graph: &Graph,
     print_config: &PrintConfig,
     root_package_id: PackageId,
-) -> CliResult {
+) -> Result<Vec<String>, CliError> {
     let mut scan_output_lines = Vec::<String>::new();
     let emoji_symbols = EmojiSymbols::new(print_config.charset);
 
@@ -70,11 +70,7 @@ pub fn scan_forbid_to_table(
         }
     }
 
-    for scan_output_line in scan_output_lines {
-        println!("{}", scan_output_line);
-    }
-
-    Ok(())
+    Ok(scan_output_lines)
 }
 
 fn construct_key_lines(emoji_symbols: &EmojiSymbols) -> Vec<String> {

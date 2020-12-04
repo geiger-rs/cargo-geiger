@@ -17,7 +17,7 @@ use table::scan_to_table;
 use cargo::core::compiler::CompileMode;
 use cargo::core::Workspace;
 use cargo::ops::CompileOptions;
-use cargo::{CliError, CliResult, Config};
+use cargo::{CliError, Config};
 use cargo_geiger_serde::{ReportEntry, SafetyReport};
 use cargo_metadata::PackageId;
 
@@ -27,7 +27,7 @@ pub fn scan_unsafe(
     root_package_id: PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
-) -> CliResult {
+) -> Result<Vec<String>, CliError> {
     match scan_parameters.args.output_format {
         Some(output_format) => scan_to_report(
             cargo_metadata_parameters,
@@ -115,7 +115,7 @@ fn scan_to_report(
     root_package_id: PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
-) -> CliResult {
+) -> Result<Vec<String>, CliError> {
     let ScanDetails {
         rs_files_used,
         geiger_context,
@@ -148,8 +148,7 @@ fn scan_to_report(
     let s = match output_format {
         OutputFormat::Json => serde_json::to_string(&report).unwrap(),
     };
-    println!("{}", s);
-    Ok(())
+    Ok(vec![s])
 }
 
 #[cfg(test)]

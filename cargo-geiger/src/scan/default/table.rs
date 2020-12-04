@@ -15,7 +15,7 @@ use super::scan;
 
 use cargo::core::shell::Verbosity;
 use cargo::core::Workspace;
-use cargo::{CliError, CliResult};
+use cargo::CliError;
 use cargo_metadata::PackageId;
 use colored::Colorize;
 use std::error::Error;
@@ -27,7 +27,7 @@ pub fn scan_to_table(
     root_package_id: PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
-) -> CliResult {
+) -> Result<Vec<String>, CliError> {
     let mut scan_output_lines = Vec::<String>::new();
 
     let ScanDetails {
@@ -65,10 +65,6 @@ pub fn scan_to_table(
         );
     scan_output_lines.append(&mut table_lines);
 
-    for scan_output_line in scan_output_lines {
-        println!("{}", scan_output_line);
-    }
-
     let used_but_not_scanned =
         list_files_used_but_not_scanned(&geiger_context, &rs_files_used);
     warning_count += used_but_not_scanned.len() as u64;
@@ -85,7 +81,7 @@ pub fn scan_to_table(
             1,
         ))
     } else {
-        Ok(())
+        Ok(scan_output_lines)
     }
 }
 
