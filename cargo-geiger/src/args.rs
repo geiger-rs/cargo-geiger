@@ -34,9 +34,12 @@ OPTIONS:
     --format <FORMAT>             Format string used for printing dependencies
                                   [default: {p}].
     --json                        Output in JSON format.
-    --update-readme               Writes output to README.md. Looks for a Safety
+    --update-readme               Writes output to ./README.md. Looks for a Safety
                                   Report section, replaces if found, adds if not.
                                   Throws an error if no README.md exists.
+        --readme-path <PATH>      Path of README.md file to be written to.
+        --section-name <NAME>     The section name in the README.md to be written
+                                  to.
     -v, --verbose                 Use verbose output (-vv very verbose/build.rs
                                   output).
     -q, --quiet                   No output printed to stdout other than the
@@ -46,7 +49,7 @@ OPTIONS:
         --locked                  Require Cargo.lock is up to date.
         --offline                 Run without accessing the network.
     -Z \"<FLAG>...\"                Unstable (nightly-only) flags to Cargo.
-        --include-tests           Count unsafe usage in tests..
+        --include-tests           Count unsafe usage in tests.
         --build-dependencies      Also analyze build dependencies.
         --dev-dependencies        Also analyze dev dependencies.
         --all-dependencies        Analyze all dependencies, including build and
@@ -81,9 +84,9 @@ pub struct Args {
     pub package: Option<String>,
     pub prefix_depth: bool,
     pub quiet: bool,
+    pub readme_args: ReadmeArgs,
     pub target_args: TargetArgs,
     pub unstable_flags: Vec<String>,
-    pub update_readme: bool,
     pub verbose: u32,
     pub version: bool,
     pub output_format: Option<OutputFormat>,
@@ -133,6 +136,11 @@ impl Args {
             package: raw_args.opt_value_from_str("--manifest-path")?,
             prefix_depth: raw_args.contains("--prefix-depth"),
             quiet: raw_args.contains(["-q", "--quiet"]),
+            readme_args: ReadmeArgs {
+                readme_path: raw_args.opt_value_from_str("--readme-path")?,
+                section_name: raw_args.opt_value_from_str("--section-name")?,
+                update_readme: raw_args.contains("--update-readme"),
+            },
             target_args: TargetArgs {
                 all_targets: raw_args.contains("--all-targets"),
                 target: raw_args.opt_value_from_str("--target")?,
@@ -141,7 +149,6 @@ impl Args {
                 .opt_value_from_str("-Z")?
                 .map(|s: String| s.split(' ').map(|s| s.to_owned()).collect())
                 .unwrap_or_else(Vec::new),
-            update_readme: raw_args.contains("--update-readme"),
             verbose: match (
                 raw_args.contains("-vv"),
                 raw_args.contains(["-v", "--verbose"]),
@@ -195,24 +202,31 @@ impl Args {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct DepsArgs {
     pub all_deps: bool,
     pub build_deps: bool,
     pub dev_deps: bool,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct FeaturesArgs {
     pub all_features: bool,
     pub features: Vec<String>,
     pub no_default_features: bool,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct TargetArgs {
     pub all_targets: bool,
     pub target: Option<String>,
+}
+
+#[derive(Debug, Default)]
+pub struct ReadmeArgs {
+    pub readme_path: Option<PathBuf>,
+    pub section_name: Option<String>,
+    pub update_readme: bool,
 }
 
 fn parse_features(raw_features: Option<String>) -> Vec<String> {

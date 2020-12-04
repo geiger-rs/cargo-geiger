@@ -1,0 +1,24 @@
+---
+source: cargo-geiger/tests/readme_integration_tests.rs
+expression: readme_content
+---
+## Test Section Name
+
+Metric output format: x/y
+    x = unsafe code used by the build
+    y = total unsafe code found in the crate
+
+Symbols: 
+    :) = No `unsafe` usage found, declares #![forbid(unsafe_code)]
+    ?  = No `unsafe` usage found, missing #![forbid(unsafe_code)]
+    !  = `unsafe` usage found
+
+Functions  Expressions  Impls  Traits  Methods  Dependency
+
+0/0        0/0          0/0    0/0     0/0      :) test7_package_with_patched_dep 0.1.0
+0/0        0/0          0/0    0/0     0/0      ?  `-- num_cpus 1.10.1
+1/1        2/2          0/0    0/0     0/0      !      `-- test1_package_with_no_deps 0.1.0
+
+1/1        2/2          0/0    0/0     0/0    
+
+

@@ -1,3 +1,5 @@
+use crate::args::ReadmeArgs;
+
 use cargo::{CliError, CliResult};
 use regex::Regex;
 use std::fs::File;
@@ -14,26 +16,29 @@ const CARGO_GEIGER_SAFETY_REPORT_SECTION_HEADER: &str =
 /// of a scan, either create a section containing the scan result if one does not exist, or replace
 /// the section if it already exists
 pub fn create_or_replace_section_in_readme(
-    readme_file_path: PathBuf,
+    readme_args: &ReadmeArgs,
     scan_output_lines: &[String],
 ) -> CliResult {
-    if !readme_file_path.exists() {
+    let readme_path_buf =
+        get_readme_path_buf_from_arguments_or_default(readme_args);
+
+    if !readme_path_buf.exists() {
         eprintln!(
             "File {} does not exist. To construct a Cargo Geiger Safety Report section, please first create a README.",
-            readme_file_path.to_str().unwrap()
+            readme_path_buf.to_str().unwrap()
         );
         return CliResult::Err(CliError::code(1));
     }
 
     let mut readme_content =
-        BufReader::new(File::open(readme_file_path.clone()).unwrap())
+        BufReader::new(File::open(readme_path_buf.clone()).unwrap())
             .lines()
             .map(|l| l.unwrap())
             .collect::<Vec<String>>();
 
-    update_readme_content(&mut readme_content, scan_output_lines);
+    update_readme_content(readme_args, &mut readme_content, scan_output_lines);
 
-    let mut readme_file = File::create(readme_file_path).unwrap();
+    let mut readme_file = File::create(readme_path_buf).unwrap();
 
     for line in readme_content {
         writeln!(readme_file, "{}", line).unwrap();
@@ -46,13 +51,14 @@ pub fn create_or_replace_section_in_readme(
 /// the Section is not present, -1 is returned for both values, and if the Section is the last
 /// section present, then the last index is -1
 fn find_start_and_end_lines_of_safety_report_section(
+    readme_args: &ReadmeArgs,
     readme_content: &[String],
 ) -> (i32, i32) {
     let mut start_line_number = -1;
     let mut end_line_number = -1;
 
     let start_line_pattern =
-        Regex::new("#+\\sCargo\\sGeiger\\sSafety\\sReport\\s*").unwrap();
+        construct_regex_expression_for_section_header(readme_args);
 
     let end_line_pattern = Regex::new("#+.*").unwrap();
 
@@ -71,21 +77,70 @@ fn find_start_and_end_lines_of_safety_report_section(
     (start_line_number, end_line_number)
 }
 
+/// Constructs a regex expression for the Section Name if provided as an argument,
+/// otherwise returns a regex expression for the default Section Name
+fn construct_regex_expression_for_section_header(
+    readme_args: &ReadmeArgs,
+) -> Regex {
+    match &readme_args.section_name {
+        Some(section_name) => {
+            let mut regex_string = String::from("#+\\s");
+            regex_string.push_str(&section_name.replace(' ', "\\s"));
+            regex_string.push_str("\\s*");
+
+            Regex::new(&regex_string).unwrap()
+        }
+        None => {
+            Regex::new("#+\\sCargo\\sGeiger\\sSafety\\sReport\\s*").unwrap()
+        }
+    }
+}
+
+/// Returns the `PathBuf` passed in as an argument value if one exists, otherwise
+/// returns the `PathBuf` to a file `README.md` in the current directory
+fn get_readme_path_buf_from_arguments_or_default(
+    readme_args: &ReadmeArgs,
+) -> PathBuf {
+    match &readme_args.readme_path {
+        Some(readme_path) => readme_path.to_path_buf(),
+        None => {
+            let mut current_dir_path_buf = std::env::current_dir().unwrap();
+            current_dir_path_buf.push(README_FILENAME);
+            current_dir_path_buf
+        }
+    }
+}
+
 /// Update the content of a README.md with a Scan Result. When the section doesn't exist, it will
 /// be created with an `h2` level header, otherwise it will preserve the level of the existing
 /// header
 fn update_readme_content(
+    readme_args: &ReadmeArgs,
     readme_content: &mut Vec<String>,
     scan_result: &[String],
 ) {
     let (start_line_number, end_line_number) =
-        find_start_and_end_lines_of_safety_report_section(&readme_content);
+        find_start_and_end_lines_of_safety_report_section(
+            readme_args,
+            &readme_content,
+        );
 
     if start_line_number == -1 {
         // When Cargo Geiger Safety Report isn't present in README, add an
         // h2 headed section at the end of the README.md containing the report
-        readme_content
-            .push(CARGO_GEIGER_SAFETY_REPORT_SECTION_HEADER.to_string());
+        match &readme_args.section_name {
+            Some(section_name) => {
+                let mut section_name_string = String::from("## ");
+                section_name_string.push_str(section_name);
+
+                readme_content.push(section_name_string);
+            }
+            None => {
+                readme_content.push(
+                    CARGO_GEIGER_SAFETY_REPORT_SECTION_HEADER.to_string(),
+                );
+            }
+        }
         for scan_result_line in scan_result {
             readme_content.push(scan_result_line.to_string())
         }
@@ -119,11 +174,17 @@ mod readme_tests {
     #[rstest]
     fn create_or_replace_section_test_readme_doesnt_exist() {
         let temp_dir = tempdir().unwrap();
-        let readme_file_path = temp_dir.path().join("README.md");
+        let readme_path = temp_dir.path().join("README.md");
+
+        let readme_args = ReadmeArgs {
+            readme_path: Some(readme_path),
+            ..Default::default()
+        };
+
         let scan_result = vec![];
 
         let result =
-            create_or_replace_section_in_readme(readme_file_path, &scan_result);
+            create_or_replace_section_in_readme(&readme_args, &scan_result);
 
         assert!(result.is_err());
     }
@@ -131,8 +192,14 @@ mod readme_tests {
     #[rstest]
     fn create_or_replace_section_test_reademe_doesnt_contain_section() {
         let temp_dir = tempdir().unwrap();
-        let readme_file_path = temp_dir.path().join("README.md");
-        let mut readme_file = File::create(readme_file_path.clone()).unwrap();
+        let readme_path = temp_dir.path().join("README.md");
+
+        let readme_args = ReadmeArgs {
+            readme_path: Some(readme_path.clone()),
+            ..Default::default()
+        };
+
+        let mut readme_file = File::create(readme_path.clone()).unwrap();
         let scan_result = vec![
             String::from("First safety report line"),
             String::from("Second safety report line"),
@@ -144,15 +211,13 @@ mod readme_tests {
             "# Readme Header\nSome text\nAnother line\n## Another header\nMore text"
         ).unwrap();
 
-        let result = create_or_replace_section_in_readme(
-            readme_file_path.clone(),
-            &scan_result,
-        );
+        let result =
+            create_or_replace_section_in_readme(&readme_args, &scan_result);
 
         assert!(result.is_ok());
 
         let updated_file_content =
-            BufReader::new(File::open(readme_file_path).unwrap())
+            BufReader::new(File::open(readme_path).unwrap())
                 .lines()
                 .map(|l| l.unwrap())
                 .collect::<Vec<String>>();
@@ -170,6 +235,37 @@ mod readme_tests {
         ];
 
         assert_eq!(updated_file_content, expected_readme_content)
+    }
+
+    #[rstest(
+        input_readme_args,
+        expected_regex_expression,
+        case(
+            ReadmeArgs{
+                section_name: None,
+                ..Default::default()
+            },
+            Regex::new("#+\\sCargo\\sGeiger\\sSafety\\sReport\\s*").unwrap()
+        ),
+        case(
+            ReadmeArgs{
+                section_name: Some(String::from("Test Section Name")),
+                ..Default::default()
+            },
+            Regex::new("#+\\sTest\\sSection\\sName\\s*").unwrap()
+        )
+    )]
+    fn construct_regex_expression_for_section_header_test(
+        input_readme_args: ReadmeArgs,
+        expected_regex_expression: Regex,
+    ) {
+        let regex_expression =
+            construct_regex_expression_for_section_header(&input_readme_args);
+
+        assert_eq!(
+            regex_expression.as_str(),
+            expected_regex_expression.as_str()
+        );
     }
 
     #[rstest(
@@ -234,8 +330,11 @@ mod readme_tests {
         expected_start_line_number: i32,
         expected_end_line_number: i32,
     ) {
+        let readme_args = ReadmeArgs::default();
+
         let (start_line_number, end_line_number) =
             find_start_and_end_lines_of_safety_report_section(
+                &readme_args,
                 &input_readme_content,
             );
 
@@ -244,7 +343,58 @@ mod readme_tests {
     }
 
     #[rstest]
-    fn update_readme_content_test_no_safety_report_present() {
+    fn get_readme_path_buf_from_arguments_or_default_test_none() {
+        let mut path_buf = std::env::current_dir().unwrap();
+        path_buf.push(README_FILENAME);
+
+        let readme_args = ReadmeArgs {
+            readme_path: None,
+            ..Default::default()
+        };
+
+        let readme_path_buf =
+            get_readme_path_buf_from_arguments_or_default(&readme_args);
+
+        assert_eq!(readme_path_buf, path_buf)
+    }
+
+    #[rstest]
+    fn get_readme_path_buf_from_arguments_or_default_test_some() {
+        let path_buf = PathBuf::from("/test/path");
+
+        let readme_args = ReadmeArgs {
+            readme_path: Some(path_buf.clone()),
+            ..Default::default()
+        };
+
+        let readme_path_buf =
+            get_readme_path_buf_from_arguments_or_default(&readme_args);
+
+        assert_eq!(readme_path_buf, path_buf);
+    }
+
+    #[rstest(
+        input_readme_args,
+        expected_section_header,
+        case(
+            ReadmeArgs{
+                section_name: None,
+                ..Default::default()
+            },
+            CARGO_GEIGER_SAFETY_REPORT_SECTION_HEADER.to_string()
+        ),
+        case(
+            ReadmeArgs{
+                section_name: Some(String::from("Test Section Name")),
+                ..Default::default()
+            },
+            String::from("## Test Section Name")
+        )
+    )]
+    fn update_readme_content_test_no_safety_report_present(
+        input_readme_args: ReadmeArgs,
+        expected_section_header: String,
+    ) {
         let mut readme_content = vec![
             String::from("# readme header"),
             String::from("line of text"),
@@ -258,14 +408,18 @@ mod readme_tests {
             String::from("third line of scan result"),
         ];
 
-        update_readme_content(&mut readme_content, &scan_result);
+        update_readme_content(
+            &input_readme_args,
+            &mut readme_content,
+            &scan_result,
+        );
 
         let expected_readme_content = vec![
             String::from("# readme header"),
             String::from("line of text"),
             String::from("another line of text"),
             String::from("## another header"),
-            CARGO_GEIGER_SAFETY_REPORT_SECTION_HEADER.to_string(),
+            expected_section_header,
             String::from("first line of scan result"),
             String::from("second line of scan result"),
             String::from("third line of scan result"),
@@ -276,6 +430,8 @@ mod readme_tests {
 
     #[rstest]
     fn update_readme_content_test_safety_report_present_in_middle_of_readme() {
+        let readme_args = ReadmeArgs::default();
+
         let mut readme_content = vec![
             String::from("# readme header"),
             String::from("line of text"),
@@ -293,7 +449,7 @@ mod readme_tests {
             String::from("third line of scan result"),
         ];
 
-        update_readme_content(&mut readme_content, &scan_result);
+        update_readme_content(&readme_args, &mut readme_content, &scan_result);
 
         let expected_readme_content = vec![
             String::from("# readme header"),
