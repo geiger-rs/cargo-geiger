@@ -9,7 +9,7 @@ use crate::tree::traversal::walk_dependency_tree;
 use crate::tree::TextTreeLine;
 
 use super::super::find::find_unsafe;
-use super::super::ScanMode;
+use super::super::{ScanMode, ScanResult};
 
 use cargo::{CliError, Config};
 use cargo_metadata::PackageId;
@@ -21,7 +21,7 @@ pub fn scan_forbid_to_table(
     graph: &Graph,
     print_config: &PrintConfig,
     root_package_id: PackageId,
-) -> Result<Vec<String>, CliError> {
+) -> Result<ScanResult, CliError> {
     let mut scan_output_lines = Vec::<String>::new();
     let emoji_symbols = EmojiSymbols::new(print_config.charset);
 
@@ -70,7 +70,10 @@ pub fn scan_forbid_to_table(
         }
     }
 
-    Ok(scan_output_lines)
+    Ok(ScanResult {
+        scan_output_lines,
+        warning_count: 0,
+    })
 }
 
 fn construct_key_lines(emoji_symbols: &EmojiSymbols) -> Vec<String> {
