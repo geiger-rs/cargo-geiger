@@ -20,10 +20,10 @@ pub struct WalkDependencyParameters<'a> {
     pub visited_deps: &'a mut HashSet<PackageId>,
 }
 
-/// Printing the returned TextTreeLines in order is expected to produce a nice
+/// Printing the returned `TextTreeLines` in order is expected to produce a nice
 /// looking tree structure.
 ///
-/// TODO: Return a impl Iterator<Item = TextTreeLine ... >
+/// TODO: Return a impl `Iterator<Item = TextTreeLine ... >`
 /// TODO: Consider separating the tree vine building from the tree traversal.
 ///
 pub fn walk_dependency_tree(
