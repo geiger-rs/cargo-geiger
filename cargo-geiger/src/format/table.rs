@@ -5,7 +5,7 @@ use crate::format::emoji_symbols::EmojiSymbols;
 use crate::format::print_config::{colorize, PrintConfig};
 use crate::format::CrateDetectionStatus;
 use crate::mapping::CargoMetadataParameters;
-use crate::scan::GeigerContext;
+use crate::scan::{GeigerContext, ScanResult};
 use crate::tree::TextTreeLine;
 
 use handle_text_tree_line::{
@@ -34,7 +34,7 @@ pub fn create_table_from_text_tree_lines(
     cargo_metadata_parameters: &CargoMetadataParameters,
     table_parameters: &TableParameters,
     text_tree_lines: Vec<TextTreeLine>,
-) -> (Vec<String>, u64) {
+) -> ScanResult {
     let mut table_lines = Vec::<String>::new();
     let mut total_package_counts = TotalPackageCounts::new();
     let mut warning_count = 0;
@@ -87,7 +87,10 @@ pub fn create_table_from_text_tree_lines(
 
     table_lines.push(String::new());
 
-    (table_lines, warning_count)
+    ScanResult {
+        scan_output_lines: table_lines,
+        warning_count,
+    }
 }
 
 pub struct TableParameters<'a> {

@@ -9,7 +9,7 @@ use crate::tree::traversal::walk_dependency_tree;
 
 use super::super::{
     construct_rs_files_used_lines, list_files_used_but_not_scanned,
-    ScanDetails, ScanParameters,
+    ScanDetails, ScanParameters, ScanResult,
 };
 use super::scan;
 
@@ -18,8 +18,6 @@ use cargo::core::Workspace;
 use cargo::CliError;
 use cargo_metadata::PackageId;
 use colored::Colorize;
-use std::error::Error;
-use std::fmt;
 
 pub fn scan_to_table(
     cargo_metadata_parameters: &CargoMetadataParameters,
@@ -27,8 +25,8 @@ pub fn scan_to_table(
     root_package_id: PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
-) -> Result<Vec<String>, CliError> {
-    let mut scan_output_lines = Vec::<String>::new();
+) -> Result<ScanResult, CliError> {
+    let mut combined_scan_output_lines = Vec::<String>::new();
 
     let ScanDetails {
         rs_files_used,
@@ -38,12 +36,12 @@ pub fn scan_to_table(
     if scan_parameters.print_config.verbosity == Verbosity::Verbose {
         let mut rs_files_used_lines =
             construct_rs_files_used_lines(&rs_files_used);
-        scan_output_lines.append(&mut rs_files_used_lines);
+        combined_scan_output_lines.append(&mut rs_files_used_lines);
     }
 
     let emoji_symbols = EmojiSymbols::new(scan_parameters.print_config.charset);
     let mut output_key_lines = construct_key_lines(&emoji_symbols);
-    scan_output_lines.append(&mut output_key_lines);
+    combined_scan_output_lines.append(&mut output_key_lines);
 
     let text_tree_lines = walk_dependency_tree(
         cargo_metadata_parameters,
@@ -57,13 +55,15 @@ pub fn scan_to_table(
         rs_files_used: &rs_files_used,
     };
 
-    let (mut table_lines, mut warning_count) =
-        create_table_from_text_tree_lines(
-            cargo_metadata_parameters,
-            &table_parameters,
-            text_tree_lines,
-        );
-    scan_output_lines.append(&mut table_lines);
+    let ScanResult {
+        mut scan_output_lines,
+        mut warning_count,
+    } = create_table_from_text_tree_lines(
+        cargo_metadata_parameters,
+        &table_parameters,
+        text_tree_lines,
+    );
+    combined_scan_output_lines.append(&mut scan_output_lines);
 
     let used_but_not_scanned =
         list_files_used_but_not_scanned(&geiger_context, &rs_files_used);
@@ -75,28 +75,10 @@ pub fn scan_to_table(
         );
     }
 
-    if warning_count > 0 {
-        Err(CliError::new(
-            anyhow::Error::new(FoundWarningsError { warning_count }),
-            1,
-        ))
-    } else {
-        Ok(scan_output_lines)
-    }
-}
-
-#[derive(Debug)]
-struct FoundWarningsError {
-    warning_count: u64,
-}
-
-impl Error for FoundWarningsError {}
-
-/// Forward Display to Debug.
-impl fmt::Display for FoundWarningsError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
+    Ok(ScanResult {
+        scan_output_lines: combined_scan_output_lines,
+        warning_count,
+    })
 }
 
 fn construct_key_lines(emoji_symbols: &EmojiSymbols) -> Vec<String> {

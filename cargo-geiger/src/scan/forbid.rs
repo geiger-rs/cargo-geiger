@@ -5,7 +5,7 @@ use crate::graph::Graph;
 use crate::mapping::CargoMetadataParameters;
 
 use super::find::find_unsafe;
-use super::{package_metrics, ScanMode, ScanParameters};
+use super::{package_metrics, ScanMode, ScanParameters, ScanResult};
 
 use table::scan_forbid_to_table;
 
@@ -18,7 +18,7 @@ pub fn scan_forbid_unsafe(
     graph: &Graph,
     root_package_id: PackageId,
     scan_parameters: &ScanParameters,
-) -> Result<Vec<String>, CliError> {
+) -> Result<ScanResult, CliError> {
     match scan_parameters.args.output_format {
         Some(output_format) => scan_forbid_to_report(
             cargo_metadata_parameters,
@@ -45,7 +45,7 @@ fn scan_forbid_to_report(
     output_format: OutputFormat,
     print_config: &PrintConfig,
     root_package_id: PackageId,
-) -> Result<Vec<String>, CliError> {
+) -> Result<ScanResult, CliError> {
     let geiger_context = find_unsafe(
         cargo_metadata_parameters,
         config,
@@ -81,5 +81,8 @@ fn scan_forbid_to_report(
         OutputFormat::Json => serde_json::to_string(&report).unwrap(),
     };
 
-    Ok(vec![s])
+    Ok(ScanResult {
+        scan_output_lines: vec![s],
+        warning_count: 0,
+    })
 }

@@ -19,7 +19,7 @@ use cargo_geiger::mapping::{CargoMetadataParameters, QueryResolve};
 use cargo_geiger::readme::{
     create_or_replace_section_in_readme, README_FILENAME,
 };
-use cargo_geiger::scan::scan;
+use cargo_geiger::scan::{scan, FoundWarningsError, ScanResult};
 
 use cargo::core::shell::Shell;
 use cargo::util::important_paths;
@@ -82,7 +82,10 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         },
     );
 
-    let scan_output_lines = scan(
+    let ScanResult {
+        scan_output_lines,
+        warning_count,
+    } = scan(
         args,
         &cargo_metadata_parameters,
         config,
@@ -103,6 +106,13 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         for scan_output_line in scan_output_lines {
             println!("{}", scan_output_line);
         }
+    }
+
+    if warning_count > 0 {
+        return Err(CliError::new(
+            anyhow::Error::new(FoundWarningsError { warning_count }),
+            1,
+        ));
     }
 
     Ok(())

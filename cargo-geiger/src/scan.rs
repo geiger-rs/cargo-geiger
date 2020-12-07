@@ -22,7 +22,28 @@ use cargo_geiger_serde::{CounterBlock, PackageInfo, UnsafeInfo};
 use cargo_metadata::PackageId;
 use petgraph::visit::EdgeRef;
 use std::collections::{HashMap, HashSet};
+use std::error::Error;
+use std::fmt;
 use std::path::PathBuf;
+
+#[derive(Debug)]
+pub struct FoundWarningsError {
+    pub warning_count: u64,
+}
+
+impl Error for FoundWarningsError {}
+
+/// Forward Display to Debug.
+impl fmt::Display for FoundWarningsError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
+pub struct ScanResult {
+    pub scan_output_lines: Vec<String>,
+    pub warning_count: u64,
+}
 
 /// Provides a more terse and searchable name for the wrapped generic
 /// collection.
@@ -59,7 +80,7 @@ pub fn scan(
     graph: &Graph,
     root_package_id: PackageId,
     workspace: &Workspace,
-) -> Result<Vec<String>, CliError> {
+) -> Result<ScanResult, CliError> {
     let print_config = PrintConfig::new(args)?;
 
     let scan_parameters = ScanParameters {
@@ -87,7 +108,7 @@ pub fn scan(
 }
 
 pub fn unsafe_stats(
-    pack_metrics: &PackageMetrics,
+    package_metrics: &PackageMetrics,
     rs_files_used: &HashSet<PathBuf>,
 ) -> UnsafeInfo {
     // The crate level "forbids unsafe code" metric __used to__ only
@@ -96,7 +117,7 @@ pub fn unsafe_stats(
     // classified as forbidding unsafe code, all entry point source
     // files must declare `forbid(unsafe_code)`. Either a crate
     // forbids all unsafe code or it allows it _to some degree_.
-    let forbids_unsafe = pack_metrics
+    let forbids_unsafe = package_metrics
         .rs_path_to_metrics
         .iter()
         .filter(|(_, v)| v.is_crate_entry_point)
@@ -105,7 +126,8 @@ pub fn unsafe_stats(
     let mut used = CounterBlock::default();
     let mut unused = CounterBlock::default();
 
-    for (path_buf, rs_file_metrics_wrapper) in &pack_metrics.rs_path_to_metrics
+    for (path_buf, rs_file_metrics_wrapper) in
+        &package_metrics.rs_path_to_metrics
     {
         let target = if rs_files_used.contains(path_buf) {
             &mut used

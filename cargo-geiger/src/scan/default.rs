@@ -9,7 +9,7 @@ use crate::scan::rs_file::resolve_rs_file_deps;
 use super::find::find_unsafe;
 use super::{
     list_files_used_but_not_scanned, package_metrics, unsafe_stats,
-    ScanDetails, ScanMode, ScanParameters,
+    ScanDetails, ScanMode, ScanParameters, ScanResult,
 };
 
 use table::scan_to_table;
@@ -27,7 +27,7 @@ pub fn scan_unsafe(
     root_package_id: PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
-) -> Result<Vec<String>, CliError> {
+) -> Result<ScanResult, CliError> {
     match scan_parameters.args.output_format {
         Some(output_format) => scan_to_report(
             cargo_metadata_parameters,
@@ -115,7 +115,7 @@ fn scan_to_report(
     root_package_id: PackageId,
     scan_parameters: &ScanParameters,
     workspace: &Workspace,
-) -> Result<Vec<String>, CliError> {
+) -> Result<ScanResult, CliError> {
     let ScanDetails {
         rs_files_used,
         geiger_context,
@@ -148,7 +148,11 @@ fn scan_to_report(
     let s = match output_format {
         OutputFormat::Json => serde_json::to_string(&report).unwrap(),
     };
-    Ok(vec![s])
+
+    Ok(ScanResult {
+        scan_output_lines: vec![s],
+        warning_count: 0,
+    })
 }
 
 #[cfg(test)]
