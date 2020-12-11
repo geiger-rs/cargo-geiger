@@ -17,6 +17,7 @@ impl EmojiSymbols {
             Box::new(self.fallbacks[idx].clone())
         }
     }
+
     pub fn new(charset: Charset) -> EmojiSymbols {
         Self {
             charset,

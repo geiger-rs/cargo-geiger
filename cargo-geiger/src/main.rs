@@ -16,9 +16,7 @@ use cargo_geiger::args::{Args, HELP};
 use cargo_geiger::cli::{get_cargo_metadata, get_krates, get_workspace};
 use cargo_geiger::graph::build_graph;
 use cargo_geiger::mapping::{CargoMetadataParameters, QueryResolve};
-use cargo_geiger::readme::{
-    create_or_replace_section_in_readme, README_FILENAME,
-};
+use cargo_geiger::readme::create_or_replace_section_in_readme;
 use cargo_geiger::scan::{scan, FoundWarningsError, ScanResult};
 
 use cargo::core::shell::Shell;
@@ -94,12 +92,9 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         &workspace,
     )?;
 
-    if args.update_readme {
-        let mut current_dir_path_buf = std::env::current_dir().unwrap();
-        current_dir_path_buf.push(README_FILENAME);
-
+    if args.readme_args.update_readme {
         create_or_replace_section_in_readme(
-            current_dir_path_buf,
+            &args.readme_args,
             &scan_output_lines,
         )?;
     } else {
