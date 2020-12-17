@@ -244,7 +244,6 @@ fn parse_features(raw_features: Option<String>) -> Vec<String> {
 pub mod args_tests {
     use super::*;
 
-    use cargo::core::shell::ColorChoice;
     use cargo::core::Verbosity;
     use rstest::*;
     use std::ffi::OsString;
