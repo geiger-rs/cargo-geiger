@@ -137,13 +137,15 @@ impl ToCargoMetadataPackage for cargo_metadata::PackageId {
 mod metadata_tests {
     use super::*;
 
-    use super::super::{
-        GetPackageNameFromCargoMetadataPackageId, ToCargoCoreDepKind,
-    };
+    use super::super::GetPackageNameFromCargoMetadataPackageId;
 
     use crate::args::FeaturesArgs;
     use crate::cli::get_workspace;
 
+    // ISSUE-69 - These dependencies are used for testing only, to confirm
+    // that the changes made for ISSUE-16 retain feature parity. A discussion can
+    // be had about if it is worth keeping these in and paying the corresponding
+    // cost in compile time when building tests
     use cargo::core::dependency::DepKind;
     use cargo::core::registry::PackageRegistry;
     use cargo::core::resolver::ResolveOpts;
@@ -151,6 +153,7 @@ mod metadata_tests {
         Package, PackageId, PackageIdSpec, PackageSet, Resolve, Workspace,
     };
     use cargo::{ops, CargoResult, Config};
+
     use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
     use krates::Builder as KratesBuilder;
     use rstest::*;
@@ -341,6 +344,10 @@ mod metadata_tests {
             PackageRegistry::new(workspace.config())?,
         )?;
         Ok((packages, resolve))
+    }
+
+    trait ToCargoCoreDepKind {
+        fn to_cargo_core_dep_kind(&self) -> DepKind;
     }
 
     impl ToCargoCoreDepKind for DependencyKind {

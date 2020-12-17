@@ -3,7 +3,6 @@ mod krates;
 mod metadata;
 
 use ::krates::Krates;
-use cargo::core::dependency::DepKind;
 use cargo_metadata::Metadata;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -67,10 +66,6 @@ pub trait MatchesIgnoringSource {
 
 pub trait QueryResolve {
     fn query_resolve(&self, query: &str) -> Option<cargo_metadata::PackageId>;
-}
-
-pub trait ToCargoCoreDepKind {
-    fn to_cargo_core_dep_kind(&self) -> DepKind;
 }
 
 pub trait ToCargoGeigerDependencyKind {
