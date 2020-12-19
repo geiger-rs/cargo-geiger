@@ -122,8 +122,7 @@ mod dependency_node_tests {
     use super::*;
 
     use crate::format::pattern::Pattern;
-    use crate::format::print_config::{Prefix, PrintConfig};
-    use crate::format::Charset;
+    use crate::format::print_config::{OutputFormat, Prefix, PrintConfig};
 
     use cargo::core::Verbosity;
     use cargo_metadata::DependencyKind;
@@ -251,12 +250,11 @@ mod dependency_node_tests {
         PrintConfig {
             all: false,
             allow_partial_results: false,
-            charset: Charset::Ascii,
             direction: edge_direction,
             format: Pattern(vec![]),
             include_tests: IncludeTests::Yes,
             prefix: Prefix::Depth,
-            output_format: None,
+            output_format: OutputFormat::Ascii,
             verbosity: Verbosity::Verbose,
         }
     }

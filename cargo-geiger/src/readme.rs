@@ -60,7 +60,7 @@ fn find_start_and_end_lines_of_safety_report_section(
     let start_line_pattern =
         construct_regex_expression_for_section_header(readme_args);
 
-    let end_line_pattern = Regex::new("#+.*").unwrap();
+    let end_line_pattern = Regex::new("^#+.*").unwrap();
 
     for (line_number, line) in readme_content.iter().enumerate() {
         if start_line_pattern.is_match(line) {
@@ -84,14 +84,14 @@ fn construct_regex_expression_for_section_header(
 ) -> Regex {
     match &readme_args.section_name {
         Some(section_name) => {
-            let mut regex_string = String::from("#+\\s");
+            let mut regex_string = String::from("^#+\\s");
             regex_string.push_str(&section_name.replace(' ', "\\s"));
             regex_string.push_str("\\s*");
 
             Regex::new(&regex_string).unwrap()
         }
         None => {
-            Regex::new("#+\\sCargo\\sGeiger\\sSafety\\sReport\\s*").unwrap()
+            Regex::new("^#+\\sCargo\\sGeiger\\sSafety\\sReport\\s*").unwrap()
         }
     }
 }
@@ -119,7 +119,7 @@ fn update_readme_content(
     readme_content: &mut Vec<String>,
     scan_result: &[String],
 ) {
-    let (start_line_number, end_line_number) =
+    let (start_line_number, mut end_line_number) =
         find_start_and_end_lines_of_safety_report_section(
             readme_args,
             &readme_content,
@@ -141,10 +141,16 @@ fn update_readme_content(
                 );
             }
         }
+        readme_content.push(String::from("```"));
         for scan_result_line in scan_result {
             readme_content.push(scan_result_line.to_string())
         }
+        readme_content.push(String::from("```"));
     } else {
+        if end_line_number == -1 {
+            end_line_number = readme_content.len() as i32;
+        }
+
         // When Cargo Geiger Safety Report is present in README, remove the
         // section and and replace, preserving header level (h1/h2/h3)
         for _ in start_line_number + 1..end_line_number {
@@ -153,6 +159,10 @@ fn update_readme_content(
 
         let mut running_scan_line_index = start_line_number + 1;
 
+        readme_content
+            .insert(running_scan_line_index as usize, String::from("```"));
+        running_scan_line_index += 1;
+
         for scan_result_line in scan_result {
             readme_content.insert(
                 running_scan_line_index as usize,
@@ -160,6 +170,9 @@ fn update_readme_content(
             );
             running_scan_line_index += 1;
         }
+
+        readme_content
+            .insert(running_scan_line_index as usize, String::from("```"));
     }
 }
 
@@ -190,7 +203,7 @@ mod readme_tests {
     }
 
     #[rstest]
-    fn create_or_replace_section_test_reademe_doesnt_contain_section() {
+    fn create_or_replace_section_test_readme_doesnt_contain_section() {
         let temp_dir = tempdir().unwrap();
         let readme_path = temp_dir.path().join("README.md");
 
@@ -229,9 +242,11 @@ mod readme_tests {
             String::from("## Another header"),
             String::from("More text"),
             CARGO_GEIGER_SAFETY_REPORT_SECTION_HEADER.to_string(),
+            String::from("```"),
             String::from("First safety report line"),
             String::from("Second safety report line"),
             String::from("Third safety report line"),
+            String::from("```"),
         ];
 
         assert_eq!(updated_file_content, expected_readme_content)
@@ -245,14 +260,14 @@ mod readme_tests {
                 section_name: None,
                 ..Default::default()
             },
-            Regex::new("#+\\sCargo\\sGeiger\\sSafety\\sReport\\s*").unwrap()
+            Regex::new("^#+\\sCargo\\sGeiger\\sSafety\\sReport\\s*").unwrap()
         ),
         case(
             ReadmeArgs{
                 section_name: Some(String::from("Test Section Name")),
                 ..Default::default()
             },
-            Regex::new("#+\\sTest\\sSection\\sName\\s*").unwrap()
+            Regex::new("^#+\\sTest\\sSection\\sName\\s*").unwrap()
         )
     )]
     fn construct_regex_expression_for_section_header_test(
@@ -420,9 +435,11 @@ mod readme_tests {
             String::from("another line of text"),
             String::from("## another header"),
             expected_section_header,
+            String::from("```"),
             String::from("first line of scan result"),
             String::from("second line of scan result"),
             String::from("third line of scan result"),
+            String::from("```"),
         ];
 
         assert_eq!(readme_content, expected_readme_content);
@@ -456,9 +473,11 @@ mod readme_tests {
             String::from("line of text"),
             String::from("another line of text"),
             CARGO_GEIGER_SAFETY_REPORT_SECTION_HEADER.to_string(),
+            String::from("```"),
             String::from("first line of scan result"),
             String::from("second line of scan result"),
             String::from("third line of scan result"),
+            String::from("```"),
             String::from("# another header"),
             String::from("line of text"),
         ];

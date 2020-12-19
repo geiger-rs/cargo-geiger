@@ -1,7 +1,6 @@
 pub mod traversal;
 
-use crate::format::print_config::{Prefix, PrintConfig};
-use crate::format::Charset;
+use crate::format::print_config::{OutputFormat, Prefix, PrintConfig};
 
 use cargo_metadata::{DependencyKind, PackageId};
 
@@ -31,7 +30,7 @@ fn construct_tree_vines_string(
     levels_continue: &mut Vec<bool>,
     print_config: &PrintConfig,
 ) -> String {
-    let tree_symbols = get_tree_symbols(print_config.charset);
+    let tree_symbols = get_tree_symbols(print_config.output_format);
 
     match print_config.prefix {
         Prefix::Depth => format!("{} ", levels_continue.len()),
@@ -56,10 +55,10 @@ fn construct_tree_vines_string(
     }
 }
 
-pub fn get_tree_symbols(charset: Charset) -> TreeSymbols {
-    match charset {
-        Charset::Utf8 => UTF8_TREE_SYMBOLS,
-        Charset::Ascii => ASCII_TREE_SYMBOLS,
+pub fn get_tree_symbols(output_format: OutputFormat) -> TreeSymbols {
+    match output_format {
+        OutputFormat::Ascii => ASCII_TREE_SYMBOLS,
+        _ => UTF8_TREE_SYMBOLS,
     }
 }
 
@@ -82,7 +81,7 @@ mod tree_tests {
     use super::*;
 
     use crate::format::pattern::Pattern;
-    use crate::format::Charset;
+    use crate::format::print_config::OutputFormat;
 
     use cargo::core::shell::Verbosity;
     use geiger::IncludeTests;
@@ -110,16 +109,20 @@ mod tree_tests {
     }
 
     #[rstest(
-        input_charset,
+        input_output_format,
         expected_tree_symbols,
-        case(Charset::Utf8, UTF8_TREE_SYMBOLS),
-        case(Charset::Ascii, ASCII_TREE_SYMBOLS)
+        case(OutputFormat::Ascii, ASCII_TREE_SYMBOLS),
+        case(OutputFormat::GitHubMarkdown, UTF8_TREE_SYMBOLS),
+        case(OutputFormat::Utf8, UTF8_TREE_SYMBOLS)
     )]
     fn get_tree_symbols_test(
-        input_charset: Charset,
+        input_output_format: OutputFormat,
         expected_tree_symbols: TreeSymbols,
     ) {
-        assert_eq!(get_tree_symbols(input_charset), expected_tree_symbols);
+        assert_eq!(
+            get_tree_symbols(input_output_format),
+            expected_tree_symbols
+        );
     }
 
     fn construct_print_config(prefix: Prefix) -> PrintConfig {
@@ -130,10 +133,9 @@ mod tree_tests {
             direction: EdgeDirection::Outgoing,
             prefix,
             format: pattern,
-            charset: Charset::Ascii,
             allow_partial_results: false,
             include_tests: IncludeTests::Yes,
-            output_format: None,
+            output_format: OutputFormat::Ascii,
         }
     }
 }

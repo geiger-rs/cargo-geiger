@@ -9,28 +9,30 @@ Some text
 Some more text
 
 ## Cargo Geiger Safety Report
+```
 
 Metric output format: x/y
     x = unsafe code used by the build
     y = total unsafe code found in the crate
 
 Symbols: 
-    :) = No `unsafe` usage found, declares #![forbid(unsafe_code)]
-    ?  = No `unsafe` usage found, missing #![forbid(unsafe_code)]
-    !  = `unsafe` usage found
+    🔒  = No `unsafe` usage found, declares #![forbid(unsafe_code)]
+    ❓  = No `unsafe` usage found, missing #![forbid(unsafe_code)]
+    ☢️  = `unsafe` usage found
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        1/1          0/0    0/0     0/0      !  test3_package_with_nested_deps 0.1.0
-0/0        0/0          0/0    0/0     0/0      ?  |-- doc-comment 0.3.1
-0/0        0/72         0/3    0/1     0/3      ?  |-- itertools 0.8.0
-0/0        0/0          0/0    0/0     0/0      ?  |   `-- either 1.5.2
-1/1        4/4          0/0    0/0     0/0      !  `-- test2_package_with_shallow_deps 0.1.0
-0/0        2/2          0/0    0/0     0/0      !      |-- ref_slice 1.1.1
-1/1        2/2          0/0    0/0     0/0      !      `-- test1_package_with_no_deps 0.1.0
+0/0        1/1          0/0    0/0     0/0      ☢️  test3_package_with_nested_deps 0.1.0
+0/0        0/0          0/0    0/0     0/0      ❓  ├── doc-comment 0.3.1
+0/0        0/72         0/3    0/1     0/3      ❓  ├── itertools 0.8.0
+0/0        0/0          0/0    0/0     0/0      ❓  │   └── either 1.5.2
+1/1        4/4          0/0    0/0     0/0      ☢️  └── test2_package_with_shallow_deps 0.1.0
+0/0        2/2          0/0    0/0     0/0      ☢️      ├── ref_slice 1.1.1
+1/1        2/2          0/0    0/0     0/0      ☢️      └── test1_package_with_no_deps 0.1.0
 
 2/2        9/81         0/3    0/1     0/3    
 
+```
 ## Second Section Header
 Some more text
 

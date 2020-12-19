@@ -34,9 +34,9 @@ pub trait IntegrationTest {
 }
 
 fn run_geiger_json(test_name: &str) -> (Output, Context) {
-    run_geiger_with(test_name, &["--json"])
+    run_geiger_with(test_name, &["--output-format", "Json"])
 }
 
 fn run_geiger_json_quick(test_name: &str) -> (Output, Context) {
-    run_geiger_with(test_name, &["--forbid-only", "--json"])
+    run_geiger_with(test_name, &["--forbid-only", "--output-format", "Json"])
 }

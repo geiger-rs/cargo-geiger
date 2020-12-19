@@ -14,7 +14,7 @@ where
         .arg("geiger")
         .arg("--color=never")
         .arg("--quiet")
-        .arg("--charset=ascii")
+        .arg("--output-format=Ascii")
         .arg("--all-targets")
         .arg("--all-features")
         .args(extra_args)

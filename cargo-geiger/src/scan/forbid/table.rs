@@ -23,7 +23,7 @@ pub fn scan_forbid_to_table(
     root_package_id: PackageId,
 ) -> Result<ScanResult, CliError> {
     let mut scan_output_lines = Vec::<String>::new();
-    let emoji_symbols = EmojiSymbols::new(print_config.charset);
+    let emoji_symbols = EmojiSymbols::new(print_config.output_format);
 
     let mut output_key_lines = construct_key_lines(&emoji_symbols);
     scan_output_lines.append(&mut output_key_lines);
@@ -150,12 +150,12 @@ fn handle_package_text_tree_line(
 #[cfg(test)]
 mod forbid_tests {
     use super::*;
-    use crate::format::Charset;
+    use crate::format::print_config::OutputFormat;
     use rstest::*;
 
     #[rstest]
     fn construct_scan_mode_forbid_only_output_key_lines_test() {
-        let emoji_symbols = EmojiSymbols::new(Charset::Utf8);
+        let emoji_symbols = EmojiSymbols::new(OutputFormat::Utf8);
         let output_key_lines = construct_key_lines(&emoji_symbols);
 
         assert_eq!(output_key_lines.len(), 5);
