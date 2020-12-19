@@ -1,12 +1,13 @@
 use crate::args::Args;
 use crate::format::pattern::Pattern;
-use crate::format::{Charset, CrateDetectionStatus, FormatError};
+use crate::format::{CrateDetectionStatus, FormatError};
 
 use cargo::core::shell::Verbosity;
 use cargo::util::errors::CliError;
-use colored::Colorize;
+use colored::{ColoredString, Colorize};
 use geiger::IncludeTests;
 use petgraph::EdgeDirection;
+use strum_macros::EnumString;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Prefix {
@@ -15,9 +16,18 @@ pub enum Prefix {
     None,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, EnumString, Eq, PartialEq)]
 pub enum OutputFormat {
+    Ascii,
     Json,
+    GitHubMarkdown,
+    Utf8,
+}
+
+impl Default for OutputFormat {
+    fn default() -> Self {
+        OutputFormat::Utf8
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -26,7 +36,6 @@ pub struct PrintConfig {
     pub all: bool,
 
     pub allow_partial_results: bool,
-    pub charset: Charset,
     pub direction: EdgeDirection,
 
     // Is anyone using this? This is a carry-over from cargo-tree.
@@ -35,7 +44,7 @@ pub struct PrintConfig {
 
     pub include_tests: IncludeTests,
     pub prefix: Prefix,
-    pub output_format: Option<OutputFormat>,
+    pub output_format: OutputFormat,
     pub verbosity: Verbosity,
 }
 
@@ -83,7 +92,6 @@ impl PrintConfig {
         Ok(PrintConfig {
             all: args.all,
             allow_partial_results,
-            charset: args.charset,
             direction,
             format,
             include_tests,
@@ -95,13 +103,17 @@ impl PrintConfig {
 }
 
 pub fn colorize(
-    string: String,
     crate_detection_status: &CrateDetectionStatus,
-) -> colored::ColoredString {
-    match crate_detection_status {
-        CrateDetectionStatus::NoneDetectedForbidsUnsafe => string.green(),
-        CrateDetectionStatus::NoneDetectedAllowsUnsafe => string.normal(),
-        CrateDetectionStatus::UnsafeDetected => string.red().bold(),
+    output_format: OutputFormat,
+    string: String,
+) -> ColoredString {
+    match output_format {
+        OutputFormat::GitHubMarkdown => ColoredString::from(string.as_str()),
+        _ => match crate_detection_status {
+            CrateDetectionStatus::NoneDetectedForbidsUnsafe => string.green(),
+            CrateDetectionStatus::NoneDetectedAllowsUnsafe => string.normal(),
+            CrateDetectionStatus::UnsafeDetected => string.red().bold(),
+        },
     }
 }
 
@@ -109,8 +121,8 @@ pub fn colorize(
 mod print_config_tests {
     use super::*;
 
-    use colored::ColoredString;
     use rstest::*;
+    use std::str::FromStr;
 
     #[rstest(
         input_invert_bool,
@@ -209,30 +221,71 @@ mod print_config_tests {
     }
 
     #[rstest(
+        input_raw_str,
+        expected_output_format_result,
+        case("Ascii", Ok(OutputFormat::Ascii)),
+        case("Json", Ok(OutputFormat::Json)),
+        case("GitHubMarkdown", Ok(OutputFormat::GitHubMarkdown)),
+        case("Utf8", Ok(OutputFormat::Utf8)),
+        case("unknown_variant", Err(strum::ParseError::VariantNotFound))
+    )]
+    fn output_format_from_str_test(
+        input_raw_str: &str,
+        expected_output_format_result: Result<OutputFormat, strum::ParseError>,
+    ) {
+        let output_format = OutputFormat::from_str(input_raw_str);
+        assert_eq!(output_format, expected_output_format_result);
+    }
+
+    #[rstest(
         input_crate_detection_status,
-        expected_colorized_string,
+        input_output_format,
+        expected_colored_string,
         case(
             CrateDetectionStatus::NoneDetectedForbidsUnsafe,
+            OutputFormat::Ascii,
             String::from("string_value").green()
         ),
         case(
             CrateDetectionStatus::NoneDetectedAllowsUnsafe,
+            OutputFormat::Utf8,
             String::from("string_value").normal()
         ),
         case(
             CrateDetectionStatus::UnsafeDetected,
+            OutputFormat::Ascii,
             String::from("string_value").red().bold()
+        ),
+        case(
+            CrateDetectionStatus::NoneDetectedForbidsUnsafe,
+            OutputFormat::GitHubMarkdown,
+            ColoredString::from("string_value")
+        ),
+        case(
+            CrateDetectionStatus::NoneDetectedAllowsUnsafe,
+            OutputFormat::GitHubMarkdown,
+            ColoredString::from("string_value")
+        ),
+        case(
+            CrateDetectionStatus::UnsafeDetected,
+            OutputFormat::GitHubMarkdown,
+            ColoredString::from("string_value")
         )
     )]
     fn colorize_test(
         input_crate_detection_status: CrateDetectionStatus,
-        expected_colorized_string: ColoredString,
+        input_output_format: OutputFormat,
+        expected_colored_string: ColoredString,
     ) {
         let string_value = String::from("string_value");
 
         assert_eq!(
-            colorize(string_value, &input_crate_detection_status),
-            expected_colorized_string
+            colorize(
+                &input_crate_detection_status,
+                input_output_format,
+                string_value
+            ),
+            expected_colored_string
         );
     }
 }

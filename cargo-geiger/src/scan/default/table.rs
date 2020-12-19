@@ -1,4 +1,5 @@
 use crate::format::emoji_symbols::EmojiSymbols;
+use crate::format::print_config::OutputFormat;
 use crate::format::table::{
     create_table_from_text_tree_lines, TableParameters, UNSAFE_COUNTERS_HEADER,
 };
@@ -39,8 +40,12 @@ pub fn scan_to_table(
         combined_scan_output_lines.append(&mut rs_files_used_lines);
     }
 
-    let emoji_symbols = EmojiSymbols::new(scan_parameters.print_config.charset);
-    let mut output_key_lines = construct_key_lines(&emoji_symbols);
+    let emoji_symbols =
+        EmojiSymbols::new(scan_parameters.print_config.output_format);
+    let mut output_key_lines = construct_key_lines(
+        &emoji_symbols,
+        scan_parameters.print_config.output_format,
+    );
     combined_scan_output_lines.append(&mut output_key_lines);
 
     let text_tree_lines = walk_dependency_tree(
@@ -81,7 +86,10 @@ pub fn scan_to_table(
     })
 }
 
-fn construct_key_lines(emoji_symbols: &EmojiSymbols) -> Vec<String> {
+fn construct_key_lines(
+    emoji_symbols: &EmojiSymbols,
+    output_format: OutputFormat,
+) -> Vec<String> {
     let mut output_key_lines = Vec::<String>::new();
 
     output_key_lines.push(String::new());
@@ -97,12 +105,15 @@ fn construct_key_lines(emoji_symbols: &EmojiSymbols) -> Vec<String> {
     let unknown = "No `unsafe` usage found, missing #![forbid(unsafe_code)]";
     let guilty = "`unsafe` usage found";
 
-    let shift_sequence = if emoji_symbols.will_output_emoji() {
-        "\r\x1B[7C" // The radiation icon's Unicode width is 2,
-                    // but by most terminals it seems to be rendered at width 1.
-    } else {
-        ""
-    };
+    let shift_sequence =
+        match (output_format, emoji_symbols.will_output_emoji()) {
+            (OutputFormat::GitHubMarkdown, true) => " ",
+            (_, true) => {
+                "\r\x1B[7C" // The radiation icon's Unicode width is 2,
+                            // but by most terminals it seems to be rendered at width 1.
+            }
+            _ => "",
+        };
 
     let symbol_kinds_to_string_values = vec![
         (SymbolKind::Lock, "", forbids),
@@ -122,15 +133,18 @@ fn construct_key_lines(emoji_symbols: &EmojiSymbols) -> Vec<String> {
     }
 
     output_key_lines.push(String::new());
-    output_key_lines.push(format!(
-        "{}",
-        UNSAFE_COUNTERS_HEADER
-            .iter()
-            .map(|s| s.to_owned())
-            .collect::<Vec<_>>()
-            .join(" ")
-            .bold()
-    ));
+
+    let key = UNSAFE_COUNTERS_HEADER
+        .iter()
+        .map(|s| s.to_owned())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    match output_format {
+        OutputFormat::GitHubMarkdown => output_key_lines.push(key),
+        _ => output_key_lines.push(key.bold().to_string()),
+    }
+
     output_key_lines.push(String::new());
 
     output_key_lines

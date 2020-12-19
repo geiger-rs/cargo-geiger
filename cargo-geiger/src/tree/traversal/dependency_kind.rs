@@ -23,7 +23,7 @@ pub fn walk_dependency_kind(
     deps.sort_by_key(|n| n.clone());
 
     let tree_symbols =
-        get_tree_symbols(walk_dependency_parameters.print_config.charset);
+        get_tree_symbols(walk_dependency_parameters.print_config.output_format);
     let mut text_tree_lines = Vec::new();
     if let Prefix::Indent = walk_dependency_parameters.print_config.prefix {
         push_extra_deps_group_text_tree_line_for_non_normal_dependencies(
@@ -91,7 +91,7 @@ fn push_extra_deps_group_text_tree_line_for_non_normal_dependencies(
 mod traversal_tests {
     use super::*;
 
-    use crate::format::Charset;
+    use crate::format::print_config::OutputFormat;
     use crate::tree::TextTreeLine::ExtraDepsGroup;
 
     use rstest::*;
@@ -118,7 +118,7 @@ mod traversal_tests {
                     kind: DependencyKind::Build,
                     tree_vines: format!(
                     "    {}   ",
-                    get_tree_symbols(Charset::Utf8).down
+                    get_tree_symbols(OutputFormat::Utf8).down
                     )
                 }
             ]
@@ -131,7 +131,7 @@ mod traversal_tests {
                     kind: DependencyKind::Development,
                     tree_vines: format!(
                     "{}   ",
-                    get_tree_symbols(Charset::Utf8).down
+                    get_tree_symbols(OutputFormat::Utf8).down
                     )
                 }
             ]
@@ -158,7 +158,7 @@ mod traversal_tests {
         expected_text_tree_lines: Vec<TextTreeLine>,
     ) {
         let mut text_tree_lines: Vec<TextTreeLine> = vec![];
-        let tree_symbols = get_tree_symbols(Charset::Utf8);
+        let tree_symbols = get_tree_symbols(OutputFormat::Utf8);
 
         push_extra_deps_group_text_tree_line_for_non_normal_dependencies(
             input_dep_kind,

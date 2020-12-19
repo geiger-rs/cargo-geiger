@@ -1,5 +1,5 @@
 use crate::format::emoji_symbols::EmojiSymbols;
-use crate::format::print_config::colorize;
+use crate::format::print_config::{colorize, OutputFormat};
 use crate::format::{get_kind_group_name, CrateDetectionStatus, SymbolKind};
 use crate::mapping::CargoMetadataParameters;
 use crate::scan::unsafe_stats;
@@ -91,6 +91,8 @@ pub fn handle_text_tree_line_package(
     };
 
     let package_name = colorize(
+        &crate_detection_status,
+        table_parameters.print_config.output_format,
         format!(
             "{}",
             table_parameters
@@ -98,11 +100,11 @@ pub fn handle_text_tree_line_package(
                 .format
                 .display(cargo_metadata_parameters, &package_id)
         ),
-        &crate_detection_status,
     );
     let unsafe_info = colorize(
-        table_row(&unsafe_info.used, &unsafe_info.unused),
         &crate_detection_status,
+        table_parameters.print_config.output_format,
+        table_row(&unsafe_info.used, &unsafe_info.unused),
     );
 
     let shift_chars = unsafe_info.chars().count() + 4;
@@ -117,9 +119,19 @@ pub fn handle_text_tree_line_package(
     // count as a single character if using the column formatting provided by
     // Rust. This could be unrelated to Rust and a quirk of this particular
     // symbol or something in the Terminal app on macOS.
-    if emoji_symbols.will_output_emoji() {
+    if emoji_symbols.will_output_emoji()
+        && table_parameters.print_config.output_format
+            != OutputFormat::GitHubMarkdown
+    {
         line.push('\r'); // Return the cursor to the start of the line.
         line.push_str(format!("\x1B[{}C", shift_chars).as_str()); // Move the cursor to the right so that it points to the icon character.
+    } else if table_parameters.print_config.output_format
+        == OutputFormat::GitHubMarkdown
+        && crate_detection_status == CrateDetectionStatus::UnsafeDetected
+    {
+        // When rendering output in the GitHubMarkdown format, the Rads symbol
+        // is only rendered as a single char, needing an extra space
+        line.push_str(" ");
     }
 
     table_lines.push(format!("{} {}{}", line, tree_vines, package_name));

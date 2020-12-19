@@ -14,6 +14,7 @@ use strum_macros::EnumIter;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Charset {
     Ascii,
+    GitHubMarkdown,
     Utf8,
 }
 
@@ -35,8 +36,10 @@ impl FromStr for Charset {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Charset, &'static str> {
-        match s {
+        let comparison_string = String::from(s).to_lowercase();
+        match comparison_string.as_str() {
             "ascii" => Ok(Charset::Ascii),
+            "githubmarkdown" => Ok(Charset::GitHubMarkdown),
             "utf8" => Ok(Charset::Utf8),
             _ => Err("invalid charset"),
         }
@@ -94,11 +97,20 @@ mod format_tests {
 
     use rstest::*;
 
-    #[rstest]
-    fn charset_from_str_test() {
-        assert_eq!(Charset::from_str("ascii"), Ok(Charset::Ascii));
-        assert_eq!(Charset::from_str("utf8"), Ok(Charset::Utf8));
-        assert_eq!(Charset::from_str("invalid_str"), Err("invalid charset"));
+    #[rstest(
+        input_string,
+        expected_enum_result,
+        case("ascii", Ok(Charset::Ascii)),
+        case("githubmarkdown", Ok(Charset::GitHubMarkdown)),
+        case("utf8", Ok(Charset::Utf8)),
+        case("UTF8", Ok(Charset::Utf8)),
+        case("invalid_str", Err("invalid charset"))
+    )]
+    fn charset_from_str_test(
+        input_string: &str,
+        expected_enum_result: Result<Charset, &'static str>,
+    ) {
+        assert_eq!(Charset::from_str(input_string), expected_enum_result);
     }
 
     #[rstest]

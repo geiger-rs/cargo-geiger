@@ -29,15 +29,15 @@ pub fn scan_unsafe(
     workspace: &Workspace,
 ) -> Result<ScanResult, CliError> {
     match scan_parameters.args.output_format {
-        Some(output_format) => scan_to_report(
+        OutputFormat::Json => scan_to_report(
             cargo_metadata_parameters,
             graph,
-            output_format,
+            scan_parameters.args.output_format,
             root_package_id,
             scan_parameters,
             workspace,
         ),
-        None => scan_to_table(
+        _ => scan_to_table(
             cargo_metadata_parameters,
             graph,
             root_package_id,
@@ -145,12 +145,13 @@ fn scan_to_report(
         list_files_used_but_not_scanned(&geiger_context, &rs_files_used)
             .into_iter()
             .collect();
-    let s = match output_format {
+    let json_string = match output_format {
         OutputFormat::Json => serde_json::to_string(&report).unwrap(),
+        _ => panic!("Only implemented for OutputFormat::Json"),
     };
 
     Ok(ScanResult {
-        scan_output_lines: vec![s],
+        scan_output_lines: vec![json_string],
         warning_count: 0,
     })
 }

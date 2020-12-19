@@ -20,15 +20,15 @@ pub fn scan_forbid_unsafe(
     scan_parameters: &ScanParameters,
 ) -> Result<ScanResult, CliError> {
     match scan_parameters.args.output_format {
-        Some(output_format) => scan_forbid_to_report(
+        OutputFormat::Json => scan_forbid_to_report(
             cargo_metadata_parameters,
             scan_parameters.config,
             graph,
-            output_format,
+            scan_parameters.args.output_format,
             scan_parameters.print_config,
             root_package_id,
         ),
-        None => scan_forbid_to_table(
+        _ => scan_forbid_to_table(
             cargo_metadata_parameters,
             scan_parameters.config,
             graph,
@@ -77,12 +77,13 @@ fn scan_forbid_to_report(
         };
         report.packages.insert(entry.package.id.clone(), entry);
     }
-    let s = match output_format {
+    let json_string = match output_format {
         OutputFormat::Json => serde_json::to_string(&report).unwrap(),
+        _ => panic!("Only implemented for OutputFormat::Json"),
     };
 
     Ok(ScanResult {
-        scan_output_lines: vec![s],
+        scan_output_lines: vec![json_string],
         warning_count: 0,
     })
 }
