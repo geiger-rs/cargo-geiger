@@ -94,16 +94,24 @@ fn construct_key_lines(
 
     output_key_lines.push(String::new());
     match output_format {
-        OutputFormat::Ratio => { // Change the prompt for Safe Ratio report:
+        OutputFormat::Ratio => {
+            // Change the prompt for Safe Ratio report:
             output_key_lines.push(String::from("Metric output format: x/y=z%"));
-            output_key_lines.push(String::from("    x = safe code found in the crate"));
-            output_key_lines.push(String::from("    y = total code found in the crate"));
-            output_key_lines.push(String::from("    z = percentage of safe ratio as defined by x/y"));
+            output_key_lines
+                .push(String::from("    x = safe code found in the crate"));
+            output_key_lines
+                .push(String::from("    y = total code found in the crate"));
+            output_key_lines.push(String::from(
+                "    z = percentage of safe ratio as defined by x/y",
+            ));
         }
         _ => {
             output_key_lines.push(String::from("Metric output format: x/y"));
-            output_key_lines.push(String::from("    x = unsafe code used by the build"));
-            output_key_lines.push(String::from("    y = total unsafe code found in the crate"));
+            output_key_lines
+                .push(String::from("    x = unsafe code used by the build"));
+            output_key_lines.push(String::from(
+                "    y = total unsafe code found in the crate",
+            ));
         }
     }
     output_key_lines.push(String::new());
