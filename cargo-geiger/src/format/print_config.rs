@@ -22,6 +22,7 @@ pub enum OutputFormat {
     Json,
     GitHubMarkdown,
     Utf8,
+    Ratio,
 }
 
 impl Default for OutputFormat {

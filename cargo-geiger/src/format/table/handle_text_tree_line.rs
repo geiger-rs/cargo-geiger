@@ -104,7 +104,7 @@ pub fn handle_text_tree_line_package(
     let unsafe_info = colorize(
         &crate_detection_status,
         table_parameters.print_config.output_format,
-        table_row(&unsafe_info.used, &unsafe_info.unused),
+        table_row(&unsafe_info.used, &unsafe_info.unused, table_parameters.print_config.output_format),
     );
 
     let shift_chars = unsafe_info.chars().count() + 4;

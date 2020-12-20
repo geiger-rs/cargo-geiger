@@ -107,32 +107,71 @@ fn table_footer(
     output_format: OutputFormat,
     status: CrateDetectionStatus,
 ) -> ColoredString {
-    let fmt = |used: &Count, not_used: &Count| {
-        format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
-    };
-    let output = format!(
-        "{: <10} {: <12} {: <6} {: <7} {: <7}",
-        fmt(&used.functions, &not_used.functions),
-        fmt(&used.exprs, &not_used.exprs),
-        fmt(&used.item_impls, &not_used.item_impls),
-        fmt(&used.item_traits, &not_used.item_traits),
-        fmt(&used.methods, &not_used.methods),
-    );
-    colorize(&status, output_format, output)
+    match output_format { 
+        OutputFormat::Ratio => { // print safe ratio 
+                let fmt = |used: &Count, not_used: &Count| {
+                    format!("{:>5}/{:<}={:.2}%", (used.safe + not_used.safe), (used.safe + used.unsafe_ + not_used.unsafe_ + not_used.safe), 
+                            if used.safe + used.unsafe_ + not_used.unsafe_ + not_used.safe == 0 { 100.0 } 
+                            else {(100.00*(used.safe + not_used.safe) as f32)/((used.safe + used.unsafe_ + not_used.unsafe_ + not_used.safe) as f32)}
+                    )
+                };
+                let output = format!(
+                    "{: <12} {: <18} {: <18} {: <12} {: <12}",
+                    fmt(&used.functions, &not_used.functions),
+                    fmt(&used.exprs, &not_used.exprs),
+                    fmt(&used.item_impls, &not_used.item_impls),
+                    fmt(&used.item_traits, &not_used.item_traits),
+                    fmt(&used.methods, &not_used.methods),
+                );
+                colorize(&status, output_format, output)
+        }
+        _ => {
+                let fmt = |used: &Count, not_used: &Count| {
+                    format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
+                };
+                let output = format!(
+                    "{: <10} {: <12} {: <6} {: <7} {: <7}",
+                    fmt(&used.functions, &not_used.functions),
+                    fmt(&used.exprs, &not_used.exprs),
+                    fmt(&used.item_impls, &not_used.item_impls),
+                    fmt(&used.item_traits, &not_used.item_traits),
+                    fmt(&used.methods, &not_used.methods),
+                );
+                colorize(&status, output_format, output)
+        }
+    }
 }
 
-fn table_row(used: &CounterBlock, not_used: &CounterBlock) -> String {
-    let fmt = |used: &Count, not_used: &Count| {
-        format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
-    };
-    format!(
-        "{: <10} {: <12} {: <6} {: <7} {: <7}",
-        fmt(&used.functions, &not_used.functions),
-        fmt(&used.exprs, &not_used.exprs),
-        fmt(&used.item_impls, &not_used.item_impls),
-        fmt(&used.item_traits, &not_used.item_traits),
-        fmt(&used.methods, &not_used.methods),
-    )
+fn table_row(used: &CounterBlock, not_used: &CounterBlock, output_format: OutputFormat) -> String {
+        match output_format {
+            OutputFormat::Ratio => { // print safe ratio 
+                let fmt = |used: &Count, not_used: &Count| {
+                    format!("{:>5}/{:<}={:.2}%", (used.safe + not_used.safe), (used.safe + used.unsafe_ + not_used.unsafe_ + not_used.safe), 
+                            if used.safe + used.unsafe_ + not_used.unsafe_ + not_used.safe == 0 { 100.0 } 
+                            else {(100.00*(used.safe + not_used.safe) as f32)/((used.safe + used.unsafe_ + not_used.unsafe_ + not_used.safe) as f32)}
+                    )
+                }; 
+                format!("{: <12} {: <18} {: <18} {: <12} {: <12}",
+                        fmt(&used.functions, &not_used.functions),
+                        fmt(&used.exprs, &not_used.exprs),
+                        fmt(&used.item_impls, &not_used.item_impls),
+                        fmt(&used.item_traits, &not_used.item_traits),
+                        fmt(&used.methods, &not_used.methods)
+                )
+            }
+            _ => {
+                let fmt = |used: &Count, not_used: &Count| {
+                    format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
+                };
+                format!("{: <10} {: <12} {: <6} {: <7} {: <7}",
+                        fmt(&used.functions, &not_used.functions),
+                        fmt(&used.exprs, &not_used.exprs),
+                        fmt(&used.item_impls, &not_used.item_impls),
+                        fmt(&used.item_traits, &not_used.item_traits),
+                        fmt(&used.methods, &not_used.methods)
+                )
+            }
+        }
 }
 
 fn table_row_empty() -> String {
@@ -142,7 +181,7 @@ fn table_row_empty() -> String {
         .iter()
         .map(|s| s.len())
         .sum::<usize>()
-        + headers_but_last.len() // Space after each column
+        + headers_but_last.len() + 4// Space after each column
         + 2 // Unsafety symbol width
         + 1; // Space after symbol
     " ".repeat(n)
