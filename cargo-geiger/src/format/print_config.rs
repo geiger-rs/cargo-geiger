@@ -21,8 +21,8 @@ pub enum OutputFormat {
     Ascii,
     Json,
     GitHubMarkdown,
-    Utf8,
     Ratio,
+    Utf8,
 }
 
 impl Default for OutputFormat {
