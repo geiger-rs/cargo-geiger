@@ -317,14 +317,15 @@ mod table_tests {
         .collect();
         let unsafety = unsafe_stats(&package_metrics, &rs_files_used);
 
-        let table_row = table_row(&unsafety.used, &unsafety.unused);
+        let table_row =
+            table_row(&unsafety.used, &unsafety.unused, OutputFormat::Ascii);
         assert_eq!(table_row, "4/6        8/12         12/18  16/24   20/30  ");
     }
 
     #[rstest]
     fn table_row_empty_test() {
         let empty_table_row = table_row_empty();
-        assert_eq!(empty_table_row.len(), 51);
+        assert_eq!(empty_table_row.len(), 55);
     }
 
     #[rstest(
