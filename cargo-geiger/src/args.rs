@@ -31,7 +31,7 @@ OPTIONS:
     --format <FORMAT>             Format string used for printing dependencies
                                   [default: {p}].
     --output-format               Output format for the report: Ascii, GitHubMarkdown,
-                                  Json, Utf8 [default: Utf8]
+                                  Json, Utf8, Ratio [default: Utf8]
     --update-readme               Writes output to ./README.md. Looks for a Safety
                                   Report section, replaces if found, adds if not.
                                   Throws an error if no README.md exists.

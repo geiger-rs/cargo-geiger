@@ -21,6 +21,7 @@ pub enum OutputFormat {
     Ascii,
     Json,
     GitHubMarkdown,
+    Ratio,
     Utf8,
 }
 

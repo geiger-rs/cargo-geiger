@@ -101,7 +101,7 @@ pub struct TableParameters<'a> {
     pub rs_files_used: &'a HashSet<PathBuf>,
 }
 
-fn table_footer(
+fn table_footer_unsafe_counts(
     used: CounterBlock,
     not_used: CounterBlock,
     output_format: OutputFormat,
@@ -121,18 +121,110 @@ fn table_footer(
     colorize(&status, output_format, output)
 }
 
-fn table_row(used: &CounterBlock, not_used: &CounterBlock) -> String {
+fn table_footer_safe_ratio(
+    used: CounterBlock,
+    not_used: CounterBlock,
+    output_format: OutputFormat,
+    status: CrateDetectionStatus,
+) -> ColoredString {
     let fmt = |used: &Count, not_used: &Count| {
-        format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
+        format!(
+            "{:>5}/{:<}={:.2}%",
+            (used.safe + not_used.safe),
+            (used.safe + used.unsafe_ + not_used.unsafe_ + not_used.safe),
+            if used.safe + used.unsafe_ + not_used.unsafe_ + not_used.safe == 0
+            {
+                100.0
+            } else {
+                (100.00 * (used.safe + not_used.safe) as f32)
+                    / ((used.safe
+                        + used.unsafe_
+                        + not_used.unsafe_
+                        + not_used.safe) as f32)
+            }
+        )
     };
-    format!(
-        "{: <10} {: <12} {: <6} {: <7} {: <7}",
+    let output = format!(
+        "{: <12} {: <18} {: <18} {: <12} {: <12}",
         fmt(&used.functions, &not_used.functions),
         fmt(&used.exprs, &not_used.exprs),
         fmt(&used.item_impls, &not_used.item_impls),
         fmt(&used.item_traits, &not_used.item_traits),
         fmt(&used.methods, &not_used.methods),
-    )
+    );
+    colorize(&status, output_format, output)
+}
+
+fn table_footer(
+    used: CounterBlock,
+    not_used: CounterBlock,
+    output_format: OutputFormat,
+    status: CrateDetectionStatus,
+) -> ColoredString {
+    match output_format {
+        OutputFormat::Ratio => {
+            table_footer_safe_ratio(used, not_used, output_format, status)
+        }
+        _ => table_footer_unsafe_counts(used, not_used, output_format, status),
+    }
+}
+
+fn table_row(
+    used: &CounterBlock,
+    not_used: &CounterBlock,
+    output_format: OutputFormat,
+) -> String {
+    match output_format {
+        OutputFormat::Ratio => {
+            // print safe ratio
+            let fmt = |used: &Count, not_used: &Count| {
+                format!(
+                    "{:>5}/{:<}={:.2}%",
+                    (used.safe + not_used.safe),
+                    (used.safe
+                        + used.unsafe_
+                        + not_used.unsafe_
+                        + not_used.safe),
+                    if used.safe
+                        + used.unsafe_
+                        + not_used.unsafe_
+                        + not_used.safe
+                        == 0
+                    {
+                        100.0
+                    } else {
+                        (100.00 * (used.safe + not_used.safe) as f32)
+                            / ((used.safe
+                                + used.unsafe_
+                                + not_used.unsafe_
+                                + not_used.safe)
+                                as f32)
+                    }
+                )
+            };
+            format!(
+                "{: <12} {: <18} {: <18} {: <12} {: <12}",
+                fmt(&used.functions, &not_used.functions),
+                fmt(&used.exprs, &not_used.exprs),
+                fmt(&used.item_impls, &not_used.item_impls),
+                fmt(&used.item_traits, &not_used.item_traits),
+                fmt(&used.methods, &not_used.methods)
+            )
+        }
+        _ => {
+            let fmt = |used: &Count, not_used: &Count| {
+                format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
+            };
+            format!(
+                "{: <10} {: <12} {: <6} {: <7} {: <7}",
+                fmt(&used.functions, &not_used.functions),
+                fmt(&used.exprs, &not_used.exprs),
+                fmt(&used.item_impls, &not_used.item_impls),
+                fmt(&used.item_traits, &not_used.item_traits),
+                fmt(&used.methods, &not_used.methods)
+            )
+        }
+    }
 }
 
 fn table_row_empty() -> String {
@@ -142,7 +234,7 @@ fn table_row_empty() -> String {
         .iter()
         .map(|s| s.len())
         .sum::<usize>()
-        + headers_but_last.len() // Space after each column
+        + headers_but_last.len() + 4// Space after each column
         + 2 // Unsafety symbol width
         + 1; // Space after symbol
     " ".repeat(n)
@@ -170,6 +262,10 @@ mod table_tests {
         case(
             OutputFormat::GitHubMarkdown,
             String::from("2/4        4/8          6/12   8/16    10/20  ")
+        ),
+        case(
+            OutputFormat::Ratio,
+            String::from("    2/6=33.33%     6/14=42.86%       10/22=45.45%       14/30=46.67%    18/38=47.37%")
         ),
         case(
             OutputFormat::Utf8,
@@ -232,14 +328,15 @@ mod table_tests {
         .collect();
         let unsafety = unsafe_stats(&package_metrics, &rs_files_used);
 
-        let table_row = table_row(&unsafety.used, &unsafety.unused);
+        let table_row =
+            table_row(&unsafety.used, &unsafety.unused, OutputFormat::Ascii);
         assert_eq!(table_row, "4/6        8/12         12/18  16/24   20/30  ");
     }
 
     #[rstest]
     fn table_row_empty_test() {
         let empty_table_row = table_row_empty();
-        assert_eq!(empty_table_row.len(), 51);
+        assert_eq!(empty_table_row.len(), 55);
     }
 
     #[rstest(
