@@ -122,6 +122,9 @@ pub fn colorize(
 mod print_config_tests {
     use super::*;
 
+    use crate::format::pattern::Pattern;
+    use crate::format::Chunk;
+
     use rstest::*;
     use std::str::FromStr;
 
@@ -147,6 +150,42 @@ mod print_config_tests {
             print_config_result.unwrap().direction,
             expected_edge_direction
         );
+    }
+
+    #[rstest(
+        input_format_string,
+        expected_format,
+        case(String::from("{p}"), Pattern(vec![Chunk::Package])),
+        case(String::from("{l}"), Pattern(vec![Chunk::License])),
+        case(String::from("{r}"), Pattern(vec![Chunk::Repository])),
+        case(String::from("Text"), Pattern(vec![Chunk::Raw(String::from("Text"))])),
+        case(
+            String::from("{p}-{l}-{r}-Text"),
+            Pattern(
+                vec![
+                    Chunk::Package,
+                    Chunk::Raw(String::from("-")),
+                    Chunk::License,
+                    Chunk::Raw(String::from("-")),
+                    Chunk::Repository,
+                    Chunk::Raw(String::from("-Text"))
+                ]
+            )
+        )
+    )]
+    fn print_config_new_test_format(
+        input_format_string: String,
+        expected_format: Pattern,
+    ) {
+        let args = Args {
+            format: input_format_string,
+            ..Default::default()
+        };
+
+        let print_config_result = PrintConfig::new(&args);
+
+        assert!(print_config_result.is_ok());
+        assert_eq!(print_config_result.unwrap().format, expected_format);
     }
 
     #[rstest(

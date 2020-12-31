@@ -135,7 +135,7 @@ pub fn handle_text_tree_line_package(
     {
         // When rendering output in the GitHubMarkdown format, the Rads symbol
         // is only rendered as a single char, needing an extra space
-        line.push_str(" ");
+        line.push(' ');
     }
 
     table_lines.push(format!("{} {}{}", line, tree_vines, package_name));
