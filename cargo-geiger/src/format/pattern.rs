@@ -43,3 +43,39 @@ impl Pattern {
         Ok(Pattern(chunks))
     }
 }
+
+#[cfg(test)]
+mod pattern_tests {
+    use super::*;
+    use rstest::*;
+
+    #[rstest(
+        input_format_string,
+        expected_pattern,
+        case("{p}", Pattern(vec![Chunk::Package])),
+        case("{l}", Pattern(vec![Chunk::License])),
+        case("{r}", Pattern(vec![Chunk::Repository])),
+        case("Text", Pattern(vec![Chunk::Raw(String::from("Text"))])),
+        case(
+            "{p}-{l}-{r}-Text",
+            Pattern(
+                vec![
+                    Chunk::Package,
+                    Chunk::Raw(String::from("-")),
+                    Chunk::License,
+                    Chunk::Raw(String::from("-")),
+                    Chunk::Repository,
+                    Chunk::Raw(String::from("-Text"))
+                ]
+            )
+        )
+    )]
+    fn pattern_try_build_test(
+        input_format_string: &str,
+        expected_pattern: Pattern,
+    ) {
+        let pattern_result = Pattern::try_build(input_format_string);
+        assert!(pattern_result.is_ok());
+        assert_eq!(pattern_result.unwrap(), expected_pattern);
+    }
+}
