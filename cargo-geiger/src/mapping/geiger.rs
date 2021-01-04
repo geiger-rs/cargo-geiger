@@ -50,9 +50,7 @@ fn handle_source_repr(source_repr: &str) -> cargo_geiger_serde::Source {
                 rev: String::from(revision),
             }
         }
-        _ => {
-            panic!("Unrecognised source type: {}", source_type)
-        }
+        _ => panic!("Unrecognised source type: {}", source_type),
     }
 }
 
