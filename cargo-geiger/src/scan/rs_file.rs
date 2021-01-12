@@ -147,12 +147,18 @@ pub fn resolve_rs_file_deps(
     workspace: &Workspace,
 ) -> Result<HashSet<PathBuf>, RsResolveError> {
     let config = workspace.config();
+    let (pkg_set, _) = ops::resolve_ws(workspace)
+        .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
+    let packages = pkg_set
+        .package_ids()
+        .map(|package_id| package_id.name().as_str().to_owned())
+        .collect();
     // Need to run a cargo clean to identify all new .d deps files.
     // TODO: Figure out how this can be avoided to improve performance, clean
     // Rust builds are __slow__.
     let clean_options = CleanOptions {
         config: &config,
-        spec: vec![],
+        spec: packages,
         targets: vec![],
         profile_specified: false,
         // A temporary hack to get cargo 0.43 to build, TODO: look closer at the updated cargo API
