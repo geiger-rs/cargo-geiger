@@ -1,5 +1,6 @@
 use super::{
-    file_forbids_unsafe, is_test_fn, is_test_mod, IncludeTests, RsFileMetrics,
+    file_forbids_unsafe, has_unsafe_attributes, is_test_fn, is_test_mod,
+    IncludeTests, RsFileMetrics,
 };
 
 use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemMod, ItemTrait};
@@ -50,13 +51,12 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
         if IncludeTests::No == self.include_tests && is_test_fn(item_fn) {
             return;
         }
-        if item_fn.sig.unsafety.is_some() {
+        let unsafe_fn =
+            item_fn.sig.unsafety.is_some() || has_unsafe_attributes(item_fn);
+        if unsafe_fn {
             self.enter_unsafe_scope()
         }
-        self.metrics
-            .counters
-            .functions
-            .count(item_fn.sig.unsafety.is_some());
+        self.metrics.counters.functions.count(unsafe_fn);
         visit::visit_item_fn(self, item_fn);
         if item_fn.sig.unsafety.is_some() {
             self.exit_unsafe_scope()
