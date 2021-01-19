@@ -59,6 +59,11 @@ pub fn h() {
     unimplemented!()
 }
 
+#[export_name = \"exported_g\"]
+pub fn g() {
+    unimplemented!()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -81,11 +86,11 @@ mod tests {
             counters: CounterBlock {
                 functions: Count {
                     safe: 2,
-                    unsafe_: 2
+                    unsafe_: 3
                 },
                 exprs: Count {
                     safe: 4,
-                    unsafe_: 4
+                    unsafe_: 5
                 },
                 item_impls: Count {
                     safe: 0,
@@ -109,11 +114,11 @@ mod tests {
                 counters: CounterBlock {
                     functions: Count {
                         safe: 1,
-                        unsafe_: 2
+                        unsafe_: 3
                     },
                     exprs: Count {
                         safe: 4,
-                        unsafe_: 3
+                        unsafe_: 4
                     },
                     item_impls: Count {
                         safe: 0,
@@ -161,11 +166,11 @@ mod tests {
                 counters: CounterBlock {
                     functions: Count {
                         safe: 2,
-                        unsafe_: 2
+                        unsafe_: 3
                     },
                     exprs: Count {
                         safe: 4,
-                        unsafe_: 4
+                        unsafe_: 5
                     },
                     item_impls: Count {
                         safe: 0,
@@ -189,11 +194,11 @@ mod tests {
                 counters: CounterBlock {
                     functions: Count {
                         safe: 1,
-                        unsafe_: 2
+                        unsafe_: 3
                     },
                     exprs: Count {
                         safe: 4,
-                        unsafe_: 3
+                        unsafe_: 4
                     },
                     item_impls: Count {
                         safe: 0,

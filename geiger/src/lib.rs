@@ -97,7 +97,10 @@ fn has_unsafe_attributes(item_fn: &ItemFn) -> bool {
         .attrs
         .iter()
         .flat_map(Attribute::parse_meta)
-        .any(|m| meta_contains_ident(&m, "no_mangle"))
+        .any(|m| {
+            meta_contains_ident(&m, "no_mangle")
+                || meta_contains_attribute(&m, "export_name")
+        })
 }
 
 /// Will return true for #[cfg(test)] decorated modules.
@@ -123,6 +126,14 @@ fn meta_contains_ident(m: &syn::Meta, ident: &str) -> bool {
     use syn::Meta;
     match m {
         Meta::Path(p) => p.is_ident(ident),
+        _ => false,
+    }
+}
+
+fn meta_contains_attribute(m: &syn::Meta, ident: &str) -> bool {
+    use syn::Meta;
+    match m {
+        Meta::NameValue(nv) => nv.path.is_ident(ident),
         _ => false,
     }
 }
