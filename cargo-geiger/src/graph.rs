@@ -9,11 +9,10 @@ use cargo::util::interning::InternedString;
 use cargo::util::CargoResult;
 use cargo::Config;
 use cargo_metadata::{DependencyKind, PackageId};
-use cargo_platform::{Cfg, Platform};
+use cargo_platform::Cfg;
 use petgraph::graph::NodeIndex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
 pub enum ExtraDeps {
@@ -153,11 +152,7 @@ fn add_package_dependencies_to_graph(
                         graph_configuration.target.map(|t| {
                             match graph_configuration.cfgs {
                                 None => false,
-                                Some(cfgs) => {
-                                    (Platform::from_str(p.repr.as_str()))
-                                        .unwrap()
-                                        .matches(t, cfgs)
-                                }
+                                Some(cfgs) => p.matches(t, cfgs),
                             }
                         })
                     })
