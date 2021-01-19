@@ -88,7 +88,19 @@ fn is_test_fn(item_fn: &ItemFn) -> bool {
         .attrs
         .iter()
         .flat_map(Attribute::parse_meta)
-        .any(|m| meta_is_word_test(&m))
+        .any(|m| meta_contains_ident(&m, "test"))
+}
+
+fn has_unsafe_attributes(item_fn: &ItemFn) -> bool {
+    use syn::Attribute;
+    item_fn
+        .attrs
+        .iter()
+        .flat_map(Attribute::parse_meta)
+        .any(|m| {
+            meta_contains_ident(&m, "no_mangle")
+                || meta_contains_attribute(&m, "export_name")
+        })
 }
 
 /// Will return true for #[cfg(test)] decorated modules.
@@ -110,10 +122,18 @@ fn is_test_mod(i: &ItemMod) -> bool {
         })
 }
 
-fn meta_is_word_test(m: &syn::Meta) -> bool {
+fn meta_contains_ident(m: &syn::Meta, ident: &str) -> bool {
     use syn::Meta;
     match m {
-        Meta::Path(p) => p.is_ident("test"),
+        Meta::Path(p) => p.is_ident(ident),
+        _ => false,
+    }
+}
+
+fn meta_contains_attribute(m: &syn::Meta, ident: &str) -> bool {
+    use syn::Meta;
+    match m {
+        Meta::NameValue(nv) => nv.path.is_ident(ident),
         _ => false,
     }
 }
@@ -139,7 +159,7 @@ fn meta_list_is_cfg_test(meta_list: &syn::MetaList) -> bool {
         return false;
     }
     meta_list.nested.iter().any(|n| match n {
-        NestedMeta::Meta(meta) => meta_is_word_test(meta),
+        NestedMeta::Meta(meta) => meta_contains_ident(meta, "test"),
         _ => false,
     })
 }
