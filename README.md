@@ -57,9 +57,7 @@ Why the name?
 
 <https://en.wikipedia.org/wiki/Geiger_counter>
 
-Unsafe code and ionizing radiation have something in common, and they are both
-inevitable in some situations, and should preferably be safely contained!
-
+Unsafe code, like ionizing radiation, is unavoidable in some situations and should be safely contained!
 
 Known issues
 ------------
