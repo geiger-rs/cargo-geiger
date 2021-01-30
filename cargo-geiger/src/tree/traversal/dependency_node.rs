@@ -41,10 +41,10 @@ pub fn walk_dependency_node(
         walk_dependency_parameters.print_config,
     );
 
-    for (dep_kind, nodes) in dependency_type_nodes.iter_mut() {
+    for (dependency_kind, nodes) in dependency_type_nodes.iter_mut() {
         let mut dep_kind_out = walk_dependency_kind(
             cargo_metadata_parameters,
-            dep_kind.to_dependency_kind(),
+            *dependency_kind,
             nodes,
             walk_dependency_parameters,
         );
@@ -59,11 +59,11 @@ fn construct_dependency_type_nodes_hashmap<'a>(
     graph: &'a Graph,
     package: &PackageId,
     print_config: &PrintConfig,
-) -> HashMap<PrivateDepKind, Vec<PackageId>> {
-    let mut dependency_type_nodes: HashMap<PrivateDepKind, Vec<PackageId>> = [
-        (PrivateDepKind::Build, vec![]),
-        (PrivateDepKind::Development, vec![]),
-        (PrivateDepKind::Normal, vec![]),
+) -> HashMap<DependencyKind, Vec<PackageId>> {
+    let mut dependency_type_nodes: HashMap<DependencyKind, Vec<PackageId>> = [
+        (DependencyKind::Build, vec![]),
+        (DependencyKind::Development, vec![]),
+        (DependencyKind::Normal, vec![]),
     ]
     .iter()
     .cloned()
@@ -79,42 +79,12 @@ fn construct_dependency_type_nodes_hashmap<'a>(
         };
 
         dependency_type_nodes
-            .get_mut(&PrivateDepKind::from_dependency_kind(&edge.weight()))
+            .get_mut(&edge.weight())
             .unwrap()
             .push(dependency.clone());
     }
 
     dependency_type_nodes
-}
-
-// cargo_metadata::DependencyKind doesn't implement Eq or Hash, and so can't
-// be used in a HashMap
-#[derive(Clone, Eq, Hash, PartialEq)]
-enum PrivateDepKind {
-    Build,
-    Development,
-    Normal,
-}
-
-impl PrivateDepKind {
-    fn from_dependency_kind(
-        dependency_kind: &DependencyKind,
-    ) -> PrivateDepKind {
-        match dependency_kind {
-            DependencyKind::Build => PrivateDepKind::Build,
-            DependencyKind::Development => PrivateDepKind::Development,
-            DependencyKind::Normal => PrivateDepKind::Normal,
-            _ => panic!("Unrecognised DependencyKind"),
-        }
-    }
-
-    fn to_dependency_kind(&self) -> DependencyKind {
-        match self {
-            PrivateDepKind::Build => DependencyKind::Build,
-            PrivateDepKind::Development => DependencyKind::Development,
-            PrivateDepKind::Normal => DependencyKind::Normal,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -206,15 +176,15 @@ mod dependency_node_tests {
             );
 
         assert_eq!(
-            dependency_type_nodes_hashmap[&PrivateDepKind::Build].len(),
+            dependency_type_nodes_hashmap[&DependencyKind::Build].len(),
             expected_build_nodes_length
         );
         assert_eq!(
-            dependency_type_nodes_hashmap[&PrivateDepKind::Development].len(),
+            dependency_type_nodes_hashmap[&DependencyKind::Development].len(),
             expected_development_nodes_length
         );
         assert_eq!(
-            dependency_type_nodes_hashmap[&PrivateDepKind::Normal].len(),
+            dependency_type_nodes_hashmap[&DependencyKind::Normal].len(),
             expected_normal_nodes_length
         );
     }
