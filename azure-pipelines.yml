@@ -51,3 +51,9 @@ steps:
       codeCoverageTool: Cobertura
       summaryFileLocation: cobertura.xml
     condition: eq(variables['Agent.OS'], 'Linux')
+
+  - script: |
+      rm Cargo.lock
+      cargo build --all
+    displayName: Cargo build without lockfile
+    condition: eq(variables['Agent.OS'], 'Linux')
