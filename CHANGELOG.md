@@ -140,7 +140,7 @@
 [#99]: https://github.com/rust-secure-code/cargo-geiger/pull/99
 [#105]: https://github.com/rust-secure-code/cargo-geiger/issues/105
 [#151]: https://github.com/rust-secure-code/cargo-geiger/issues/151
-[#160]: https://github.com/rust-secure-code/cargo-geiger/issues/160
+[#166]: https://github.com/rust-secure-code/cargo-geiger/issues/166
 [#183]: https://github.com/rust-secure-code/cargo-geiger/pull/183
 [geiger]: https://crates.io/crates/geiger
 [pico-args]: https://crates.io/crates/pico-args
