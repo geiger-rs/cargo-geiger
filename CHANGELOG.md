@@ -2,8 +2,9 @@
 ---------
 
 ## 0.11.0 (unreleased)
- - (TODO: Merge) Add build without lock file to CI and upgrade the cargo dependency to 0.50 [#183]
+ - (TODO: Merge) Add build without lock file to CI and upgrade the cargo dependency to 0.50. [#183]
  - Feature: safety report in readme. [#151]
+ - Run `cargo audit` as part of CI builds. [#166]
  - TODO: Document all relevant changes here.
 
 ## 0.10.2
@@ -139,6 +140,7 @@
 [#99]: https://github.com/rust-secure-code/cargo-geiger/pull/99
 [#105]: https://github.com/rust-secure-code/cargo-geiger/issues/105
 [#151]: https://github.com/rust-secure-code/cargo-geiger/issues/151
+[#160]: https://github.com/rust-secure-code/cargo-geiger/issues/160
 [#183]: https://github.com/rust-secure-code/cargo-geiger/pull/183
 [geiger]: https://crates.io/crates/geiger
 [pico-args]: https://crates.io/crates/pico-args
