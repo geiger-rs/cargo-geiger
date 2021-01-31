@@ -10,7 +10,7 @@ cargo-geiger ☢️
 A program that lists statistics related to the usage of unsafe Rust code in a Rust
 crate and all its dependencies.
 
-This cargo plugin is based on the code from two other projects:
+This cargo plugin were originally based on the code from two other projects:
 <https://github.com/icefoxen/cargo-osha> and
 <https://github.com/sfackler/cargo-tree>.
 
