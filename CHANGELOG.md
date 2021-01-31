@@ -2,7 +2,9 @@
 ---------
 
 ## 0.11.0
- - TODO: Prepare release.
+ - (TODO: Merge) Add build without lock file to CI. [#183]
+ - Feature: safety report in readme. [#151]
+ - TODO: Document all relevant changes here.
 
 ## 0.10.2
  - __Bugfix__: Avoid panic and log warnings on parse failure. [#105]
@@ -136,5 +138,7 @@
 [#98]: https://github.com/rust-secure-code/cargo-geiger/pull/98
 [#99]: https://github.com/rust-secure-code/cargo-geiger/pull/99
 [#105]: https://github.com/rust-secure-code/cargo-geiger/issues/105
+[#151]: https://github.com/rust-secure-code/cargo-geiger/issues/151
+[#183]: https://github.com/rust-secure-code/cargo-geiger/pull/183
 [geiger]: https://crates.io/crates/geiger
 [pico-args]: https://crates.io/crates/pico-args
