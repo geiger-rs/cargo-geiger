@@ -1,7 +1,7 @@
 # Changelog
 ---------
 
-## 0.11.0
+## 0.11.0 (unreleased)
  - (TODO: Merge) Add build without lock file to CI. [#183]
  - Feature: safety report in readme. [#151]
  - TODO: Document all relevant changes here.
