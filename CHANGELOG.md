@@ -2,7 +2,7 @@
 ---------
 
 ## 0.11.0 (unreleased)
- - (TODO: Merge) Add build without lock file to CI and upgrade the cargo dependency to 0.50. [#183]
+ - Add build without lock file to CI and upgrade the cargo dependency to 0.50. [#183]
  - Feature: safety report in readme. [#151]
  - Run `cargo audit` as part of CI builds. [#166]
  - TODO: Document all relevant changes here.
