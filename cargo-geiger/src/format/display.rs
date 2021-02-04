@@ -2,8 +2,7 @@ use crate::format::pattern::Pattern;
 use crate::format::Chunk;
 use crate::mapping::{
     CargoMetadataParameters, GetLicenceFromCargoMetadataPackageId,
-    GetPackageNameFromCargoMetadataPackageId,
-    GetPackageVersionFromCargoMetadataPackageId,
+    GetPackageNameAndVersionFromCargoMetadataPackageId,
     GetRepositoryFromCargoMetadataPackageId,
 };
 
@@ -32,22 +31,13 @@ impl<'a> fmt::Display for Display<'a> {
                     }
                 }
                 Chunk::Package => {
-                    (write!(
-                        fmt,
-                        "{} {}",
-                        self.cargo_metadata_parameters
-                            .krates
-                            .get_package_name_from_cargo_metadata_package_id(
-                                self.package
-                            )
-                            .unwrap(),
-                        self.cargo_metadata_parameters
-                            .krates
-                            .get_package_version_from_cargo_metadata_package_id(
-                                self.package
-                            )
-                            .unwrap()
-                    ))?
+                    if let Some((package_name, package_version)) = self.cargo_metadata_parameters
+                        .krates
+                        .get_package_name_and_version_from_cargo_metadata_package_id(self.package) {
+                        (write!(fmt, "{} {}", package_name, package_version))?
+                    } else {
+                        eprintln!("Failed to format Package: {}", self.package)
+                    }
                 }
                 Chunk::Raw(ref s) => (fmt.write_str(s))?,
                 Chunk::Repository => {

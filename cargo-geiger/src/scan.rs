@@ -193,34 +193,62 @@ fn package_metrics(
     let mut indices = vec![root_index];
     let mut visited = HashSet::new();
 
-    while !indices.is_empty() {
-        let i = indices.pop().unwrap();
-        let package_id = graph.graph[i].clone();
-        let mut package = PackageInfo::new(
-            package_id
-                .to_cargo_geiger_package_id(cargo_metadata_parameters.metadata),
-        );
-        for edge in graph.graph.edges(i) {
-            let dep_index = edge.target();
-            if visited.insert(dep_index) {
-                indices.push(dep_index);
-            }
-            let dep = graph.graph[dep_index]
-                .to_cargo_geiger_package_id(cargo_metadata_parameters.metadata);
+    while let Some(index) = indices.pop() {
+        let package_id = graph.graph[index].clone();
 
-            package.add_dependency(
-                dep,
-                edge.weight().to_cargo_geiger_dependency_kind(),
-            );
-        }
-        match geiger_context.package_id_to_metrics.get(&package_id) {
-            Some(m) => package_metrics.push((package, Some(m.clone()))),
-            None => {
-                eprintln!(
-                    "WARNING: No metrics found for package: {}",
-                    package_id
-                );
-                package_metrics.push((package, None))
+        if let Some(package) = package_id
+            .to_cargo_geiger_package_id(cargo_metadata_parameters.metadata)
+        {
+            let mut package_info = PackageInfo::new(package);
+
+            for edge in graph.graph.edges(index) {
+                let dep_index = edge.target();
+                if visited.insert(dep_index) {
+                    indices.push(dep_index);
+                }
+
+                let dependency_package_id_option = graph.graph[dep_index]
+                    .to_cargo_geiger_package_id(
+                        cargo_metadata_parameters.metadata,
+                    );
+
+                let dependency_kind_option =
+                    edge.weight().to_cargo_geiger_dependency_kind();
+
+                match (dependency_package_id_option, dependency_kind_option) {
+                    (Some(dependency_package_id), Some(dependency_kind)) => {
+                        package_info.add_dependency(
+                            dependency_package_id,
+                            dependency_kind,
+                        );
+                    }
+                    (Some(dependency_package_id), None) => {
+                        eprintln!(
+                            "Failed to add dependency for: {} {:?}",
+                            dependency_package_id.name,
+                            dependency_package_id.version
+                        )
+                    }
+                    _ => {
+                        eprintln!(
+                            "Error converting: {} to Cargo Geiger Package Id",
+                            graph.graph[dep_index]
+                        )
+                    }
+                }
+            }
+
+            match geiger_context.package_id_to_metrics.get(&package_id) {
+                Some(m) => {
+                    package_metrics.push((package_info, Some(m.clone())))
+                }
+                None => {
+                    eprintln!(
+                        "WARNING: No metrics found for package: {}",
+                        package_id
+                    );
+                    package_metrics.push((package_info, None))
+                }
             }
         }
     }

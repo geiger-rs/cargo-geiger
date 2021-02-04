@@ -19,10 +19,12 @@ pub trait DepsNotReplaced {
     fn deps_not_replaced(
         &self,
         package_id: cargo_metadata::PackageId,
-    ) -> Vec<(
-        cargo_metadata::PackageId,
-        HashSet<cargo_metadata::Dependency>,
-    )>;
+    ) -> Option<
+        Vec<(
+            cargo_metadata::PackageId,
+            HashSet<cargo_metadata::Dependency>,
+        )>,
+    >;
 }
 
 pub trait GetLicenceFromCargoMetadataPackageId {
@@ -32,18 +34,11 @@ pub trait GetLicenceFromCargoMetadataPackageId {
     ) -> Option<String>;
 }
 
-pub trait GetPackageNameFromCargoMetadataPackageId {
-    fn get_package_name_from_cargo_metadata_package_id(
+pub trait GetPackageNameAndVersionFromCargoMetadataPackageId {
+    fn get_package_name_and_version_from_cargo_metadata_package_id(
         &self,
         package_id: &cargo_metadata::PackageId,
-    ) -> Option<String>;
-}
-
-pub trait GetPackageVersionFromCargoMetadataPackageId {
-    fn get_package_version_from_cargo_metadata_package_id(
-        &self,
-        package_id: &cargo_metadata::PackageId,
-    ) -> Option<cargo_metadata::Version>;
+    ) -> Option<(String, cargo_metadata::Version)>;
 }
 
 pub trait GetRepositoryFromCargoMetadataPackageId {
@@ -54,7 +49,7 @@ pub trait GetRepositoryFromCargoMetadataPackageId {
 }
 
 pub trait GetRoot {
-    fn get_root(&self) -> PathBuf;
+    fn get_root(&self) -> Option<PathBuf>;
 }
 
 pub trait MatchesIgnoringSource {
@@ -62,7 +57,7 @@ pub trait MatchesIgnoringSource {
         &self,
         krates: &Krates,
         package_id: cargo_metadata::PackageId,
-    ) -> bool;
+    ) -> Option<bool>;
 }
 
 pub trait QueryResolve {
@@ -76,14 +71,14 @@ pub trait ToCargoCoreDepKind {
 pub trait ToCargoGeigerDependencyKind {
     fn to_cargo_geiger_dependency_kind(
         &self,
-    ) -> cargo_geiger_serde::DependencyKind;
+    ) -> Option<cargo_geiger_serde::DependencyKind>;
 }
 
 pub trait ToCargoGeigerPackageId {
     fn to_cargo_geiger_package_id(
         &self,
         metadata: &Metadata,
-    ) -> cargo_geiger_serde::PackageId;
+    ) -> Option<cargo_geiger_serde::PackageId>;
 }
 
 pub trait ToCargoGeigerSource {

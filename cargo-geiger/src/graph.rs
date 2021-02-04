@@ -8,7 +8,7 @@ use cargo::core::Workspace;
 use cargo::util::interning::InternedString;
 use cargo::util::CargoResult;
 use cargo::Config;
-use cargo_metadata::{DependencyKind, PackageId};
+use cargo_metadata::{Dependency, DependencyKind, Package, PackageId};
 use cargo_platform::Cfg;
 use petgraph::graph::NodeIndex;
 use std::collections::hash_map::Entry;
@@ -124,49 +124,39 @@ fn add_package_dependencies_to_graph(
     pending_packages: &mut Vec<PackageId>,
 ) {
     let index = graph.nodes[&package_id];
-    let package = cargo_metadata_parameters
-        .krates
-        .node_for_kid(&package_id)
-        .unwrap()
-        .krate
-        .clone();
 
-    for (dependency_package_id, _) in cargo_metadata_parameters
+    let krates_node_option =
+        cargo_metadata_parameters.krates.node_for_kid(&package_id);
+
+    let dep_not_replaced_option = cargo_metadata_parameters
         .metadata
-        .deps_not_replaced(package_id)
-    {
-        let dependency_iterator = package
-            .dependencies
-            .iter()
-            .filter(|d| {
-                d.matches_ignoring_source(
-                    cargo_metadata_parameters.krates,
-                    dependency_package_id.clone(),
-                )
-            })
-            .filter(|d| graph_configuration.extra_deps.allows(d.kind))
-            .filter(|d| {
-                d.target
-                    .as_ref()
-                    .and_then(|p| {
-                        graph_configuration.target.map(|t| {
-                            match graph_configuration.cfgs {
-                                None => false,
-                                Some(cfgs) => p.matches(t, cfgs),
-                            }
-                        })
-                    })
-                    .unwrap_or(true)
-            });
+        .deps_not_replaced(package_id.clone());
 
-        for dependency in dependency_iterator {
-            add_graph_node_if_not_present_and_edge(
-                dependency,
-                dependency_package_id.clone(),
-                graph,
-                index,
-                pending_packages,
-            );
+    match (krates_node_option, dep_not_replaced_option) {
+        (Some(krates_node), Some(dependencies)) => {
+            let package = krates_node.krate.clone();
+
+            for (dependency_package_id, _) in dependencies {
+                let dependency_iterator = filter_dependencies(
+                    cargo_metadata_parameters,
+                    &dependency_package_id,
+                    graph_configuration,
+                    &package,
+                );
+
+                for dependency in dependency_iterator {
+                    add_graph_node_if_not_present_and_edge(
+                        dependency,
+                        dependency_package_id.clone(),
+                        graph,
+                        index,
+                        pending_packages,
+                    );
+                }
+            }
+        }
+        _ => {
+            eprintln!("Failed to add package dependencies to graph for Package Id: {}", package_id)
         }
     }
 }
@@ -193,6 +183,39 @@ fn build_graph_prerequisites<'a>(
     };
 
     (extra_deps, target)
+}
+
+fn filter_dependencies<'a>(
+    cargo_metadata_parameters: &'a CargoMetadataParameters,
+    dependency_package_id: &'a PackageId,
+    graph_configuration: &'a GraphConfiguration,
+    package: &'a Package,
+) -> Vec<&'a Dependency> {
+    package
+        .dependencies
+        .iter()
+        .filter(|d| {
+            d.matches_ignoring_source(
+                cargo_metadata_parameters.krates,
+                dependency_package_id.clone(),
+            )
+            .unwrap_or(false)
+        })
+        .filter(|d| graph_configuration.extra_deps.allows(d.kind))
+        .filter(|d| {
+            d.target
+                .as_ref()
+                .and_then(|p| {
+                    graph_configuration.target.map(
+                        |t| match graph_configuration.cfgs {
+                            None => false,
+                            Some(cfgs) => p.matches(t, cfgs),
+                        },
+                    )
+                })
+                .unwrap_or(true)
+        })
+        .collect::<Vec<&Dependency>>()
 }
 
 #[cfg(test)]

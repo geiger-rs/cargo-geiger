@@ -22,14 +22,15 @@ pub fn handle_text_tree_line_extra_deps_group(
     table_lines: &mut Vec<String>,
     tree_vines: String,
 ) {
-    let name = get_kind_group_name(dep_kind);
-    if name.is_none() {
-        return;
+    if let Some(name) = get_kind_group_name(dep_kind) {
+        // TODO: Fix the alignment on macOS (others too?)
+        table_lines.push(format!(
+            "{}{}{}",
+            table_row_empty(),
+            tree_vines,
+            name
+        ));
     }
-    let name = name.unwrap();
-
-    // TODO: Fix the alignment on macOS (others too?)
-    table_lines.push(format!("{}{}{}", table_row_empty(), tree_vines, name));
 }
 
 pub fn handle_text_tree_line_package(
