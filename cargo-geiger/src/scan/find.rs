@@ -130,18 +130,22 @@ fn find_rs_files_in_package(package: &cargo_metadata::Package) -> Vec<RsFile> {
         targets.push(target);
     }
     let mut rs_files = Vec::new();
-    for path_bufs in find_rs_files_in_dir(package.clone().get_root().as_path())
-    {
-        if !canon_targets.contains_key(&path_bufs) {
-            rs_files.push(RsFile::Other(path_bufs));
+
+    if let Some(root_path) = package.clone().get_root() {
+        for path_bufs in find_rs_files_in_dir(root_path.as_path()) {
+            if !canon_targets.contains_key(&path_bufs) {
+                rs_files.push(RsFile::Other(path_bufs));
+            }
         }
     }
+
     for (path_buf, targets) in canon_targets.into_iter() {
         for target in targets {
             let target_kind = into_target_kind(target.clone().kind);
             rs_files.push(into_rs_code_file(&target_kind, path_buf.clone()));
         }
     }
+
     rs_files
 }
 

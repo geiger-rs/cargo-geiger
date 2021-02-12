@@ -3,7 +3,7 @@ use crate::args::ReadmeArgs;
 use cargo::{CliError, CliResult};
 use regex::Regex;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Error, Write};
 use std::path::PathBuf;
 
 /// Name of README FILE
@@ -24,25 +24,30 @@ pub fn create_or_replace_section_in_readme(
 
     if !readme_path_buf.exists() {
         eprintln!(
-            "File {} does not exist. To construct a Cargo Geiger Safety Report section, please first create a README.",
+            "File: {} does not exist. To construct a Cargo Geiger Safety Report section, please first create a README.",
             readme_path_buf.to_str().unwrap()
         );
         return CliResult::Err(CliError::code(1));
     }
 
     let mut readme_content =
-        BufReader::new(File::open(readme_path_buf.clone()).unwrap())
-            .lines()
-            .map(|l| l.unwrap())
-            .collect::<Vec<String>>();
+        read_file_contents(&readme_path_buf).map_err(|e| {
+            eprintln!(
+                "Failed to read contents from file: {}",
+                readme_path_buf.to_str().unwrap()
+            );
+            anyhow::Error::from(e)
+        })?;
 
     update_readme_content(readme_args, &mut readme_content, scan_output_lines);
 
-    let mut readme_file = File::create(readme_path_buf).unwrap();
-
-    for line in readme_content {
-        writeln!(readme_file, "{}", line).unwrap();
-    }
+    write_lines_to_file(&readme_content, &readme_path_buf).map_err(|e| {
+        eprintln!(
+            "Failed to write lines to file: {}",
+            readme_path_buf.to_str().unwrap()
+        );
+        anyhow::Error::from(e)
+    })?;
 
     Ok(())
 }
@@ -111,6 +116,17 @@ fn get_readme_path_buf_from_arguments_or_default(
     }
 }
 
+/// Read the contents of a file line by line.
+fn read_file_contents(path_buf: &PathBuf) -> Result<Vec<String>, Error> {
+    let file = File::open(path_buf)?;
+    let buf_reader = BufReader::new(file);
+
+    Ok(buf_reader
+        .lines()
+        .filter_map(|l| l.ok())
+        .collect::<Vec<String>>())
+}
+
 /// Update the content of a README.md with a Scan Result. When the section doesn't exist, it will
 /// be created with an `h2` level header, otherwise it will preserve the level of the existing
 /// header
@@ -174,6 +190,20 @@ fn update_readme_content(
         readme_content
             .insert(running_scan_line_index as usize, String::from("```"));
     }
+}
+
+/// Write a Vec<String> line by line to a file, overwriting the current file, if it exists.
+fn write_lines_to_file(
+    lines: &[String],
+    path_buf: &PathBuf,
+) -> Result<(), Error> {
+    let mut readme_file = File::create(path_buf)?;
+
+    for line in lines {
+        writeln!(readme_file, "{}", line)?
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 use super::{
-    DepsNotReplaced, GetPackageNameFromCargoMetadataPackageId,
-    GetPackageVersionFromCargoMetadataPackageId, GetRoot,
-    MatchesIgnoringSource, ToCargoGeigerPackageId, ToCargoMetadataPackageId,
+    DepsNotReplaced, GetPackageNameAndVersionFromCargoMetadataPackageId,
+    GetRoot, MatchesIgnoringSource, ToCargoGeigerPackageId,
+    ToCargoMetadataPackageId,
 };
 
 use crate::mapping::{
@@ -17,36 +17,52 @@ impl DepsNotReplaced for cargo_metadata::Metadata {
     fn deps_not_replaced(
         &self,
         package_id: cargo_metadata::PackageId,
-    ) -> Vec<(
-        cargo_metadata::PackageId,
-        HashSet<cargo_metadata::Dependency>,
-    )> {
+    ) -> Option<
+        Vec<(
+            cargo_metadata::PackageId,
+            HashSet<cargo_metadata::Dependency>,
+        )>,
+    > {
         let mut cargo_metadata_deps_not_replaced = vec![];
         let mut package_id_hashset = HashSet::<PackageId>::new();
 
-        for dep in package_id
-            .to_cargo_metadata_package(self)
-            .unwrap()
-            .dependencies
-        {
-            if let Some(package_id) = dep.to_cargo_metadata_package_id(self) {
-                if !package_id_hashset.contains(&package_id) {
-                    cargo_metadata_deps_not_replaced.push((
-                        package_id.clone(),
-                        HashSet::<cargo_metadata::Dependency>::new(),
-                    ));
-                    package_id_hashset.insert(package_id);
+        match package_id.to_cargo_metadata_package(self) {
+            Some(package) => {
+                for dependency in package.dependencies {
+                    if let Some(package_id) =
+                        dependency.to_cargo_metadata_package_id(self)
+                    {
+                        if !package_id_hashset.contains(&package_id) {
+                            cargo_metadata_deps_not_replaced.push((
+                                package_id.clone(),
+                                HashSet::<cargo_metadata::Dependency>::new(),
+                            ));
+                            package_id_hashset.insert(package_id);
+                        }
+                    }
                 }
+                Some(cargo_metadata_deps_not_replaced)
+            }
+            None => {
+                eprintln!("Failed to convert Package Id: {} to Cargo Metadata Package", package_id);
+                None
             }
         }
-
-        cargo_metadata_deps_not_replaced
     }
 }
 
 impl GetRoot for cargo_metadata::Package {
-    fn get_root(&self) -> PathBuf {
-        self.manifest_path.parent().unwrap().to_path_buf()
+    fn get_root(&self) -> Option<PathBuf> {
+        match self.manifest_path.parent() {
+            Some(path) => Some(path.to_path_buf()),
+            None => {
+                eprintln!(
+                    "Failed to get root for: {} {:?}",
+                    self.name, self.version
+                );
+                None
+            }
+        }
     }
 }
 
@@ -55,34 +71,44 @@ impl MatchesIgnoringSource for cargo_metadata::Dependency {
         &self,
         krates: &Krates,
         package_id: cargo_metadata::PackageId,
-    ) -> bool {
-        self.name
-            == krates
-                .get_package_name_from_cargo_metadata_package_id(&package_id)
-                .unwrap()
-            && self.req.matches(
-                &krates
-                    .get_package_version_from_cargo_metadata_package_id(
-                        &package_id,
-                    )
-                    .unwrap(),
-            )
+    ) -> Option<bool> {
+        match krates
+            .get_package_name_and_version_from_cargo_metadata_package_id(
+                &package_id,
+            ) {
+            Some((name, version)) => {
+                Some(name == self.name && self.req.matches(&version))
+            }
+            _ => {
+                eprintln!(
+                    "Failed to match (ignoring source) package: {} with version: {}",
+                    self.name,
+                    self.req
+                );
+                None
+            }
+        }
     }
 }
 
 impl ToCargoGeigerDependencyKind for cargo_metadata::DependencyKind {
     fn to_cargo_geiger_dependency_kind(
         &self,
-    ) -> cargo_geiger_serde::DependencyKind {
+    ) -> Option<cargo_geiger_serde::DependencyKind> {
         match self {
-            DependencyKind::Build => cargo_geiger_serde::DependencyKind::Build,
+            DependencyKind::Build => {
+                Some(cargo_geiger_serde::DependencyKind::Build)
+            }
             DependencyKind::Development => {
-                cargo_geiger_serde::DependencyKind::Development
+                Some(cargo_geiger_serde::DependencyKind::Development)
             }
             DependencyKind::Normal => {
-                cargo_geiger_serde::DependencyKind::Normal
+                Some(cargo_geiger_serde::DependencyKind::Normal)
             }
-            _ => panic!("Unrecognised Dependency Kind"),
+            _ => {
+                eprintln!("Unrecognised Dependency Kind");
+                None
+            }
         }
     }
 }
@@ -91,14 +117,21 @@ impl ToCargoGeigerPackageId for cargo_metadata::PackageId {
     fn to_cargo_geiger_package_id(
         &self,
         metadata: &Metadata,
-    ) -> cargo_geiger_serde::PackageId {
-        let package = self.to_cargo_metadata_package(metadata).unwrap();
-        let metadata_source = self.to_cargo_geiger_source(metadata);
+    ) -> Option<cargo_geiger_serde::PackageId> {
+        match self.to_cargo_metadata_package(metadata) {
+            Some(package) => {
+                let metadata_source = self.to_cargo_geiger_source(metadata);
 
-        cargo_geiger_serde::PackageId {
-            name: package.name,
-            version: package.version,
-            source: metadata_source,
+                Some(cargo_geiger_serde::PackageId {
+                    name: package.name,
+                    version: package.version,
+                    source: metadata_source,
+                })
+            }
+            None => {
+                eprintln!("Failed to convert PackageId: {} to Package", self);
+                None
+            }
         }
     }
 }
@@ -138,7 +171,7 @@ mod metadata_tests {
     use super::*;
 
     use super::super::{
-        GetPackageNameFromCargoMetadataPackageId, ToCargoCoreDepKind,
+        GetPackageNameAndVersionFromCargoMetadataPackageId, ToCargoCoreDepKind,
     };
 
     use crate::args::FeaturesArgs;
@@ -174,8 +207,9 @@ mod metadata_tests {
             .unwrap();
 
         let deps_not_replaced = resolve.deps_not_replaced(package.package_id());
-        let cargo_metadata_deps_not_replaced =
-            metadata.deps_not_replaced(cargo_metadata_package_id);
+        let cargo_metadata_deps_not_replaced = metadata
+            .deps_not_replaced(cargo_metadata_package_id)
+            .unwrap();
 
         let mut cargo_core_package_names = deps_not_replaced
             .map(|(p, _)| p.name().to_string())
@@ -184,9 +218,10 @@ mod metadata_tests {
         let mut cargo_metadata_package_names = cargo_metadata_deps_not_replaced
             .iter()
             .map(|(p, _)| {
-                krates
-                    .get_package_name_from_cargo_metadata_package_id(p)
-                    .unwrap()
+                let (name, _) = krates
+                    .get_package_name_and_version_from_cargo_metadata_package_id(p)
+                    .unwrap();
+                name
             })
             .collect::<Vec<String>>();
 
@@ -200,7 +235,7 @@ mod metadata_tests {
     fn get_root_test() {
         let (_, metadata) = construct_krates_and_metadata();
         let package = metadata.root_package().unwrap();
-        let package_root = package.get_root();
+        let package_root = package.get_root().unwrap();
         assert_eq!(
             package_root,
             package.manifest_path.parent().unwrap().to_path_buf()
@@ -208,14 +243,16 @@ mod metadata_tests {
     }
 
     #[rstest]
-    fn matches_ignoring_source_test() {
+    fn matches_ignoring_source() {
         let (krates, metadata) = construct_krates_and_metadata();
         let package = metadata.root_package().unwrap();
 
         let dependency = package.dependencies.clone().pop().unwrap();
 
         assert_eq!(
-            dependency.matches_ignoring_source(&krates, package.clone().id),
+            dependency
+                .matches_ignoring_source(&krates, package.clone().id)
+                .unwrap(),
             false
         );
 
@@ -231,7 +268,9 @@ mod metadata_tests {
             .unwrap();
 
         assert!(
-            dependency.matches_ignoring_source(&krates, dependency_package_id),
+            dependency
+                .matches_ignoring_source(&krates, dependency_package_id)
+                .unwrap(),
             true
         );
     }
@@ -259,8 +298,10 @@ mod metadata_tests {
 
         let root_package = metadata.root_package().unwrap();
 
-        let cargo_geiger_package_id =
-            root_package.id.to_cargo_geiger_package_id(&metadata);
+        let cargo_geiger_package_id = root_package
+            .id
+            .to_cargo_geiger_package_id(&metadata)
+            .unwrap();
 
         assert_eq!(cargo_geiger_package_id.name, root_package.name);
 
