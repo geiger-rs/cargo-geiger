@@ -5,7 +5,7 @@
 //! from `cargo`.
 
 #![forbid(unsafe_code)]
-#![forbid(warnings)]
+#![deny(warnings)]
 
 pub mod find;
 mod geiger_syn_visitor;
