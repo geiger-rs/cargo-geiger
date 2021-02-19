@@ -33,10 +33,9 @@ pub struct FoundWarningsError {
 
 impl Error for FoundWarningsError {}
 
-/// Forward Display to Debug.
 impl fmt::Display for FoundWarningsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+        write!(f, "Found {} warnings", self.warning_count)
     }
 }
 
