@@ -5,7 +5,7 @@ use super::{
 };
 
 use crate::mapping::{
-    ToCargoGeigerDependencyKind, ToCargoGeigerSource, ToCargoMetadataPackage,
+    geiger::ToCargoGeigerDependencyKind, ToCargoGeigerSource, ToCargoMetadataPackage,
 };
 
 use cargo_metadata::{DependencyKind, Metadata, PackageId};
@@ -13,7 +13,7 @@ use krates::Krates;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-impl DepsNotReplaced for cargo_metadata::Metadata {
+impl DepsNotReplaced for Metadata {
     fn deps_not_replaced(
         &self,
         package_id: cargo_metadata::PackageId,

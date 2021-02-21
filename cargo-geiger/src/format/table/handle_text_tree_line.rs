@@ -10,6 +10,8 @@ use super::{table_row, table_row_empty};
 
 use cargo_metadata::{DependencyKind, PackageId};
 use std::collections::HashSet;
+use colored::ColoredString;
+use std::fmt::Display;
 
 pub struct HandlePackageParameters<'a> {
     pub total_package_counts: &'a mut TotalPackageCounts,
@@ -112,6 +114,27 @@ pub fn handle_text_tree_line_package(
         ),
     );
 
+    let line = construct_package_text_tree_line(
+        crate_detection_status,
+        emoji_symbols,
+        icon,
+        package_name,
+        table_parameters,
+        tree_vines,
+        unsafe_info
+    );
+
+    table_lines.push(line);
+}
+
+fn construct_package_text_tree_line(
+    crate_detection_status: CrateDetectionStatus,
+    emoji_symbols: &EmojiSymbols,
+    icon: Box<dyn Display>,
+    package_name: ColoredString,
+    table_parameters: &TableParameters,
+    tree_vines: String,
+    unsafe_info: ColoredString) -> String {
     let shift_chars = unsafe_info.chars().count() + 4;
 
     let mut line = String::new();
@@ -126,7 +149,7 @@ pub fn handle_text_tree_line_package(
     // symbol or something in the Terminal app on macOS.
     if emoji_symbols.will_output_emoji()
         && table_parameters.print_config.output_format
-            != OutputFormat::GitHubMarkdown
+        != OutputFormat::GitHubMarkdown
     {
         line.push('\r'); // Return the cursor to the start of the line.
         line.push_str(format!("\x1B[{}C", shift_chars).as_str()); // Move the cursor to the right so that it points to the icon character.
@@ -139,7 +162,7 @@ pub fn handle_text_tree_line_package(
         line.push(' ');
     }
 
-    table_lines.push(format!("{} {}{}", line, tree_vines, package_name));
+    format!("{} {}{}", line, tree_vines, package_name)
 }
 
 fn get_crate_detection_status_and_update_package_counts(
@@ -175,6 +198,8 @@ mod handle_text_tree_line_tests {
     use super::*;
 
     use rstest::*;
+    use crate::format::print_config::PrintConfig;
+    use colored::Colorize;
 
     #[rstest(
         input_dep_kind,
@@ -217,6 +242,60 @@ mod handle_text_tree_line_tests {
         } else {
             assert!(table_lines.is_empty());
         }
+    }
+
+    #[rstest(
+        input_crate_detection_status,
+        input_output_format,
+        input_symbol_kind,
+        expected_package_text_tree_line,
+        case(
+            CrateDetectionStatus::NoneDetectedForbidsUnsafe,
+            OutputFormat::GitHubMarkdown,
+            SymbolKind::Lock,
+            String::from("unsafe_info  🔒  tree_vinespackage_name")
+        ),
+        case(
+            CrateDetectionStatus::UnsafeDetected,
+            OutputFormat::GitHubMarkdown,
+            SymbolKind::Rads,
+            String::from("unsafe_info  ☢\u{fe0f}  tree_vinespackage_name")
+        )
+    )]
+    fn construct_package_text_tree_line_test(
+        input_crate_detection_status: CrateDetectionStatus,
+        input_output_format: OutputFormat,
+        input_symbol_kind: SymbolKind,
+        expected_package_text_tree_line: String
+    ) {
+        let emoji_symbols = EmojiSymbols::new(input_output_format);
+        let icon = emoji_symbols.emoji(input_symbol_kind);
+        let package_name = String::from("package_name").normal();
+        let table_parameters = TableParameters {
+            geiger_context: &Default::default(),
+            print_config: &PrintConfig {
+                output_format: input_output_format,
+                ..Default::default()
+            },
+            rs_files_used: &Default::default()
+        };
+        let tree_vines = String::from("tree_vines");
+        let unsafe_info = ColoredString::from("unsafe_info").normal();
+
+        let package_text_tree_line = construct_package_text_tree_line(
+            input_crate_detection_status,
+            &emoji_symbols,
+            icon,
+            package_name,
+            &table_parameters,
+            tree_vines,
+            unsafe_info
+        );
+
+        assert_eq!(
+            package_text_tree_line,
+            expected_package_text_tree_line
+        );
     }
 
     #[rstest(

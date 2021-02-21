@@ -6,7 +6,7 @@ use cargo::core::shell::Verbosity;
 use cargo::util::errors::CliError;
 use colored::{ColoredString, Colorize};
 use geiger::IncludeTests;
-use petgraph::EdgeDirection;
+use petgraph::{EdgeDirection, Direction};
 use strum_macros::EnumString;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -54,10 +54,9 @@ impl PrintConfig {
         // TODO: Add command line flag for this and make it default to false?
         let allow_partial_results = true;
 
-        let direction = if args.invert {
-            EdgeDirection::Incoming
-        } else {
-            EdgeDirection::Outgoing
+        let direction = match args.invert {
+            true => EdgeDirection::Incoming,
+            false => EdgeDirection::Outgoing
         };
 
         let format = Pattern::try_build(&args.format).map_err(|e| {
@@ -70,24 +69,20 @@ impl PrintConfig {
             )
         })?;
 
-        let include_tests = if args.include_tests {
-            IncludeTests::Yes
-        } else {
-            IncludeTests::No
+        let include_tests = match args.include_tests {
+            true => IncludeTests::Yes,
+            false => IncludeTests::No
         };
 
-        let prefix = if args.prefix_depth {
-            Prefix::Depth
-        } else if args.no_indent {
-            Prefix::None
-        } else {
-            Prefix::Indent
+        let prefix = match (args.prefix_depth, args.no_indent) {
+            (true, _) => Prefix::Depth,
+            (false, true) => Prefix::None,
+            (false, false) => Prefix::Indent
         };
 
-        let verbosity = if args.verbose == 0 {
-            Verbosity::Normal
-        } else {
-            Verbosity::Verbose
+        let verbosity = match args.verbose {
+            0 => Verbosity::Normal,
+            _ => Verbosity::Verbose
         };
 
         Ok(PrintConfig {
@@ -100,6 +95,21 @@ impl PrintConfig {
             prefix,
             verbosity,
         })
+    }
+}
+
+impl Default for PrintConfig {
+    fn default() -> Self {
+        PrintConfig{
+            all: false,
+            allow_partial_results: false,
+            direction: Direction::Outgoing,
+            format: Pattern::try_build("p").unwrap(),
+            include_tests: IncludeTests::Yes,
+            prefix: Prefix::Depth,
+            output_format: Default::default(),
+            verbosity: Verbosity::Verbose
+        }
     }
 }
 

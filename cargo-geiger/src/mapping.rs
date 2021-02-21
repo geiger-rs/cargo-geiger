@@ -1,4 +1,4 @@
-mod geiger;
+pub mod geiger;
 mod krates;
 mod metadata;
 
@@ -66,12 +66,6 @@ pub trait QueryResolve {
 
 pub trait ToCargoCoreDepKind {
     fn to_cargo_core_dep_kind(&self) -> DepKind;
-}
-
-pub trait ToCargoGeigerDependencyKind {
-    fn to_cargo_geiger_dependency_kind(
-        &self,
-    ) -> Option<cargo_geiger_serde::DependencyKind>;
 }
 
 pub trait ToCargoGeigerPackageId {

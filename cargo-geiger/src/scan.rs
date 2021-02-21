@@ -7,7 +7,7 @@ use crate::args::Args;
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
 use crate::mapping::{
-    CargoMetadataParameters, ToCargoGeigerDependencyKind,
+    CargoMetadataParameters, geiger::ToCargoGeigerDependencyKind,
     ToCargoGeigerPackageId,
 };
 
@@ -47,6 +47,7 @@ pub struct ScanResult {
 
 /// Provides a more terse and searchable name for the wrapped generic
 /// collection.
+#[derive(Default)]
 pub struct GeigerContext {
     pub package_id_to_metrics: HashMap<PackageId, PackageMetrics>,
 }
