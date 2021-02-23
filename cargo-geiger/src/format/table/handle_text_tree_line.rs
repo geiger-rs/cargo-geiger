@@ -9,8 +9,8 @@ use super::TableParameters;
 use super::{table_row, table_row_empty};
 
 use cargo_metadata::{DependencyKind, PackageId};
-use std::collections::HashSet;
 use colored::ColoredString;
+use std::collections::HashSet;
 use std::fmt::Display;
 
 pub struct HandlePackageParameters<'a> {
@@ -121,7 +121,7 @@ pub fn handle_text_tree_line_package(
         package_name,
         table_parameters,
         tree_vines,
-        unsafe_info
+        unsafe_info,
     );
 
     table_lines.push(line);
@@ -134,7 +134,8 @@ fn construct_package_text_tree_line(
     package_name: ColoredString,
     table_parameters: &TableParameters,
     tree_vines: String,
-    unsafe_info: ColoredString) -> String {
+    unsafe_info: ColoredString,
+) -> String {
     let shift_chars = unsafe_info.chars().count() + 4;
 
     let mut line = String::new();
@@ -149,7 +150,7 @@ fn construct_package_text_tree_line(
     // symbol or something in the Terminal app on macOS.
     if emoji_symbols.will_output_emoji()
         && table_parameters.print_config.output_format
-        != OutputFormat::GitHubMarkdown
+            != OutputFormat::GitHubMarkdown
     {
         line.push('\r'); // Return the cursor to the start of the line.
         line.push_str(format!("\x1B[{}C", shift_chars).as_str()); // Move the cursor to the right so that it points to the icon character.
@@ -197,9 +198,9 @@ fn get_crate_detection_status_and_update_package_counts(
 mod handle_text_tree_line_tests {
     use super::*;
 
-    use rstest::*;
     use crate::format::print_config::PrintConfig;
     use colored::Colorize;
+    use rstest::*;
 
     #[rstest(
         input_dep_kind,
@@ -266,7 +267,7 @@ mod handle_text_tree_line_tests {
         input_crate_detection_status: CrateDetectionStatus,
         input_output_format: OutputFormat,
         input_symbol_kind: SymbolKind,
-        expected_package_text_tree_line: String
+        expected_package_text_tree_line: String,
     ) {
         let emoji_symbols = EmojiSymbols::new(input_output_format);
         let icon = emoji_symbols.emoji(input_symbol_kind);
@@ -277,7 +278,7 @@ mod handle_text_tree_line_tests {
                 output_format: input_output_format,
                 ..Default::default()
             },
-            rs_files_used: &Default::default()
+            rs_files_used: &Default::default(),
         };
         let tree_vines = String::from("tree_vines");
         let unsafe_info = ColoredString::from("unsafe_info").normal();
@@ -289,13 +290,10 @@ mod handle_text_tree_line_tests {
             package_name,
             &table_parameters,
             tree_vines,
-            unsafe_info
+            unsafe_info,
         );
 
-        assert_eq!(
-            package_text_tree_line,
-            expected_package_text_tree_line
-        );
+        assert_eq!(package_text_tree_line, expected_package_text_tree_line);
     }
 
     #[rstest(

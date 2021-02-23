@@ -24,3 +24,24 @@ pub mod scan;
 mod format;
 /// Tree construction
 mod tree;
+
+#[cfg(test)]
+mod lib_tests {
+    use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
+    use krates::Builder as KratesBuilder;
+    use krates::Krates;
+
+    pub fn construct_krates_and_metadata() -> (Krates, Metadata) {
+        let metadata = MetadataCommand::new()
+            .manifest_path("./Cargo.toml")
+            .features(CargoOpt::AllFeatures)
+            .exec()
+            .unwrap();
+
+        let krates = KratesBuilder::new()
+            .build_with_metadata(metadata.clone(), |_| ())
+            .unwrap();
+
+        (krates, metadata)
+    }
+}

@@ -222,7 +222,7 @@ fn add_dir_entries_to_path_buf_hash_set(
         })?;
         let canonical_paths = dependencies
             .into_iter()
-            .flat_map(|t| t.1)
+            .flat_map(|(_, dependency_files)| dependency_files)
             .map(PathBuf::from)
             .map(|pb| workspace_root.join(pb))
             .map(|pb| pb.canonicalize().map_err(|e| RsResolveError::Io(e, pb)));
@@ -446,5 +446,10 @@ mod rs_file_tests {
         for entry in walk_dir_readme_files {
             assert_eq!(is_file_with_ext(&entry, "rs"), false);
         }
+    }
+
+    #[rstest]
+    fn add_dir_entries_to_path_buf_hash_set_test() {
+
     }
 }

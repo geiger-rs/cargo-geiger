@@ -5,7 +5,8 @@ use super::{
 };
 
 use crate::mapping::{
-    geiger::ToCargoGeigerDependencyKind, ToCargoGeigerSource, ToCargoMetadataPackage,
+    geiger::ToCargoGeigerDependencyKind, ToCargoGeigerSource,
+    ToCargoMetadataPackage,
 };
 
 use cargo_metadata::{DependencyKind, Metadata, PackageId};
@@ -176,6 +177,7 @@ mod metadata_tests {
 
     use crate::args::FeaturesArgs;
     use crate::cli::get_workspace;
+    use crate::lib_tests::construct_krates_and_metadata;
 
     use cargo::core::dependency::DepKind;
     use cargo::core::registry::PackageRegistry;
@@ -184,8 +186,7 @@ mod metadata_tests {
         Package, PackageId, PackageIdSpec, PackageSet, Resolve, Workspace,
     };
     use cargo::{ops, CargoResult, Config};
-    use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
-    use krates::Builder as KratesBuilder;
+    use cargo_metadata::Metadata;
     use rstest::*;
     use std::path::PathBuf;
 
@@ -317,20 +318,6 @@ mod metadata_tests {
             cargo_geiger_package_id.version.patch,
             root_package.version.patch
         );
-    }
-
-    fn construct_krates_and_metadata() -> (Krates, Metadata) {
-        let metadata = MetadataCommand::new()
-            .manifest_path("./Cargo.toml")
-            .features(CargoOpt::AllFeatures)
-            .exec()
-            .unwrap();
-
-        let krates = KratesBuilder::new()
-            .build_with_metadata(metadata.clone(), |_| ())
-            .unwrap();
-
-        (krates, metadata)
     }
 
     fn construct_package_registry_workspace_tuple(

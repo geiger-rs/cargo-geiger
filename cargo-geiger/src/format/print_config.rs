@@ -6,7 +6,7 @@ use cargo::core::shell::Verbosity;
 use cargo::util::errors::CliError;
 use colored::{ColoredString, Colorize};
 use geiger::IncludeTests;
-use petgraph::{EdgeDirection, Direction};
+use petgraph::{Direction, EdgeDirection};
 use strum_macros::EnumString;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -56,7 +56,7 @@ impl PrintConfig {
 
         let direction = match args.invert {
             true => EdgeDirection::Incoming,
-            false => EdgeDirection::Outgoing
+            false => EdgeDirection::Outgoing,
         };
 
         let format = Pattern::try_build(&args.format).map_err(|e| {
@@ -71,18 +71,18 @@ impl PrintConfig {
 
         let include_tests = match args.include_tests {
             true => IncludeTests::Yes,
-            false => IncludeTests::No
+            false => IncludeTests::No,
         };
 
         let prefix = match (args.prefix_depth, args.no_indent) {
             (true, _) => Prefix::Depth,
             (false, true) => Prefix::None,
-            (false, false) => Prefix::Indent
+            (false, false) => Prefix::Indent,
         };
 
         let verbosity = match args.verbose {
             0 => Verbosity::Normal,
-            _ => Verbosity::Verbose
+            _ => Verbosity::Verbose,
         };
 
         Ok(PrintConfig {
@@ -100,7 +100,7 @@ impl PrintConfig {
 
 impl Default for PrintConfig {
     fn default() -> Self {
-        PrintConfig{
+        PrintConfig {
             all: false,
             allow_partial_results: false,
             direction: Direction::Outgoing,
@@ -108,7 +108,7 @@ impl Default for PrintConfig {
             include_tests: IncludeTests::Yes,
             prefix: Prefix::Depth,
             output_format: Default::default(),
-            verbosity: Verbosity::Verbose
+            verbosity: Verbosity::Verbose,
         }
     }
 }
