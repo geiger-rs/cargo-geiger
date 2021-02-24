@@ -447,9 +447,4 @@ mod rs_file_tests {
             assert_eq!(is_file_with_ext(&entry, "rs"), false);
         }
     }
-
-    #[rstest]
-    fn add_dir_entries_to_path_buf_hash_set_test() {
-
-    }
 }

@@ -7,7 +7,7 @@ use crate::args::Args;
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
 use crate::mapping::{
-    geiger::ToCargoGeigerDependencyKind, CargoMetadataParameters,
+    ToCargoGeigerDependencyKind, CargoMetadataParameters,
     ToCargoGeigerPackageId,
 };
 

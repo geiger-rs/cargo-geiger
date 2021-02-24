@@ -5,7 +5,7 @@ use super::{
 };
 
 use crate::mapping::{
-    geiger::ToCargoGeigerDependencyKind, ToCargoGeigerSource,
+    ToCargoGeigerDependencyKind, ToCargoGeigerSource,
     ToCargoMetadataPackage,
 };
 

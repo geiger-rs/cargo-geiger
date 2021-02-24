@@ -4,15 +4,7 @@ use cargo_metadata::Metadata;
 use url::Url;
 
 use cargo_metadata::PackageId as CargoMetadataPackageId;
-
-use cargo_geiger_serde::DependencyKind as CargoGeigerSerdeDependencyKind;
 use cargo_geiger_serde::Source as CargoGeigerSerdeSource;
-
-pub trait ToCargoGeigerDependencyKind {
-    fn to_cargo_geiger_dependency_kind(
-        &self,
-    ) -> Option<CargoGeigerSerdeDependencyKind>;
-}
 
 impl ToCargoGeigerSource for CargoMetadataPackageId {
     fn to_cargo_geiger_source(

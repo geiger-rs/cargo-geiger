@@ -1,4 +1,4 @@
-pub mod geiger;
+mod geiger;
 mod krates;
 mod metadata;
 
@@ -7,6 +7,8 @@ use cargo::core::dependency::DepKind;
 use cargo_metadata::Metadata;
 use std::collections::HashSet;
 use std::path::PathBuf;
+
+use cargo_geiger_serde::DependencyKind as CargoGeigerSerdeDependencyKind;
 
 /// Holds a pointer to both a `Krates` graph, and the `Metadata` struct
 /// which are often required together
@@ -66,6 +68,12 @@ pub trait QueryResolve {
 
 pub trait ToCargoCoreDepKind {
     fn to_cargo_core_dep_kind(&self) -> DepKind;
+}
+
+pub trait ToCargoGeigerDependencyKind {
+    fn to_cargo_geiger_dependency_kind(
+        &self,
+    ) -> Option<CargoGeigerSerdeDependencyKind>;
 }
 
 pub trait ToCargoGeigerPackageId {
