@@ -3,8 +3,8 @@ use super::{ToCargoGeigerSource, ToCargoMetadataPackage};
 use cargo_metadata::Metadata;
 use url::Url;
 
-use cargo_metadata::PackageId as CargoMetadataPackageId;
 use cargo_geiger_serde::Source as CargoGeigerSerdeSource;
+use cargo_metadata::PackageId as CargoMetadataPackageId;
 
 impl ToCargoGeigerSource for CargoMetadataPackageId {
     fn to_cargo_geiger_source(

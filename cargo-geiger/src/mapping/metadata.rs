@@ -5,8 +5,7 @@ use super::{
 };
 
 use crate::mapping::{
-    ToCargoGeigerDependencyKind, ToCargoGeigerSource,
-    ToCargoMetadataPackage,
+    ToCargoGeigerDependencyKind, ToCargoGeigerSource, ToCargoMetadataPackage,
 };
 
 use cargo_metadata::{DependencyKind, Metadata, PackageId};

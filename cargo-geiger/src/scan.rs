@@ -7,7 +7,7 @@ use crate::args::Args;
 use crate::format::print_config::PrintConfig;
 use crate::graph::Graph;
 use crate::mapping::{
-    ToCargoGeigerDependencyKind, CargoMetadataParameters,
+    CargoMetadataParameters, ToCargoGeigerDependencyKind,
     ToCargoGeigerPackageId,
 };
 
@@ -296,18 +296,12 @@ mod scan_tests {
     #[rstest(
         input_dependency_kind_option,
         expected_package_info_dependency_length,
-        case(
-            Some(DependencyKind::Normal),
-            1,
-        ),
-        case(
-            None,
-            0
-        )
+        case(Some(DependencyKind::Normal), 1,),
+        case(None, 0)
     )]
     fn add_dependency_to_package_info_test(
         input_dependency_kind_option: Option<DependencyKind>,
-        expected_package_info_dependency_length: usize
+        expected_package_info_dependency_length: usize,
     ) {
         let (krates, metadata) = construct_krates_and_metadata();
         let package_id = metadata.root_package().unwrap().id.clone();
@@ -361,7 +355,10 @@ mod scan_tests {
         );
 
         assert_eq!(visited, vec![dependency_index].iter().cloned().collect());
-        assert_eq!(package_info.dependencies.len(), expected_package_info_dependency_length)
+        assert_eq!(
+            package_info.dependencies.len(),
+            expected_package_info_dependency_length
+        )
     }
 
     #[rstest]
