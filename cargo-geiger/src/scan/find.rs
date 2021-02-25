@@ -13,7 +13,7 @@ use cargo::{CliError, Config};
 use cargo_metadata::PackageId;
 use geiger::find::find_unsafe_in_file;
 use geiger::{IncludeTests, RsFileMetrics, ScanFileError};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::path::PathBuf;
 use walkdir::WalkDir;
@@ -48,6 +48,7 @@ where
     F: FnMut(usize, usize) -> CargoResult<()>,
 {
     let mut package_id_to_metrics = HashMap::new();
+    let mut ignored = HashSet::new();
     let packages = cargo_metadata_parameters.metadata.packages.to_vec();
     let package_code_files: Vec<_> =
         find_rs_files_in_packages(&packages).collect();
@@ -55,6 +56,10 @@ where
     for (i, (package_id, rs_code_file)) in
         package_code_files.into_iter().enumerate()
     {
+        if let RsFile::CustomBuildRoot(path_buf) = rs_code_file {
+            ignored.insert(path_buf);
+            continue;
+        }
         let (is_entry_point, path_buf) =
             into_is_entry_point_and_path_buf(rs_code_file);
         if let (false, ScanMode::EntryPointsOnly) = (is_entry_point, &mode) {
@@ -90,6 +95,7 @@ where
 
     GeigerContext {
         package_id_to_metrics: cargo_core_package_metrics,
+        ignored_paths: ignored,
     }
 }
 

@@ -19,7 +19,8 @@ use std::process::Output;
     case("test4_workspace_with_top_level_package"),
     case("test5_workspace_with_virtual_manifest"),
     case("test6_cargo_lock_out_of_date"),
-    case("test7_package_with_patched_dep")
+    case("test7_package_with_patched_dep"),
+    case("test8_package_with_build_rs_no_deps")
 )]
 fn test_package(name: &str) {
     better_panic::install();

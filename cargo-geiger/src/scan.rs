@@ -53,6 +53,7 @@ pub struct ScanResult {
 #[derive(Default)]
 pub struct GeigerContext {
     pub package_id_to_metrics: HashMap<PackageId, PackageMetrics>,
+    pub ignored_paths: HashSet<PathBuf>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -184,7 +185,10 @@ fn list_files_used_but_not_scanned(
     rs_files_used
         .iter()
         .cloned()
-        .filter(|p| !scanned_files.contains(p))
+        .filter(|p| {
+            !scanned_files.contains(p)
+                && !geiger_context.ignored_paths.contains(p)
+        })
         .collect()
 }
 
@@ -449,6 +453,7 @@ mod scan_tests {
             .iter()
             .cloned()
             .collect(),
+            ignored_paths: HashSet::new(),
         };
 
         let rs_files_used = input_rs_files_used_vec.iter().cloned().collect();
