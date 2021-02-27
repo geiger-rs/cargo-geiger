@@ -7,10 +7,13 @@ use crate::mapping::{
 use krates::{Krates, PkgSpec};
 use std::str::FromStr;
 
+use cargo_metadata::PackageId as CargoMetadataPackageId;
+use cargo_metadata::Version as CargoMetadataVersion;
+
 impl GetLicenceFromCargoMetadataPackageId for Krates {
     fn get_licence_from_cargo_metadata_package_id(
         &self,
-        package_id: &cargo_metadata::PackageId,
+        package_id: &CargoMetadataPackageId,
     ) -> Option<String> {
         self.node_for_kid(package_id)
             .and_then(|package| package.krate.clone().license)
@@ -20,8 +23,8 @@ impl GetLicenceFromCargoMetadataPackageId for Krates {
 impl GetPackageNameAndVersionFromCargoMetadataPackageId for Krates {
     fn get_package_name_and_version_from_cargo_metadata_package_id(
         &self,
-        package_id: &cargo_metadata::PackageId,
-    ) -> Option<(String, cargo_metadata::Version)> {
+        package_id: &CargoMetadataPackageId,
+    ) -> Option<(String, CargoMetadataVersion)> {
         self.node_for_kid(package_id).map(|package| {
             (package.krate.clone().name, package.krate.clone().version)
         })
@@ -31,7 +34,7 @@ impl GetPackageNameAndVersionFromCargoMetadataPackageId for Krates {
 impl GetRepositoryFromCargoMetadataPackageId for Krates {
     fn get_repository_from_cargo_metadata_package_id(
         &self,
-        package_id: &cargo_metadata::PackageId,
+        package_id: &CargoMetadataPackageId,
     ) -> Option<String> {
         self.node_for_kid(package_id)
             .and_then(|package| package.krate.clone().repository)
@@ -39,13 +42,13 @@ impl GetRepositoryFromCargoMetadataPackageId for Krates {
 }
 
 impl QueryResolve for Krates {
-    fn query_resolve(&self, query: &str) -> Option<cargo_metadata::PackageId> {
+    fn query_resolve(&self, query: &str) -> Option<CargoMetadataPackageId> {
         match PkgSpec::from_str(query) {
             Ok(package_spec) => self
                 .krates_by_name(package_spec.name.as_str())
                 .filter(|(_, node)| package_spec.matches(&node.krate))
                 .map(|(_, node)| node.krate.clone().id)
-                .collect::<Vec<cargo_metadata::PackageId>>()
+                .collect::<Vec<CargoMetadataPackageId>>()
                 .pop(),
             _ => {
                 eprintln!("Failed to construct PkgSpec from string: {}", query);
@@ -154,7 +157,6 @@ mod krates_tests {
             .unwrap();
 
         assert_eq!(package_name, expected_package_name);
-
         assert_eq!(package_version, expected_package_version);
     }
 

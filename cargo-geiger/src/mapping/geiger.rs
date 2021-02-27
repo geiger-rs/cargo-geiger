@@ -1,4 +1,5 @@
-use super::{ToCargoGeigerSource, ToCargoMetadataPackage};
+use super::{ToCargoGeigerSource};
+use super::metadata::package_id::{GetPackageIdRepr, ToCargoMetadataPackage};
 
 use cargo_metadata::Metadata;
 use url::Url;
@@ -56,10 +57,10 @@ fn handle_source_repr(source_repr: &str) -> cargo_geiger_serde::Source {
     }
 }
 
-fn handle_path_source(
-    package_id: &cargo_metadata::PackageId,
+fn handle_path_source<T: GetPackageIdRepr>(
+    package_id: &T,
 ) -> cargo_geiger_serde::Source {
-    let raw_repr = package_id.repr.clone();
+    let raw_repr = package_id.get_package_id_repr();
     let raw_path_repr = raw_repr[1..raw_repr.len() - 1]
         .split("+file://")
         .skip(1)

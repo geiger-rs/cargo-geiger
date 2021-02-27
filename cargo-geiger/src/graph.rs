@@ -130,7 +130,7 @@ fn add_package_dependencies_to_graph(
 
     let dep_not_replaced_option = cargo_metadata_parameters
         .metadata
-        .deps_not_replaced(package_id.clone());
+        .deps_not_replaced(&package_id);
 
     match (krates_node_option, dep_not_replaced_option) {
         (Some(krates_node), Some(dependencies)) => {
