@@ -117,6 +117,7 @@ pub fn into_target_kind(raw_target_kind: Vec<String>) -> TargetKind {
     match &raw_target_kind_str[..] {
         ["bench"] => TargetKind::Bench,
         ["bin"] => TargetKind::Bin,
+        ["example"] => TargetKind::ExampleBin,
         ["bin", "example"] => TargetKind::ExampleBin,
         ["example", "lib"] => TargetKind::ExampleLib(vec![]),
         ["lib"] => TargetKind::Lib(vec![]),
