@@ -114,7 +114,6 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 }
 
 fn main() {
-    env_logger::init();
     let mut config = match Config::default() {
         Ok(cfg) => cfg,
         Err(e) => {

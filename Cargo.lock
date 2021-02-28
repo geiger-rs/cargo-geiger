@@ -197,7 +197,6 @@ dependencies = [
  "cargo_metadata",
  "colored",
  "console 0.11.3",
- "env_logger",
  "fs_extra",
  "geiger",
  "insta",
