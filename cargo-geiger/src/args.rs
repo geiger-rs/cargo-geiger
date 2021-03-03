@@ -127,7 +127,7 @@ impl Args {
             manifest_path: raw_args.opt_value_from_str("--manifest-path")?,
             no_indent: raw_args.contains("--no-indent"),
             offline: raw_args.contains("--offline"),
-            package: raw_args.opt_value_from_str("--manifest-path")?,
+            package: raw_args.opt_value_from_str(["-p", "--package"])?,
             prefix_depth: raw_args.contains("--prefix-depth"),
             quiet: raw_args.contains(["-q", "--quiet"]),
             readme_args: ReadmeArgs {
