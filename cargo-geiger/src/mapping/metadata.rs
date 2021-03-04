@@ -20,8 +20,8 @@ use cargo_metadata::DependencyKind as CargoMetadataDependencyKind;
 use cargo_metadata::Package as CargoMetadataPackage;
 use cargo_metadata::PackageId as CargoMetadataPackageId;
 
-use cargo_geiger_serde::DependencyKind as CargoGeigerSerdeDependencyKind;
 use crate::mapping::krates::GetNodeForKid;
+use cargo_geiger_serde::DependencyKind as CargoGeigerSerdeDependencyKind;
 
 impl DepsNotReplaced for Metadata {
     fn deps_not_replaced<T: ToCargoMetadataPackage + Display>(
@@ -143,6 +143,7 @@ mod metadata_tests {
 
     use crate::args::FeaturesArgs;
     use crate::cli::get_workspace;
+    use crate::lib_tests::construct_krates_and_metadata;
 
     use crate::mapping::metadata::dependency::GetDependencyInformation;
     use crate::mapping::GetPackageRoot;
@@ -154,10 +155,7 @@ mod metadata_tests {
         Package, PackageId, PackageIdSpec, PackageSet, Resolve, Workspace,
     };
     use cargo::{ops, CargoResult, Config};
-    use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
-    use krates::{Krates};
     use krates::semver::VersionReq;
-    use krates::Builder as KratesBuilder;
     use rstest::*;
     use std::path::PathBuf;
 
@@ -288,20 +286,6 @@ mod metadata_tests {
             cargo_geiger_package_id.version.patch,
             root_package.version.patch
         );
-    }
-
-    fn construct_krates_and_metadata() -> (Krates, Metadata) {
-        let metadata = MetadataCommand::new()
-            .manifest_path("./Cargo.toml")
-            .features(CargoOpt::AllFeatures)
-            .exec()
-            .unwrap();
-
-        let krates = KratesBuilder::new()
-            .build_with_metadata(metadata.clone(), |_| ())
-            .unwrap();
-
-        (krates, metadata)
     }
 
     fn construct_package_registry_workspace_tuple(

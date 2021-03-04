@@ -18,8 +18,12 @@ use forbid::scan_forbid_unsafe;
 
 use cargo::core::Workspace;
 use cargo::{CliError, Config};
-use cargo_geiger_serde::{CounterBlock, PackageInfo, UnsafeInfo};
+use cargo_geiger_serde::{
+    CounterBlock, DependencyKind, PackageInfo, UnsafeInfo,
+};
 use cargo_metadata::PackageId;
+use krates::NodeId;
+use petgraph::prelude::NodeIndex;
 use petgraph::visit::EdgeRef;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -33,10 +37,9 @@ pub struct FoundWarningsError {
 
 impl Error for FoundWarningsError {}
 
-/// Forward Display to Debug.
 impl fmt::Display for FoundWarningsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+        write!(f, "Found {} warnings", self.warning_count)
     }
 }
 
@@ -47,6 +50,7 @@ pub struct ScanResult {
 
 /// Provides a more terse and searchable name for the wrapped generic
 /// collection.
+#[derive(Default)]
 pub struct GeigerContext {
     pub package_id_to_metrics: HashMap<PackageId, PackageMetrics>,
 }
@@ -172,8 +176,11 @@ fn list_files_used_but_not_scanned(
     let scanned_files = geiger_context
         .package_id_to_metrics
         .iter()
-        .flat_map(|(_, v)| v.rs_path_to_metrics.keys())
+        .flat_map(|(_, package_metrics)| {
+            package_metrics.rs_path_to_metrics.keys()
+        })
         .collect::<HashSet<&PathBuf>>();
+
     rs_files_used
         .iter()
         .cloned()
@@ -203,39 +210,19 @@ fn package_metrics(
 
             for edge in graph.graph.edges(index) {
                 let dep_index = edge.target();
-                if visited.insert(dep_index) {
-                    indices.push(dep_index);
-                }
-
-                let dependency_package_id_option = graph.graph[dep_index]
-                    .to_cargo_geiger_package_id(
-                        cargo_metadata_parameters.metadata,
-                    );
 
                 let dependency_kind_option =
                     edge.weight().to_cargo_geiger_dependency_kind();
 
-                match (dependency_package_id_option, dependency_kind_option) {
-                    (Some(dependency_package_id), Some(dependency_kind)) => {
-                        package_info.add_dependency(
-                            dependency_package_id,
-                            dependency_kind,
-                        );
-                    }
-                    (Some(dependency_package_id), None) => {
-                        eprintln!(
-                            "Failed to add dependency for: {} {:?}",
-                            dependency_package_id.name,
-                            dependency_package_id.version
-                        )
-                    }
-                    _ => {
-                        eprintln!(
-                            "Error converting: {} to Cargo Geiger Package Id",
-                            graph.graph[dep_index]
-                        )
-                    }
-                }
+                add_dependency_to_package_info(
+                    cargo_metadata_parameters,
+                    dep_index,
+                    dependency_kind_option,
+                    graph,
+                    &mut indices,
+                    &mut package_info,
+                    &mut visited,
+                );
             }
 
             match geiger_context.package_id_to_metrics.get(&package_id) {
@@ -256,6 +243,41 @@ fn package_metrics(
     package_metrics
 }
 
+fn add_dependency_to_package_info(
+    cargo_metadata_parameters: &CargoMetadataParameters,
+    dependency_index: NodeId,
+    dependency_kind_option: Option<DependencyKind>,
+    graph: &Graph,
+    indices: &mut Vec<NodeIndex>,
+    package_info: &mut PackageInfo,
+    visited: &mut HashSet<NodeId>,
+) {
+    if visited.insert(dependency_index) {
+        indices.push(dependency_index);
+    }
+
+    let dependency_package_id_option = graph.graph[dependency_index]
+        .to_cargo_geiger_package_id(cargo_metadata_parameters.metadata);
+
+    match (dependency_package_id_option, dependency_kind_option) {
+        (Some(dependency_package_id), Some(dependency_kind)) => {
+            package_info.add_dependency(dependency_package_id, dependency_kind);
+        }
+        (Some(dependency_package_id), None) => {
+            eprintln!(
+                "Failed to add dependency for: {} {:?}",
+                dependency_package_id.name, dependency_package_id.version
+            )
+        }
+        _ => {
+            eprintln!(
+                "Error converting: {} to Cargo Geiger Package Id",
+                graph.graph[dependency_index]
+            )
+        }
+    }
+}
+
 #[cfg(test)]
 mod scan_tests {
     use super::*;
@@ -263,9 +285,80 @@ mod scan_tests {
     use crate::scan::PackageMetrics;
     use rs_file::RsFileMetricsWrapper;
 
-    use cargo_geiger_serde::{Count, UnsafeInfo};
+    use crate::lib_tests::construct_krates_and_metadata;
+    use cargo_geiger_serde::{Count, Source, UnsafeInfo};
     use rstest::*;
+    use semver::Version;
     use std::{collections::HashSet, path::PathBuf};
+    use url::Url;
+
+    #[rstest(
+        input_dependency_kind_option,
+        expected_package_info_dependency_length,
+        case(Some(DependencyKind::Normal), 1,),
+        case(None, 0)
+    )]
+    fn add_dependency_to_package_info_test(
+        input_dependency_kind_option: Option<DependencyKind>,
+        expected_package_info_dependency_length: usize,
+    ) {
+        let (krates, metadata) = construct_krates_and_metadata();
+        let package_id = metadata.root_package().unwrap().id.clone();
+
+        let cargo_metadata_parameters = CargoMetadataParameters {
+            krates: &krates,
+            metadata: &metadata,
+        };
+
+        let mut graph = Graph {
+            graph: Default::default(),
+            nodes: Default::default(),
+        };
+        graph.graph.add_node(package_id);
+
+        let mut package_info = PackageInfo {
+            id: cargo_geiger_serde::PackageId {
+                name: String::from("package_id"),
+                version: Version {
+                    major: 0,
+                    minor: 0,
+                    patch: 0,
+                    pre: vec![],
+                    build: vec![],
+                },
+                source: Source::Path(
+                    Url::parse(
+                        "https://github.com/rust-secure-code/cargo-geiger",
+                    )
+                    .unwrap(),
+                ),
+            },
+            dependencies: Default::default(),
+            dev_dependencies: Default::default(),
+            build_dependencies: Default::default(),
+        };
+
+        let mut indices = vec![];
+        let mut visited = HashSet::new();
+
+        let dependency_index = NodeIndex::new(0);
+
+        add_dependency_to_package_info(
+            &cargo_metadata_parameters,
+            NodeIndex::new(0),
+            input_dependency_kind_option,
+            &graph,
+            &mut indices,
+            &mut package_info,
+            &mut visited,
+        );
+
+        assert_eq!(visited, vec![dependency_index].iter().cloned().collect());
+        assert_eq!(
+            package_info.dependencies.len(),
+            expected_package_info_dependency_length
+        )
+    }
 
     #[rstest]
     fn construct_rs_files_used_lines_test() {
@@ -285,6 +378,90 @@ mod scan_tests {
                 String::from("Used by build (sorted): c/path.rs"),
             ]
         );
+    }
+
+    #[rstest(
+        input_rs_path_to_metrics_vec,
+        input_rs_files_used_vec,
+        expected_files_used_but_not_scanned,
+        case(
+            vec![(
+                PathBuf::from("third/file/path.rs"),
+                RsFileMetricsWrapper {
+                    metrics: Default::default(),
+                    is_crate_entry_point: false,
+                },
+            )],
+            vec![
+                PathBuf::from("first/file/path.rs"),
+                PathBuf::from("second/file/path.rs"),
+                PathBuf::from("third/file/path.rs"),
+            ],
+            vec![
+                PathBuf::from("first/file/path.rs"),
+                PathBuf::from("second/file/path.rs")
+            ]
+        ),
+        case(
+            vec![(
+                PathBuf::from("first/file/path.rs"),
+                RsFileMetricsWrapper {
+                    metrics: Default::default(),
+                    is_crate_entry_point: false,
+                }),
+                (
+                PathBuf::from("second/file/path.rs"),
+                RsFileMetricsWrapper {
+                metrics: Default::default(),
+                is_crate_entry_point: false,
+                }),
+                (PathBuf::from("third/file/path.rs"),
+                RsFileMetricsWrapper {
+                    metrics: Default::default(),
+                    is_crate_entry_point: false,
+                }
+            )],
+            vec![
+                PathBuf::from("first/file/path.rs"),
+                PathBuf::from("second/file/path.rs"),
+                PathBuf::from("third/file/path.rs"),
+            ],
+            vec![
+            ]
+        )
+    )]
+    fn list_files_used_but_not_scanned_test(
+        input_rs_path_to_metrics_vec: Vec<(PathBuf, RsFileMetricsWrapper)>,
+        input_rs_files_used_vec: Vec<PathBuf>,
+        expected_files_used_but_not_scanned: Vec<PathBuf>,
+    ) {
+        let (_, metadata) = construct_krates_and_metadata();
+        let package_id = metadata.root_package().unwrap().id.clone();
+
+        let rs_path_to_metrics: HashMap<PathBuf, RsFileMetricsWrapper> =
+            input_rs_path_to_metrics_vec.iter().cloned().collect();
+
+        let geiger_context = GeigerContext {
+            package_id_to_metrics: vec![(
+                package_id,
+                PackageMetrics { rs_path_to_metrics },
+            )]
+            .iter()
+            .cloned()
+            .collect(),
+        };
+
+        let rs_files_used = input_rs_files_used_vec.iter().cloned().collect();
+
+        let mut files_used_but_not_scanned =
+            list_files_used_but_not_scanned(&geiger_context, &rs_files_used);
+
+        files_used_but_not_scanned.sort();
+
+        assert_eq!(
+            files_used_but_not_scanned,
+            expected_files_used_but_not_scanned
+        )
     }
 
     #[rstest]

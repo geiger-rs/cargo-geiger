@@ -4,11 +4,14 @@ use super::ToCargoGeigerSource;
 use cargo_metadata::Metadata;
 use url::Url;
 
-impl ToCargoGeigerSource for cargo_metadata::PackageId {
+use cargo_geiger_serde::Source as CargoGeigerSerdeSource;
+use cargo_metadata::PackageId as CargoMetadataPackageId;
+
+impl ToCargoGeigerSource for CargoMetadataPackageId {
     fn to_cargo_geiger_source(
         &self,
         metadata: &Metadata,
-    ) -> cargo_geiger_serde::Source {
+    ) -> CargoGeigerSerdeSource {
         let package = self.to_cargo_metadata_package(metadata).unwrap();
 
         match package.source {
@@ -18,14 +21,14 @@ impl ToCargoGeigerSource for cargo_metadata::PackageId {
     }
 }
 
-fn handle_source_repr(source_repr: &str) -> cargo_geiger_serde::Source {
+fn handle_source_repr(source_repr: &str) -> CargoGeigerSerdeSource {
     let mut source_repr_vec = source_repr.split('+').collect::<Vec<&str>>();
 
     let source_type = source_repr_vec[0];
 
     match source_type {
         "registry" => {
-            cargo_geiger_serde::Source::Registry {
+            CargoGeigerSerdeSource::Registry {
                 // It looks like cargo metadata drops this information
                 name: String::from("crates.io"),
                 url: Url::parse(source_repr_vec.pop().unwrap()).unwrap(),
@@ -46,7 +49,7 @@ fn handle_source_repr(source_repr: &str) -> cargo_geiger_serde::Source {
                 .unwrap()
                 .1;
 
-            cargo_geiger_serde::Source::Git {
+            CargoGeigerSerdeSource::Git {
                 url: Url::parse(&git_url_without_query).unwrap(),
                 rev: String::from(revision),
             }
@@ -59,7 +62,7 @@ fn handle_source_repr(source_repr: &str) -> cargo_geiger_serde::Source {
 
 fn handle_path_source<T: GetPackageIdRepr>(
     package_id: &T,
-) -> cargo_geiger_serde::Source {
+) -> CargoGeigerSerdeSource {
     let raw_repr = package_id.get_package_id_repr();
     let raw_path_repr = raw_repr[1..raw_repr.len() - 1]
         .split("+file://")
@@ -75,7 +78,7 @@ fn handle_path_source<T: GetPackageIdRepr>(
         source_url = Url::from_file_path(raw_path_repr).unwrap();
     }
 
-    cargo_geiger_serde::Source::Path(source_url)
+    CargoGeigerSerdeSource::Path(source_url)
 }
 
 #[cfg(test)]
@@ -90,14 +93,14 @@ mod geiger_tests {
         expected_source,
         case(
             "registry+https://github.com/rust-lang/crates.io-index",
-            cargo_geiger_serde::Source::Registry {
+            CargoGeigerSerdeSource::Registry {
                 name: String::from("crates.io"),
                 url: Url::parse("https://github.com/rust-lang/crates.io-index").unwrap()
             }
         ),
         case(
             "git+https://github.com/rust-itertools/itertools.git?rev=8761fbefb3b209",
-            cargo_geiger_serde::Source::Git {
+            CargoGeigerSerdeSource::Git {
                 url: Url::parse("https://github.com/rust-itertools/itertools.git").unwrap(),
                 rev: String::from("8761fbefb3b209")
             }
@@ -105,7 +108,7 @@ mod geiger_tests {
     )]
     fn handle_source_repr_test(
         input_source_repr: &str,
-        expected_source: cargo_geiger_serde::Source,
+        expected_source: CargoGeigerSerdeSource,
     ) {
         let source = handle_source_repr(input_source_repr);
         assert_eq!(source, expected_source);
@@ -114,11 +117,11 @@ mod geiger_tests {
     #[rstest]
     fn handle_path_source_test() {
         if !cfg!(windows) {
-            let package_id = cargo_metadata::PackageId {
+            let package_id = CargoMetadataPackageId {
                 repr: String::from("(path+file:///cargo_geiger/test_crates/test1_package_with_no_deps)"),
             };
 
-            let expected_source = cargo_geiger_serde::Source::Path(
+            let expected_source = CargoGeigerSerdeSource::Path(
                 Url::from_file_path(
                     "/cargo_geiger/test_crates/test1_package_with_no_deps",
                 )

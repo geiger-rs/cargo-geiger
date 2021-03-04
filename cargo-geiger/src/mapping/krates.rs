@@ -42,10 +42,11 @@ impl QueryResolve for Krates {
 mod krates_tests {
     use super::*;
 
+    use crate::lib_tests::construct_krates_and_metadata;
     use crate::mapping::GetPackageIdInformation;
 
-    use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Version};
-    use krates::Builder as KratesBuilder;
+    use cargo_metadata::Version;
+
     use rstest::*;
 
     #[rstest]
@@ -129,19 +130,5 @@ mod krates_tests {
 
         assert_eq!(package_name, expected_package_name);
         assert_eq!(package_version, expected_package_version);
-    }
-
-    fn construct_krates_and_metadata() -> (Krates, Metadata) {
-        let metadata = MetadataCommand::new()
-            .manifest_path("./Cargo.toml")
-            .features(CargoOpt::AllFeatures)
-            .exec()
-            .unwrap();
-
-        let krates = KratesBuilder::new()
-            .build_with_metadata(metadata.clone(), |_| ())
-            .unwrap();
-
-        (krates, metadata)
     }
 }
