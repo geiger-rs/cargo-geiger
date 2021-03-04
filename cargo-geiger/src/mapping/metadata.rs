@@ -8,6 +8,7 @@ use super::{
 };
 use package_id::ToCargoMetadataPackage;
 
+use crate::mapping::krates::GetNodeForKid;
 use crate::mapping::{ToCargoGeigerDependencyKind, ToCargoGeigerSource};
 
 use cargo_metadata::Metadata;
@@ -20,7 +21,6 @@ use cargo_metadata::DependencyKind as CargoMetadataDependencyKind;
 use cargo_metadata::Package as CargoMetadataPackage;
 use cargo_metadata::PackageId as CargoMetadataPackageId;
 
-use crate::mapping::krates::GetNodeForKid;
 use cargo_geiger_serde::DependencyKind as CargoGeigerSerdeDependencyKind;
 
 impl DepsNotReplaced for Metadata {

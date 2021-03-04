@@ -46,7 +46,6 @@ mod krates_tests {
     use crate::mapping::GetPackageIdInformation;
 
     use cargo_metadata::Version;
-
     use rstest::*;
 
     #[rstest]
