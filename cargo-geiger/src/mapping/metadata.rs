@@ -1,39 +1,34 @@
 pub mod dependency;
-pub mod package_id;
 pub mod package;
+pub mod package_id;
 
 use super::{
-    DepsNotReplaced, GetPackageNameAndVersionFromCargoMetadataPackageId,
-    MatchesIgnoringSource, ToCargoGeigerPackageId,
-    ToCargoMetadataPackageId,
+    DepsNotReplaced, GetPackageIdInformation, MatchesIgnoringSource,
+    ToCargoGeigerPackageId, ToCargoMetadataPackageId,
 };
 use package_id::ToCargoMetadataPackage;
 
-use crate::mapping::{ToCargoGeigerDependencyKind, ToCargoGeigerSource, GetPackageRoot};
+use crate::mapping::{ToCargoGeigerDependencyKind, ToCargoGeigerSource};
 
 use cargo_metadata::Metadata;
-use krates::Krates;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::slice::Iter;
 
-use cargo_metadata::DependencyKind as CargoMetadataDependencyKind;
 use cargo_metadata::Dependency as CargoMetadataDependency;
-use cargo_metadata::PackageId as CargoMetadataPackageId;
+use cargo_metadata::DependencyKind as CargoMetadataDependencyKind;
 use cargo_metadata::Package as CargoMetadataPackage;
+use cargo_metadata::PackageId as CargoMetadataPackageId;
 
 use cargo_geiger_serde::DependencyKind as CargoGeigerSerdeDependencyKind;
+use crate::mapping::krates::GetNodeForKid;
 
 impl DepsNotReplaced for Metadata {
     fn deps_not_replaced<T: ToCargoMetadataPackage + Display>(
         &self,
         package_id: &T,
-    ) -> Option<
-        Vec<(
-            CargoMetadataPackageId,
-            HashSet<CargoMetadataDependency>,
-        )>,
-    > {
+    ) -> Option<Vec<(CargoMetadataPackageId, HashSet<CargoMetadataDependency>)>>
+    {
         let mut cargo_metadata_deps_not_replaced = vec![];
         let mut package_id_hashset = HashSet::<CargoMetadataPackageId>::new();
 
@@ -62,18 +57,13 @@ impl DepsNotReplaced for Metadata {
     }
 }
 
-impl GetPackageRoot for CargoMetadataPackage { }
-
 impl MatchesIgnoringSource for CargoMetadataDependency {
-    fn matches_ignoring_source(
+    fn matches_ignoring_source<T: GetNodeForKid, U: GetPackageIdInformation>(
         &self,
-        krates: &Krates,
-        package_id: CargoMetadataPackageId,
+        krates: &T,
+        package_id: &U,
     ) -> Option<bool> {
-        match krates
-            .get_package_name_and_version_from_cargo_metadata_package_id(
-                &package_id,
-            ) {
+        match package_id.get_package_id_name_and_version(krates) {
             Some((name, version)) => {
                 Some(name == self.name && self.req.matches(&version))
             }
@@ -133,7 +123,7 @@ impl ToCargoGeigerPackageId for CargoMetadataPackageId {
     }
 }
 
-impl ToCargoMetadataPackageId for CargoMetadataDependency { }
+impl ToCargoMetadataPackageId for CargoMetadataDependency {}
 
 pub trait GetMetadataPackages {
     fn get_metadata_packages(&self) -> Iter<CargoMetadataPackage>;
@@ -149,12 +139,13 @@ impl GetMetadataPackages for Metadata {
 mod metadata_tests {
     use super::*;
 
-    use super::super::{
-        GetPackageNameAndVersionFromCargoMetadataPackageId, ToCargoCoreDepKind,
-    };
+    use super::super::{GetPackageIdInformation, ToCargoCoreDepKind};
 
     use crate::args::FeaturesArgs;
     use crate::cli::get_workspace;
+
+    use crate::mapping::metadata::dependency::GetDependencyInformation;
+    use crate::mapping::GetPackageRoot;
 
     use cargo::core::dependency::DepKind;
     use cargo::core::registry::PackageRegistry;
@@ -164,6 +155,8 @@ mod metadata_tests {
     };
     use cargo::{ops, CargoResult, Config};
     use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
+    use krates::{Krates};
+    use krates::semver::VersionReq;
     use krates::Builder as KratesBuilder;
     use rstest::*;
     use std::path::PathBuf;
@@ -197,9 +190,8 @@ mod metadata_tests {
         let mut cargo_metadata_package_names = cargo_metadata_deps_not_replaced
             .iter()
             .map(|(p, _)| {
-                let (name, _) = krates
-                    .get_package_name_and_version_from_cargo_metadata_package_id(p)
-                    .unwrap();
+                let (name, _) =
+                    p.get_package_id_name_and_version(&krates).unwrap();
                 name
             })
             .collect::<Vec<String>>();
@@ -230,7 +222,7 @@ mod metadata_tests {
 
         assert_eq!(
             dependency
-                .matches_ignoring_source(&krates, package.clone().id)
+                .matches_ignoring_source(&krates, &package.clone().id)
                 .unwrap(),
             false
         );
@@ -248,7 +240,7 @@ mod metadata_tests {
 
         assert!(
             dependency
-                .matches_ignoring_source(&krates, dependency_package_id)
+                .matches_ignoring_source(&krates, &dependency_package_id)
                 .unwrap(),
             true
         );
@@ -367,30 +359,23 @@ mod metadata_tests {
         fn to_cargo_core_dep_kind(&self) -> DepKind {
             match self {
                 CargoMetadataDependencyKind::Build => DepKind::Build,
-                CargoMetadataDependencyKind::Development => DepKind::Development,
+                CargoMetadataDependencyKind::Development => {
+                    DepKind::Development
+                }
                 CargoMetadataDependencyKind::Normal => DepKind::Normal,
                 _ => panic!("Unknown dependency kind"),
             }
         }
     }
 
-    impl ToCargoMetadataPackageId for PackageId {
-        fn to_cargo_metadata_package_id(
-            &self,
-            metadata: &Metadata,
-        ) -> Option<cargo_metadata::PackageId> {
-            metadata
-                .packages
-                .iter()
-                .filter(|p| {
-                    p.name == self.name().to_string()
-                        && p.version.major == self.version().major
-                        && p.version.minor == self.version().minor
-                        && p.version.patch == self.version().patch
-                })
-                .map(|p| p.id.clone())
-                .collect::<Vec<cargo_metadata::PackageId>>()
-                .pop()
+    impl ToCargoMetadataPackageId for PackageId {}
+
+    impl GetDependencyInformation for PackageId {
+        fn get_dependency_name(&self) -> String {
+            self.name().clone().to_string()
+        }
+        fn get_dependency_version_req(&self) -> VersionReq {
+            VersionReq::parse(&self.version().clone().to_string()).unwrap()
         }
     }
 }

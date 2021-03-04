@@ -1,5 +1,5 @@
-use super::{ToCargoGeigerSource};
 use super::metadata::package_id::{GetPackageIdRepr, ToCargoMetadataPackage};
+use super::ToCargoGeigerSource;
 
 use cargo_metadata::Metadata;
 use url::Url;

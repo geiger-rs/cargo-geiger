@@ -1,22 +1,16 @@
 use cargo_metadata::Dependency;
 use krates::semver::VersionReq;
 
-pub trait GetDependencyName {
+pub trait GetDependencyInformation {
     fn get_dependency_name(&self) -> String;
+    fn get_dependency_version_req(&self) -> VersionReq;
 }
 
-impl GetDependencyName for Dependency {
+impl GetDependencyInformation for Dependency {
     fn get_dependency_name(&self) -> String {
         self.name.clone()
     }
-}
-
-pub trait GetDependencyRequirement {
-    fn get_dependency_requirement(&self) -> VersionReq;
-}
-
-impl GetDependencyRequirement for Dependency {
-    fn get_dependency_requirement(&self) -> VersionReq {
+    fn get_dependency_version_req(&self) -> VersionReq {
         self.req.clone()
     }
 }

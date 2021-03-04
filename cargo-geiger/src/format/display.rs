@@ -1,10 +1,6 @@
 use crate::format::pattern::Pattern;
 use crate::format::Chunk;
-use crate::mapping::{
-    CargoMetadataParameters, GetLicenceFromCargoMetadataPackageId,
-    GetPackageNameAndVersionFromCargoMetadataPackageId,
-    GetRepositoryFromCargoMetadataPackageId,
-};
+use crate::mapping::{CargoMetadataParameters, GetPackageIdInformation};
 
 use cargo_metadata::PackageId;
 use std::fmt;
@@ -20,20 +16,20 @@ impl<'a> fmt::Display for Display<'a> {
         for chunk in &self.pattern.0 {
             match *chunk {
                 Chunk::License => {
-                    if let Some(ref license) = self
-                        .cargo_metadata_parameters
-                        .krates
-                        .get_licence_from_cargo_metadata_package_id(
-                            self.package,
+                    if let Some(ref license) =
+                        self.package.get_package_id_licence(
+                            self.cargo_metadata_parameters.krates,
                         )
                     {
                         (write!(fmt, "{}", license))?
                     }
                 }
                 Chunk::Package => {
-                    if let Some((package_name, package_version)) = self.cargo_metadata_parameters
-                        .krates
-                        .get_package_name_and_version_from_cargo_metadata_package_id(self.package) {
+                    if let Some((package_name, package_version)) =
+                        self.package.get_package_id_name_and_version(
+                            self.cargo_metadata_parameters.krates,
+                        )
+                    {
                         (write!(fmt, "{} {}", package_name, package_version))?
                     } else {
                         eprintln!("Failed to format Package: {}", self.package)
@@ -41,11 +37,9 @@ impl<'a> fmt::Display for Display<'a> {
                 }
                 Chunk::Raw(ref s) => (fmt.write_str(s))?,
                 Chunk::Repository => {
-                    if let Some(ref repository) = self
-                        .cargo_metadata_parameters
-                        .krates
-                        .get_repository_from_cargo_metadata_package_id(
-                            self.package,
+                    if let Some(ref repository) =
+                        self.package.get_package_id_repository(
+                            self.cargo_metadata_parameters.krates,
                         )
                     {
                         (write!(fmt, "{}", repository))?

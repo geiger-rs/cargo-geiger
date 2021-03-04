@@ -1,3 +1,7 @@
+pub mod extra_deps;
+
+use extra_deps::ExtraDeps;
+
 use crate::args::{Args, DepsArgs, TargetArgs};
 use crate::cli::get_cfgs;
 use crate::mapping::{
@@ -14,31 +18,9 @@ use petgraph::graph::NodeIndex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq)]
-pub enum ExtraDeps {
-    All,
-    Build,
-    Dev,
-    NoMore,
-}
-
-impl ExtraDeps {
-    // This clippy recommendation is valid, but makes this function much harder to read
-    #[allow(clippy::match_like_matches_macro)]
-    pub fn allows(&self, dep: DependencyKind) -> bool {
-        match (self, dep) {
-            (_, DependencyKind::Normal) => true,
-            (ExtraDeps::All, _) => true,
-            (ExtraDeps::Build, DependencyKind::Build) => true,
-            (ExtraDeps::Dev, DependencyKind::Development) => true,
-            _ => false,
-        }
-    }
-}
-
 /// Representation of the package dependency graph
 pub struct Graph {
-    pub graph: petgraph::Graph<PackageId, cargo_metadata::DependencyKind>,
+    pub graph: petgraph::Graph<PackageId, DependencyKind>,
     pub nodes: HashMap<PackageId, NodeIndex>,
 }
 
@@ -197,7 +179,7 @@ fn filter_dependencies<'a>(
         .filter(|d| {
             d.matches_ignoring_source(
                 cargo_metadata_parameters.krates,
-                dependency_package_id.clone(),
+                dependency_package_id,
             )
             .unwrap_or(false)
         })
@@ -222,32 +204,6 @@ fn filter_dependencies<'a>(
 mod graph_tests {
     use super::*;
     use rstest::*;
-
-    #[rstest(
-        input_extra_deps,
-        input_dependency_kind,
-        expected_allows,
-        case(ExtraDeps::All, DependencyKind::Normal, true),
-        case(ExtraDeps::Build, DependencyKind::Normal, true),
-        case(ExtraDeps::Dev, DependencyKind::Normal, true),
-        case(ExtraDeps::NoMore, DependencyKind::Normal, true),
-        case(ExtraDeps::All, DependencyKind::Build, true),
-        case(ExtraDeps::All, DependencyKind::Development, true),
-        case(ExtraDeps::Build, DependencyKind::Build, true),
-        case(ExtraDeps::Build, DependencyKind::Development, false),
-        case(ExtraDeps::Dev, DependencyKind::Build, false),
-        case(ExtraDeps::Dev, DependencyKind::Development, true)
-    )]
-    fn extra_deps_allows_test(
-        input_extra_deps: ExtraDeps,
-        input_dependency_kind: DependencyKind,
-        expected_allows: bool,
-    ) {
-        assert_eq!(
-            input_extra_deps.allows(input_dependency_kind),
-            expected_allows
-        );
-    }
 
     #[rstest(
         input_deps_args,
