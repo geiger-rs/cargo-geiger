@@ -1,5 +1,5 @@
 use crate::format::print_config::PrintConfig;
-use crate::mapping::{CargoMetadataParameters, GetRoot};
+use crate::mapping::{CargoMetadataParameters, GetPackageRoot};
 use crate::scan::rs_file::{
     into_is_entry_point_and_path_buf, into_rs_code_file, into_target_kind,
     is_file_with_ext, RsFile, RsFileMetricsWrapper,
