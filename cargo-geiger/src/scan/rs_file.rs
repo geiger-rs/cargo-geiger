@@ -111,7 +111,7 @@ pub fn into_rs_code_file(target_kind: &TargetKind, path: PathBuf) -> RsFile {
 /// `TargetKind::ExampleBin` and `TargetKind::ExampleLib`, are both handled in the same manner
 /// within `cargo-geiger`.
 /// If at a future date, we need to separate these two, the information from
-/// https://github.com/oli-obk/cargo_metadata/blob/main/src/lib.rs#L400 can be used to
+/// https://github.com/oli-obk/cargo_metadata/blob/540fc6cd8ea1624055c98faf92ef61f620b6aa8f/src/lib.rs#L400
 /// improve this function.
 pub fn into_target_kind(raw_target_kind: Vec<String>) -> TargetKind {
     let raw_target_kind_str = raw_target_kind
