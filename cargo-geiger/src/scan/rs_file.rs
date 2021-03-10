@@ -106,22 +106,26 @@ pub fn into_rs_code_file(target_kind: &TargetKind, path: PathBuf) -> RsFile {
     }
 }
 
+/// `cargo_metadata` returns the serialized strings from
+/// https://github.com/rust-lang/cargo/blob/master/src/cargo/core/manifest.rs#L122
+/// `TargetKind::ExampleBin` and `TargetKind::ExampleLib`, are both handled in the same manner
+/// within `cargo-geiger`.
+/// If at a future date, we need to separate these two, the information from
+/// https://github.com/oli-obk/cargo_metadata/blob/540fc6cd8ea1624055c98faf92ef61f620b6aa8f/src/lib.rs#L400
+/// can be used to improve this function.
 pub fn into_target_kind(raw_target_kind: Vec<String>) -> TargetKind {
-    let mut raw_target_kind_str = raw_target_kind
+    let raw_target_kind_str = raw_target_kind
         .iter()
         .map(|s| s.as_str())
         .collect::<Vec<&str>>();
 
-    raw_target_kind_str.sort_unstable();
-
     match &raw_target_kind_str[..] {
         ["bench"] => TargetKind::Bench,
         ["bin"] => TargetKind::Bin,
-        ["bin", "example"] => TargetKind::ExampleBin,
-        ["example", "lib"] => TargetKind::ExampleLib(vec![]),
-        ["lib"] => TargetKind::Lib(vec![]),
+        ["example"] => TargetKind::ExampleBin,
         ["test"] => TargetKind::Test,
-        _ => TargetKind::CustomBuild,
+        ["custom-build"] => TargetKind::CustomBuild,
+        _ => TargetKind::Lib(vec![]),
     }
 }
 
@@ -381,28 +385,16 @@ mod rs_file_tests {
             TargetKind::Bin
         ),
         case(
-            vec![String::from("bin"), String::from("example")],
+            vec![String::from("example")],
             TargetKind::ExampleBin
-        ),
-        case(
-            vec![String::from("example"), String::from("bin")],
-            TargetKind::ExampleBin
-        ),
-        case(
-            vec![String::from("lib"), String::from("example")],
-            TargetKind::ExampleLib(vec![])
-        ),
-        case(
-            vec![String::from("example"), String::from("lib")],
-            TargetKind::ExampleLib(vec![])
-        ),
-        case(
-            vec![String::from("lib")],
-            TargetKind::Lib(vec![])
         ),
         case(
             vec![String::from("test")],
             TargetKind::Test
+        ),
+        case(
+            vec![String::from("custom-build")],
+            TargetKind::CustomBuild
         ),
         case(
             vec![
@@ -411,7 +403,7 @@ mod rs_file_tests {
                 String::from("target"),
                 String::from("kinds")
             ],
-            TargetKind::CustomBuild
+            TargetKind::Lib(vec![])
         )
     )]
     fn into_target_kind_test(
