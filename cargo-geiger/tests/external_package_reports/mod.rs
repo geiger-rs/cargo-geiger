@@ -96,11 +96,11 @@ pub fn doc_comment_safety_report() -> SafetyReport {
         unsafety: UnsafeInfo {
             used: CounterBlock {
                 functions: Count {
-                    safe: 1,
+                    safe: 0,
                     unsafe_: 0,
                 },
                 exprs: Count {
-                    safe: 37,
+                    safe: 0,
                     unsafe_: 0,
                 },
                 ..Default::default()
