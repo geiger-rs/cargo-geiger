@@ -1,0 +1,7 @@
+[package]
+name = "test8_package_with_build_rs_no_deps"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+[workspace]
