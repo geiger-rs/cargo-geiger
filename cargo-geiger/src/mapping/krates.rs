@@ -94,23 +94,23 @@ mod krates_tests {
         expected_package_name,
         expected_package_version,
         case(
-            "cargo_metadata:0.12.3",
+            "cargo_metadata:0.13.1",
             "cargo_metadata",
             Version {
                 major: 0,
-                minor: 12,
-                patch: 3,
+                minor: 13,
+                patch: 1,
                 pre: vec![],
                 build: vec![]
             }
         ),
         case(
-            "cargo_metadata:0.12.3",
+            "cargo_metadata:0.13.1",
             "cargo_metadata",
             Version {
                 major: 0,
-                minor: 12,
-                patch: 3,
+                minor: 13,
+                patch: 1,
                 pre: vec![],
                 build: vec![]
             }

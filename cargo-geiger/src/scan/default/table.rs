@@ -90,9 +90,8 @@ fn construct_key_lines(
     emoji_symbols: &EmojiSymbols,
     output_format: OutputFormat,
 ) -> Vec<String> {
-    let mut output_key_lines = Vec::<String>::new();
+    let mut output_key_lines = vec![String::new()];
 
-    output_key_lines.push(String::new());
     match output_format {
         OutputFormat::Ratio => {
             // Change the prompt for Safe Ratio report:

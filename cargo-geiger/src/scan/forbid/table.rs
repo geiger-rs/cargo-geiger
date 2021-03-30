@@ -77,10 +77,7 @@ pub fn scan_forbid_to_table(
 }
 
 fn construct_key_lines(emoji_symbols: &EmojiSymbols) -> Vec<String> {
-    let mut output_key_lines = Vec::<String>::new();
-
-    output_key_lines.push(String::new());
-    output_key_lines.push(String::from("Symbols: "));
+    let mut output_key_lines = vec![String::new(), String::from("Symbols: ")];
 
     let forbids = "All entry point .rs files declare #![forbid(unsafe_code)].";
     let unknown = "This crate may use unsafe code.";

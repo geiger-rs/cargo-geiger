@@ -168,7 +168,7 @@ fn find_rs_files_in_packages(
 fn handle_unsafe_in_file_error(
     allow_partial_results: bool,
     error: ScanFileError,
-    path_buf: &PathBuf,
+    path_buf: &Path,
 ) {
     if allow_partial_results {
         eprintln!("Failed to parse file: {}, {:?} ", path_buf.display(), error);
@@ -316,16 +316,17 @@ mod find_tests {
             input_is_entry_point,
             package.id.clone(),
             &mut package_id_to_metrics,
-            package.manifest_path.clone(),
+            package.manifest_path.clone().into(),
             rs_file_metrics.clone(),
         );
 
         assert!(package_id_to_metrics.contains_key(&package.id));
         let package_metrics = package_id_to_metrics.get(&package.id).unwrap();
 
+        let manifest_path: &Path = package.manifest_path.as_path().as_ref();
         let wrapper = package_metrics
             .rs_path_to_metrics
-            .get(package.manifest_path.as_path())
+            .get(manifest_path)
             .unwrap();
 
         assert_eq!(wrapper.metrics, rs_file_metrics);
