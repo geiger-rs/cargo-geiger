@@ -17,7 +17,7 @@ impl GetPackageInformation for Package {
     }
 
     fn get_package_parent(&self) -> Option<&Path> {
-        self.manifest_path.parent()
+        self.manifest_path.parent().map(|p| p.as_ref())
     }
 
     fn get_package_version(&self) -> Version {
