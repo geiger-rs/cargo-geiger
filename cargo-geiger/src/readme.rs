@@ -4,7 +4,7 @@ use cargo::{CliError, CliResult};
 use regex::Regex;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Name of README FILE
 pub const README_FILENAME: &str = "README.md";
@@ -117,8 +117,8 @@ fn get_readme_path_buf_from_arguments_or_default(
 }
 
 /// Read the contents of a file line by line.
-fn read_file_contents(path_buf: &PathBuf) -> Result<Vec<String>, Error> {
-    let file = File::open(path_buf)?;
+fn read_file_contents(path: &Path) -> Result<Vec<String>, Error> {
+    let file = File::open(path)?;
     let buf_reader = BufReader::new(file);
 
     Ok(buf_reader
@@ -193,11 +193,8 @@ fn update_readme_content(
 }
 
 /// Write a Vec<String> line by line to a file, overwriting the current file, if it exists.
-fn write_lines_to_file(
-    lines: &[String],
-    path_buf: &PathBuf,
-) -> Result<(), Error> {
-    let mut readme_file = File::create(path_buf)?;
+fn write_lines_to_file(lines: &[String], path: &Path) -> Result<(), Error> {
+    let mut readme_file = File::create(path)?;
 
     for line in lines {
         writeln!(readme_file, "{}", line)?

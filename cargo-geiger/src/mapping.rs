@@ -166,10 +166,7 @@ mod mapping_tests {
         input_package_path_option: Option<&Path>,
         expected_package_path_buf_option: Option<PathBuf>,
     ) {
-        let _mock_package_parent = match input_package_path_option {
-            Some(path) => Some(path),
-            None => None,
-        };
+        let _mock_package_parent = input_package_path_option;
 
         let mock_package = MockPackage {
             mock_package_name: String::from("package_name"),

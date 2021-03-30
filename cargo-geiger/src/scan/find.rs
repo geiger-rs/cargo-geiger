@@ -168,7 +168,7 @@ fn find_rs_files_in_packages(
 fn handle_unsafe_in_file_error(
     allow_partial_results: bool,
     error: ScanFileError,
-    path_buf: &PathBuf,
+    path_buf: &Path,
 ) {
     if allow_partial_results {
         eprintln!("Failed to parse file: {}, {:?} ", path_buf.display(), error);
