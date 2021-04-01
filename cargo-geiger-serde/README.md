@@ -1,1 +1,1 @@
-A reserved crate for the cargo-geiger project.
+Serde serialization types for `cargo-geiger` output.
