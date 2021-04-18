@@ -1,6 +1,9 @@
 # Changelog
 ---------
 
+## 0.11.1
+ - Removed a failing test case that depended on the crate version.
+
 ## 0.11.0
  - Explore the dependency graph using cargo_metadata [#16]
    - [#120], [#122], [#126], [#129], [#133], [#135], [#136], [#138], [#139], [#140], [#141], [#142], [#143], [#146], [#147], [#154]
