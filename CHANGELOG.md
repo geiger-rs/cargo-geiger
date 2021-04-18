@@ -1,7 +1,7 @@
 # Changelog
 ---------
 
-## 0.11.0 (unreleased)
+## 0.11.0
  - Explore the dependency graph using cargo_metadata [#16]
    - [#120], [#122], [#126], [#129], [#133], [#135], [#136], [#138], [#139], [#140], [#141], [#142], [#143], [#146], [#147], [#154]
  - Add build without lock file to CI and upgrade the cargo dependency to 0.50. [#183]
