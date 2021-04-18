@@ -70,10 +70,6 @@ pub mod display_tests {
             "Apache-2.0/MIT"
         ),
         case(
-            Pattern(vec![Chunk::Package]),
-            "cargo-geiger 0.10.2"
-        ),
-        case(
             Pattern(vec![Chunk::Raw(String::from("chunk_value"))]),
             "chunk_value"
         ),
