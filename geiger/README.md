@@ -11,6 +11,22 @@ For more details please see the `README.md` in [cargo-geiger].
 Changelog
 ---------
 
+### 0.4.6
+ - Upgraded dependencies.
+ - Updated lint enforcement level based on issue
+   https://github.com/rust-lang/rust/issues/81670 to fix compile warnings with
+   stable 1.50.0.
+ - Marked functions with export_name attr as unsafe as well.
+ - Marked no_mangle functions as unsafe.
+ - Updated version of `syn` package used in `geiger`.
+ - Refactored geiger lib and adding further testing.
+ - Moved serialized types to their own crate, `cargo-geiger-serde`.
+ - Replaced links that points to the old repository.
+ - Added some unit tests.
+
+### 0.4.5
+ - Updated dependencies.
+
 ### 0.4.4
  - Updated dependencies, only patch version updates.
 

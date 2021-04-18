@@ -1,11 +1,54 @@
 # Changelog
 ---------
 
-## 0.11.0 (unreleased)
+## 0.11.0
+ - Explore the dependency graph using cargo_metadata [#16]
+   - [#120], [#122], [#126], [#129], [#133], [#135], [#136], [#138], [#139], [#140], [#141], [#142], [#143], [#146], [#147], [#154]
  - Add build without lock file to CI and upgrade the cargo dependency to 0.50. [#183]
  - Feature: safety report in readme. [#151]
+ - Make `--quiet` take no value. [#114]
+ - Ability to generate a JSON report. [#115]
+ - Fix tree vine on dependency group line. [#118]
+ - `cargo-geiger-serde`, a crate with types for report serialization using serde. [#121]
+ - Replace links that points to the old repository. [#124]
+ - Move report types to lib (`cargo-geiger-serde`). [#125]
+ - Add cargo tarpaulin step to CI [#127]
+ - Add code coverage badge to readme [#128]
+ - Add crates.io badges, current version, total downloads. [#130]
+ - Use GitHub Actions / actions-rs to ensure code is well-formatted. [#131]
+ - Add CONTRIBUTING.md file. [#132]
+ - Fixed small errors in Changelog. [#134]
+ - Add Dockerfile and use cargo chef to reduce docker build times locally. [#148]
+ - Create lib.rs to allow documentation tests to be written. [#153]
+ - `--update-readme` Writes output to README.md. Looks for a Safety Report
+   section, replaces if found, adds if not. Throws an error if no README.md
+   exists. [#156]
+ - Refactor integration tests. [#157]
+ - Refactoring geiger lib and adding further testing. [#158]
+ - Accept Readme Path and Section Name as parameters. [#159]
+ - Update version of syn package used in geiger. [#161]
+ - Fix a bug where a report wasn't written if any warning. [#162]
+ - Add GitHub markdown formatting. [#164]
+ - Cleanup a trait only used in a unit test module. [#165]
  - Run `cargo audit` as part of CI builds. [#166]
- - TODO: Document all relevant changes here.
+ - Add new Ratio output type `--output-format=Ratio`. [#167]
+ - Clean only packages. [#171]
+ - Mark no_mangle functions as unsafe. [#173]
+ - Improved `README.md` [#176]
+ - Update graph module to use latest version of cargo_metadata. [#178]
+ - Explicitly enable serde for semver. [#180]
+ - Use DependencyKind from cargo_metadata. [#182]
+ - Add canary build without lockfile. [#183]
+ - Add cargo audit github action to run against head every day. [#184]
+ - Clean up error handling, remove unwrap() calls, logging. [#188]
+ - Update lint enforcement level based on issue. [#189]
+ - Implement Display for FoundWarningsError instead of relying on Debug. [#191]
+ - Add futher testing. [#192]
+ - Fix Args::parse_args for -p option. [#196]
+ - Refactor mapping module to use traits. [#197]
+ - Fix into target kind function logic. [#198]
+ - Bump insta version. [#199]
+ - Upgrade dependencies; use cargo 1.52.0 for the new resolver. [#201]
 
 ## 0.10.2
  - __Bugfix__: Avoid panic and log warnings on parse failure. [#105]
@@ -118,6 +161,7 @@
  - Mostly README.md updates.
 
 [#9]: https://github.com/rust-secure-code/cargo-geiger/pull/9
+[#16]: https://github.com/rust-secure-code/cargo-geiger/issues/16
 [#28]: https://github.com/rust-secure-code/cargo-geiger/issues/28
 [#29]: https://github.com/rust-secure-code/cargo-geiger/issues/29
 [#30]: https://github.com/rust-secure-code/cargo-geiger/issues/30
@@ -139,8 +183,64 @@
 [#98]: https://github.com/rust-secure-code/cargo-geiger/pull/98
 [#99]: https://github.com/rust-secure-code/cargo-geiger/pull/99
 [#105]: https://github.com/rust-secure-code/cargo-geiger/issues/105
+[#114]: https://github.com/rust-secure-code/cargo-geiger/pull/114
+[#115]: https://github.com/rust-secure-code/cargo-geiger/pull/115
+[#118]: https://github.com/rust-secure-code/cargo-geiger/pull/118
+[#120]: https://github.com/rust-secure-code/cargo-geiger/pull/120
+[#121]: https://github.com/rust-secure-code/cargo-geiger/pull/121
+[#122]: https://github.com/rust-secure-code/cargo-geiger/pull/122
+[#124]: https://github.com/rust-secure-code/cargo-geiger/pull/124
+[#125]: https://github.com/rust-secure-code/cargo-geiger/pull/125
+[#126]: https://github.com/rust-secure-code/cargo-geiger/pull/126
+[#127]: https://github.com/rust-secure-code/cargo-geiger/pull/127
+[#128]: https://github.com/rust-secure-code/cargo-geiger/pull/128
+[#129]: https://github.com/rust-secure-code/cargo-geiger/pull/129
+[#130]: https://github.com/rust-secure-code/cargo-geiger/pull/130
+[#131]: https://github.com/rust-secure-code/cargo-geiger/pull/131
+[#132]: https://github.com/rust-secure-code/cargo-geiger/pull/132
+[#133]: https://github.com/rust-secure-code/cargo-geiger/pull/133
+[#134]: https://github.com/rust-secure-code/cargo-geiger/pull/134
+[#135]: https://github.com/rust-secure-code/cargo-geiger/pull/135
+[#136]: https://github.com/rust-secure-code/cargo-geiger/pull/136
+[#138]: https://github.com/rust-secure-code/cargo-geiger/pull/138
+[#139]: https://github.com/rust-secure-code/cargo-geiger/pull/139
+[#140]: https://github.com/rust-secure-code/cargo-geiger/pull/140
+[#141]: https://github.com/rust-secure-code/cargo-geiger/pull/141
+[#142]: https://github.com/rust-secure-code/cargo-geiger/pull/142
+[#143]: https://github.com/rust-secure-code/cargo-geiger/pull/143
+[#146]: https://github.com/rust-secure-code/cargo-geiger/pull/146
+[#147]: https://github.com/rust-secure-code/cargo-geiger/pull/147
+[#148]: https://github.com/rust-secure-code/cargo-geiger/pull/148
 [#151]: https://github.com/rust-secure-code/cargo-geiger/issues/151
+[#153]: https://github.com/rust-secure-code/cargo-geiger/pull/153
+[#154]: https://github.com/rust-secure-code/cargo-geiger/pull/154
+[#156]: https://github.com/rust-secure-code/cargo-geiger/pull/156
+[#157]: https://github.com/rust-secure-code/cargo-geiger/pull/157
+[#158]: https://github.com/rust-secure-code/cargo-geiger/pull/158
+[#159]: https://github.com/rust-secure-code/cargo-geiger/pull/159
+[#161]: https://github.com/rust-secure-code/cargo-geiger/pull/161
+[#162]: https://github.com/rust-secure-code/cargo-geiger/pull/162
+[#164]: https://github.com/rust-secure-code/cargo-geiger/pull/164
+[#165]: https://github.com/rust-secure-code/cargo-geiger/pull/165
 [#166]: https://github.com/rust-secure-code/cargo-geiger/issues/166
+[#167]: https://github.com/rust-secure-code/cargo-geiger/pull/167
+[#171]: https://github.com/rust-secure-code/cargo-geiger/pull/171
+[#173]: https://github.com/rust-secure-code/cargo-geiger/pull/173
+[#176]: https://github.com/rust-secure-code/cargo-geiger/pull/176
+[#178]: https://github.com/rust-secure-code/cargo-geiger/pull/178
+[#180]: https://github.com/rust-secure-code/cargo-geiger/pull/180
+[#182]: https://github.com/rust-secure-code/cargo-geiger/pull/182
 [#183]: https://github.com/rust-secure-code/cargo-geiger/pull/183
+[#184]: https://github.com/rust-secure-code/cargo-geiger/pull/184
+[#188]: https://github.com/rust-secure-code/cargo-geiger/pull/188
+[#189]: https://github.com/rust-secure-code/cargo-geiger/pull/189
+[#191]: https://github.com/rust-secure-code/cargo-geiger/pull/191
+[#192]: https://github.com/rust-secure-code/cargo-geiger/pull/192
+[#196]: https://github.com/rust-secure-code/cargo-geiger/pull/196
+[#197]: https://github.com/rust-secure-code/cargo-geiger/pull/197
+[#198]: https://github.com/rust-secure-code/cargo-geiger/pull/198
+[#199]: https://github.com/rust-secure-code/cargo-geiger/pull/199
+[#201]: https://github.com/rust-secure-code/cargo-geiger/pull/201
 [geiger]: https://crates.io/crates/geiger
 [pico-args]: https://crates.io/crates/pico-args
+
