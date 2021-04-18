@@ -108,7 +108,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  cargo-geiger 0.11.0
+0/0        0/0          0/0    0/0     0/0      🔒  cargo-geiger 0.11.1
 15/18      432/439      3/3    0/0     11/11    ☢️  ├── anyhow 1.0.40
 0/26       0/623        0/6    0/0     0/5      ❓  │   └── backtrace 0.3.56
 0/0        0/23         0/0    0/0     0/0      ❓  │       ├── addr2line 0.14.1
