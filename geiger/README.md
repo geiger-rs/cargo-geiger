@@ -11,6 +11,9 @@ For more details please see the `README.md` in [cargo-geiger].
 Changelog
 ---------
 
+### 0.4.7
+ - Reverted public API breakage from 0.4.6. [#204]
+
 ### 0.4.6
  - Upgraded dependencies.
  - Updated lint enforcement level based on issue
@@ -67,6 +70,7 @@ Changelog
 [#57]: https://github.com/rust-secure-code/cargo-geiger/pull/57
 [#71]: https://github.com/rust-secure-code/cargo-geiger/issues/71
 [#72]: https://github.com/rust-secure-code/cargo-geiger/pull/72
+[#204]: https://github.com/rust-secure-code/cargo-geiger/pull/204
 [cargo-geiger]: https://crates.io/crates/cargo-geiger
 [cargo]: https://crates.io/crates/cargo
 
