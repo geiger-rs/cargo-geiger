@@ -89,22 +89,22 @@ pub fn scan(
     let print_config = PrintConfig::new(args)?;
 
     let scan_parameters = ScanParameters {
-        args: &args,
-        config: &config,
+        args,
+        config,
         print_config: &print_config,
     };
 
     if args.forbid_only {
         scan_forbid_unsafe(
             cargo_metadata_parameters,
-            &graph,
+            graph,
             root_package_id,
             &scan_parameters,
         )
     } else {
         scan_unsafe(
             cargo_metadata_parameters,
-            &graph,
+            graph,
             root_package_id,
             &scan_parameters,
             workspace,

@@ -50,13 +50,13 @@ pub fn scan_to_table(
 
     let text_tree_lines = walk_dependency_tree(
         cargo_metadata_parameters,
-        &graph,
-        &scan_parameters.print_config,
+        graph,
+        scan_parameters.print_config,
         root_package_id,
     );
     let table_parameters = TableParameters {
         geiger_context: &geiger_context,
-        print_config: &scan_parameters.print_config,
+        print_config: scan_parameters.print_config,
         rs_files_used: &rs_files_used,
     };
 

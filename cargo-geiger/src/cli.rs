@@ -124,18 +124,15 @@ mod cli_tests {
         assert!(cfg_vec_option.is_some());
         let cfg_vec = cfg_vec_option.unwrap();
 
-        let names: Vec<&Cfg> = cfg_vec
-            .iter()
-            .filter(|cfg| matches!(cfg, Cfg::Name(_)))
-            .collect();
+        let mut names =
+            cfg_vec.iter().filter(|cfg| matches!(cfg, Cfg::Name(_)));
 
-        let key_pairs: Vec<&Cfg> = cfg_vec
+        let mut key_pairs = cfg_vec
             .iter()
-            .filter(|cfg| matches!(cfg, Cfg::KeyPair(_, _)))
-            .collect();
+            .filter(|cfg| matches!(cfg, Cfg::KeyPair(_, _)));
 
-        assert!(!names.is_empty());
-        assert!(!key_pairs.is_empty());
+        assert!(!names.next().is_none());
+        assert!(!key_pairs.next().is_none());
     }
 
     #[rstest]

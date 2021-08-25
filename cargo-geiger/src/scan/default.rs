@@ -55,7 +55,7 @@ fn build_compile_options<'a>(
     config: &'a Config,
 ) -> CompileOptions {
     let mut compile_options =
-        CompileOptions::new(&config, CompileMode::Check { test: false })
+        CompileOptions::new(config, CompileMode::Check { test: false })
             .unwrap();
     compile_options.features = args.features.clone();
     compile_options.all_features = args.all_features;

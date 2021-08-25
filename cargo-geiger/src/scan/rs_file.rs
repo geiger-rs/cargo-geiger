@@ -161,7 +161,7 @@ pub fn resolve_rs_file_deps(
     // TODO: Figure out how this can be avoided to improve performance, clean
     // Rust builds are __slow__.
     let clean_options = CleanOptions {
-        config: &config,
+        config,
         spec: packages,
         targets: vec![],
         profile_specified: false,
@@ -251,7 +251,7 @@ fn compile_with_exec(
 
     let custom_executor_arc: Arc<dyn Executor> = Arc::new(custom_executor);
 
-    ops::compile_with_exec(workspace, &compile_options, &custom_executor_arc)
+    ops::compile_with_exec(workspace, compile_options, &custom_executor_arc)
         .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
 
     Ok(())
@@ -427,7 +427,7 @@ mod rs_file_tests {
             .filter(|e| e.path().to_str().unwrap().ends_with(".rs"));
 
         for entry in walk_dir_rust_files {
-            assert_eq!(is_file_with_ext(&entry, "rs"), true);
+            assert!(is_file_with_ext(&entry, "rs"));
         }
 
         let walk_dir_readme_files = WalkDir::new(&cwd)
@@ -436,7 +436,7 @@ mod rs_file_tests {
             .filter(|e| e.path().to_str().unwrap().contains("README"));
 
         for entry in walk_dir_readme_files {
-            assert_eq!(is_file_with_ext(&entry, "rs"), false);
+            assert!(!is_file_with_ext(&entry, "rs"));
         }
     }
 }

@@ -220,12 +220,9 @@ mod metadata_tests {
 
         let dependency = package.dependencies.clone().pop().unwrap();
 
-        assert_eq!(
-            dependency
-                .matches_ignoring_source(&krates, &package.clone().id)
-                .unwrap(),
-            false
-        );
+        assert!(!dependency
+            .matches_ignoring_source(&krates, &package.clone().id)
+            .unwrap());
 
         let dependency_package_id = krates
             .krates()
@@ -238,12 +235,9 @@ mod metadata_tests {
             .pop()
             .unwrap();
 
-        assert_eq!(
-            dependency
-                .matches_ignoring_source(&krates, &dependency_package_id)
-                .unwrap(),
-            true
-        );
+        assert!(dependency
+            .matches_ignoring_source(&krates, &dependency_package_id)
+            .unwrap());
     }
 
     #[rstest(
@@ -296,7 +290,7 @@ mod metadata_tests {
         let manifest_path: Option<PathBuf> = None;
         let workspace = get_workspace(config, manifest_path).unwrap();
         let package = workspace.current().unwrap().clone();
-        let registry = get_registry(&config, &package).unwrap();
+        let registry = get_registry(config, &package).unwrap();
 
         (package, registry, workspace)
     }

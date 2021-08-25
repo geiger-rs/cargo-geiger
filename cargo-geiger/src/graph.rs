@@ -34,13 +34,13 @@ pub fn build_graph<'a>(
     root_package_id: PackageId,
     workspace: &Workspace,
 ) -> CargoResult<Graph> {
-    let config_host = config.load_global_rustc(Some(&workspace))?.host;
+    let config_host = config.load_global_rustc(Some(workspace))?.host;
     let (extra_deps, target) = build_graph_prerequisites(
         &config_host,
         &args.deps_args,
         &args.target_args,
     );
-    let cfgs = get_cfgs(config, &args.target_args.target, &workspace)?;
+    let cfgs = get_cfgs(config, &args.target_args.target, workspace)?;
 
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
@@ -161,7 +161,7 @@ fn build_graph_prerequisites<'a>(
     let target = if target_args.all_targets {
         None
     } else {
-        Some(target_args.target.as_deref().unwrap_or(&config_host))
+        Some(target_args.target.as_deref().unwrap_or(config_host))
     };
 
     (extra_deps, target)

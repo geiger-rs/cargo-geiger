@@ -37,7 +37,7 @@ pub fn walk_dependency_node(
 
     let mut dependency_type_nodes = construct_dependency_type_nodes_hashmap(
         walk_dependency_parameters.graph,
-        &package,
+        package,
         walk_dependency_parameters.print_config,
     );
 
@@ -71,7 +71,7 @@ fn construct_dependency_type_nodes_hashmap<'a>(
 
     for edge in graph
         .graph
-        .edges_directed(graph.nodes[&package], print_config.direction)
+        .edges_directed(graph.nodes[package], print_config.direction)
     {
         let dependency = match print_config.direction {
             EdgeDirection::Incoming => &graph.graph[edge.source()],
@@ -79,7 +79,7 @@ fn construct_dependency_type_nodes_hashmap<'a>(
         };
 
         dependency_type_nodes
-            .get_mut(&edge.weight())
+            .get_mut(edge.weight())
             .unwrap()
             .push(dependency.clone());
     }

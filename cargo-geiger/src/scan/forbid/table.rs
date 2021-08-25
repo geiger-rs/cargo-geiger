@@ -30,8 +30,8 @@ pub fn scan_forbid_to_table(
 
     let tree_lines = walk_dependency_tree(
         cargo_metadata_parameters,
-        &graph,
-        &print_config,
+        graph,
+        print_config,
         root_package_id,
     );
 
@@ -104,10 +104,7 @@ fn format_package_name(
     package_id: &PackageId,
     pattern: &Pattern,
 ) -> String {
-    format!(
-        "{}",
-        pattern.display(cargo_metadata_parameters, &package_id)
-    )
+    format!("{}", pattern.display(cargo_metadata_parameters, package_id))
 }
 
 fn handle_package_text_tree_line(
