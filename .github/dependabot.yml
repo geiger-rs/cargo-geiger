@@ -5,10 +5,6 @@ updates:
     schedule:
       interval: "daily"
       time: "02:00" # UTC
-    reviewers:
-      - "pinkforest"
-    assignees:
-      - "pinkforest"
     labels:
       - "domain: deps"
     commit-message:
