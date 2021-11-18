@@ -1225,6 +1225,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustversion"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61b3909d758bb75c79f23d4736fac9433868679d3ad2ea7a61e3c25cfda9a088"
+
+[[package]]
 name = "ryu"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1398,13 +1404,14 @@ checksum = "7318c509b5ba57f18533982607f24070a55d353e90d4cae30c467cdb2ad5ac5c"
 
 [[package]]
 name = "strum_macros"
-version = "0.20.1"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee8bc6b87a5112aeeab1f4a9f7ab634fe6cbefc4850006df31267f4cfb9e3149"
+checksum = "00ad150e9d51e33e8142984f577662c1324d49f3be45ed37bac8645fdcbe0fe5"
 dependencies = [
  "heck",
  "proc-macro2",
  "quote",
+ "rustversion",
  "syn",
 ]
 
