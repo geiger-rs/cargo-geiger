@@ -37,7 +37,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 
     args.update_config(config)?;
 
-    let cargo_metadata = get_cargo_metadata(&args, config)?;
+    let cargo_metadata = get_cargo_metadata(args, config)?;
     let krates = get_krates(&cargo_metadata)?;
 
     let cargo_metadata_parameters = CargoMetadataParameters {
@@ -73,7 +73,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 
     let query_resolve_root_package_id = args.package.as_ref().map_or(
         cargo_metadata_root_package_id.clone(),
-        |ref package_query| {
+        |package_query| {
             krates
                 .query_resolve(package_query)
                 .map_or(cargo_metadata_root_package_id, |package_id| package_id)

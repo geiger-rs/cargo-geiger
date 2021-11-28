@@ -45,7 +45,7 @@ pub fn walk_dependency_tree(
     let node = &graph.graph[graph.nodes[&root_package_id]];
     walk_dependency_node(
         cargo_metadata_parameters,
-        &node,
+        node,
         &mut walk_dependency_paramters,
     )
 }

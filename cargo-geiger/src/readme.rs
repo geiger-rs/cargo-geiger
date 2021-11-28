@@ -138,7 +138,7 @@ fn update_readme_content(
     let (start_line_number, mut end_line_number) =
         find_start_and_end_lines_of_safety_report_section(
             readme_args,
-            &readme_content,
+            readme_content,
         );
 
     if start_line_number == -1 {

@@ -27,7 +27,7 @@ pub fn find_unsafe_in_string(
     include_tests: IncludeTests,
 ) -> Result<RsFileMetrics, syn::Error> {
     use syn::visit::Visit;
-    let syntax = syn::parse_file(&src)?;
+    let syntax = syn::parse_file(src)?;
     let mut vis = GeigerSynVisitor::new(include_tests);
     vis.visit_file(&syntax);
     Ok(vis.metrics)
