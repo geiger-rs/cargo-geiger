@@ -46,8 +46,8 @@ mod krates_tests {
     use crate::mapping::GetPackageIdInformation;
 
     use cargo_metadata::Version;
-    use semver::{Prerelease, BuildMetadata}; 
     use rstest::*;
+    use semver::{BuildMetadata, Prerelease};
 
     #[rstest]
     fn get_licence_from_cargo_metadata_package_id_test() {
