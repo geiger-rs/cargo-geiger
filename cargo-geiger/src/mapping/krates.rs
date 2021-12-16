@@ -47,6 +47,7 @@ mod krates_tests {
 
     use cargo_metadata::Version;
     use rstest::*;
+    use semver::{BuildMetadata, Prerelease};
 
     #[rstest]
     fn get_licence_from_cargo_metadata_package_id_test() {
@@ -94,25 +95,25 @@ mod krates_tests {
         expected_package_name,
         expected_package_version,
         case(
-            "cargo_metadata:0.13.1",
+            "cargo_metadata:0.14.1",
             "cargo_metadata",
             Version {
                 major: 0,
-                minor: 13,
+                minor: 14,
                 patch: 1,
-                pre: vec![],
-                build: vec![]
+                pre: Prerelease::EMPTY,
+                build: BuildMetadata::EMPTY
             }
         ),
         case(
-            "cargo_metadata:0.13.1",
+            "cargo_metadata:0.14.1",
             "cargo_metadata",
             Version {
                 major: 0,
-                minor: 13,
+                minor: 14,
                 patch: 1,
-                pre: vec![],
-                build: vec![]
+                pre: Prerelease::EMPTY,
+                build: BuildMetadata::EMPTY
             }
         )
     )]

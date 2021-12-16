@@ -292,7 +292,7 @@ mod scan_tests {
     use crate::lib_tests::construct_krates_and_metadata;
     use cargo_geiger_serde::{Count, Source, UnsafeInfo};
     use rstest::*;
-    use semver::Version;
+    use semver::{BuildMetadata, Prerelease, Version};
     use std::{collections::HashSet, path::PathBuf};
     use url::Url;
 
@@ -327,8 +327,8 @@ mod scan_tests {
                     major: 0,
                     minor: 0,
                     patch: 0,
-                    pre: vec![],
-                    build: vec![],
+                    pre: Prerelease::EMPTY,
+                    build: BuildMetadata::EMPTY,
                 },
                 source: Source::Path(
                     Url::parse(
