@@ -62,7 +62,12 @@ fn build_compile_options<'a>(
 
     let uses_default_features = !args.no_default_features;
 
-    compile_options.cli_features = CliFeatures::from_command_line(&args.features, args.all_features, uses_default_features).unwrap();
+    compile_options.cli_features = CliFeatures::from_command_line(
+        &args.features,
+        args.all_features,
+        uses_default_features,
+    )
+    .unwrap();
 
     // TODO: Investigate if this is relevant to cargo-geiger.
     //let mut bins = Vec::new();
@@ -177,9 +182,7 @@ mod default_tests {
             vec![String::from("")],
         )
     )]
-    fn build_compile_options_test(
-        input_features: Vec<String>,
-    ) {
+    fn build_compile_options_test(input_features: Vec<String>) {
         let args = FeaturesArgs {
             all_features: rand::random(),
             features: input_features,
@@ -188,10 +191,18 @@ mod default_tests {
 
         let config = Config::default().unwrap();
         let compile_options = build_compile_options(&args, &config);
-        let expected_cli_features = CliFeatures::from_command_line(&args.features, false, false).unwrap();
+        let expected_cli_features =
+            CliFeatures::from_command_line(&args.features, false, false)
+                .unwrap();
 
-        assert_eq!(compile_options.cli_features.all_features, args.all_features);
-        assert_eq!(compile_options.cli_features.features, expected_cli_features.features);
+        assert_eq!(
+            compile_options.cli_features.all_features,
+            args.all_features
+        );
+        assert_eq!(
+            compile_options.cli_features.features,
+            expected_cli_features.features
+        );
         assert_eq!(
             !compile_options.cli_features.uses_default_features,
             args.no_default_features

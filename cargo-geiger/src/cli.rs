@@ -57,8 +57,9 @@ pub fn get_cfgs(
     target: &Option<String>,
     workspace: &Workspace,
 ) -> CargoResult<Option<Vec<Cfg>>> {
-    let mut process =
-        cargo_util::ProcessBuilder::new(&config.load_global_rustc(Some(workspace))?.path);
+    let mut process = cargo_util::ProcessBuilder::new(
+        &config.load_global_rustc(Some(workspace))?.path,
+    );
     process.arg("--print=cfg").env_remove("RUST_LOG");
     if let Some(ref s) = *target {
         process.arg("--target").arg(s);
