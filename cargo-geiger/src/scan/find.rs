@@ -30,7 +30,7 @@ pub fn find_unsafe(
         cargo_metadata_parameters,
         print_config.include_tests,
         mode,
-        |i, count| -> CargoResult<()> { progress.tick(i, count) },
+        |i, count| -> CargoResult<()> { progress.tick(i, count, "find_unsafe_tick") },
     );
     progress.clear();
     config.shell().status("Scanning", "done")?;
