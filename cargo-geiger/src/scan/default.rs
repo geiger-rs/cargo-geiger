@@ -15,6 +15,7 @@ use super::{
 use table::scan_to_table;
 
 use cargo::core::compiler::CompileMode;
+use cargo::core::resolver::features::CliFeatures;
 use cargo::core::Workspace;
 use cargo::ops::CompileOptions;
 use cargo::{CliError, Config};
@@ -50,6 +51,7 @@ pub fn scan_unsafe(
 /// Based on code from cargo-bloat. It seems weird that `CompileOptions` can be
 /// constructed without providing all standard cargo options, TODO: Open an issue
 /// in cargo?
+/// Tracker rust-secure-code/cargo-geiger/issues/226
 fn build_compile_options<'a>(
     args: &'a FeaturesArgs,
     config: &'a Config,
@@ -57,9 +59,15 @@ fn build_compile_options<'a>(
     let mut compile_options =
         CompileOptions::new(config, CompileMode::Check { test: false })
             .unwrap();
-    compile_options.features = args.features.clone();
-    compile_options.all_features = args.all_features;
-    compile_options.no_default_features = args.no_default_features;
+
+    let uses_default_features = !args.no_default_features;
+
+    compile_options.cli_features = CliFeatures::from_command_line(
+        &args.features,
+        args.all_features,
+        uses_default_features,
+    )
+    .unwrap();
 
     // TODO: Investigate if this is relevant to cargo-geiger.
     //let mut bins = Vec::new();
@@ -163,24 +171,18 @@ mod default_tests {
 
     #[rstest(
         input_features,
-        expected_compile_features,
         case(
             vec![
                 String::from("unit"),
                 String::from("test"),
                 String::from("features")
             ],
-            vec!["unit", "test", "features"],
         ),
         case(
             vec![String::from("")],
-            vec![""],
         )
     )]
-    fn build_compile_options_test(
-        input_features: Vec<String>,
-        expected_compile_features: Vec<&str>,
-    ) {
+    fn build_compile_options_test(input_features: Vec<String>) {
         let args = FeaturesArgs {
             all_features: rand::random(),
             features: input_features,
@@ -189,11 +191,20 @@ mod default_tests {
 
         let config = Config::default().unwrap();
         let compile_options = build_compile_options(&args, &config);
+        let expected_cli_features =
+            CliFeatures::from_command_line(&args.features, false, false)
+                .unwrap();
 
-        assert_eq!(compile_options.all_features, args.all_features);
-        assert_eq!(compile_options.features, expected_compile_features);
         assert_eq!(
-            compile_options.no_default_features,
+            compile_options.cli_features.all_features,
+            args.all_features
+        );
+        assert_eq!(
+            compile_options.cli_features.features,
+            expected_cli_features.features
+        );
+        assert_eq!(
+            !compile_options.cli_features.uses_default_features,
             args.no_default_features
         );
     }

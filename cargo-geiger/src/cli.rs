@@ -11,7 +11,7 @@ use crate::args::Args;
 // TODO: Consider making this a lib.rs (again) and expose a full API, excluding
 // only the terminal output..? That API would be dependent on cargo.
 use cargo::core::Workspace;
-use cargo::util::{self, important_paths, CargoResult};
+use cargo::util::{important_paths, CargoResult};
 use cargo::Config;
 use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
 use cargo_platform::Cfg;
@@ -57,8 +57,9 @@ pub fn get_cfgs(
     target: &Option<String>,
     workspace: &Workspace,
 ) -> CargoResult<Option<Vec<Cfg>>> {
-    let mut process =
-        util::process(&config.load_global_rustc(Some(workspace))?.path);
+    let mut process = cargo_util::ProcessBuilder::new(
+        &config.load_global_rustc(Some(workspace))?.path,
+    );
     process.arg("--print=cfg").env_remove("RUST_LOG");
     if let Some(ref s) = *target {
         process.arg("--target").arg(s);

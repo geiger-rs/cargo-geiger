@@ -15,7 +15,7 @@ maintenance = { status = "experimental" }
 
 [dependencies]
 anyhow = "1.0.40"
-cargo = "0.52.0"
+cargo = "0.58.0"
 cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.0" }
 cargo_metadata = "0.14.1"
 cargo-platform = "0.1.1"
@@ -32,6 +32,7 @@ strum = "0.23.0"
 strum_macros = "0.23.1"
 walkdir = "2.3.2"
 url = "2.2.1"
+cargo-util = "0.1.1"
 
 [features]
 vendored-openssl = ["cargo/vendored-openssl"]

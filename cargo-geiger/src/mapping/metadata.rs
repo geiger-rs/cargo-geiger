@@ -148,11 +148,10 @@ mod metadata_tests {
     use crate::mapping::metadata::dependency::GetDependencyInformation;
     use crate::mapping::GetPackageRoot;
 
+    use cargo::core::dependency::DepKind;
     use cargo::core::registry::PackageRegistry;
-    use cargo::core::resolver::ResolveOpts;
-    use cargo::core::{
-        dependency::DepKind, resolver::features::RequestedFeatures,
-    };
+    use cargo::core::resolver::features::CliFeatures;
+    use cargo::core::resolver::features::HasDevUnits;
     use cargo::core::{
         Package, PackageId, PackageIdSpec, PackageSet, Resolve, Workspace,
     };
@@ -310,21 +309,21 @@ mod metadata_tests {
         registry: &mut PackageRegistry<'cfg>,
         workspace: &'a Workspace<'cfg>,
     ) -> CargoResult<(PackageSet<'a>, Resolve)> {
-        let dev_deps = true; // TODO: Review this.
         let uses_default_features = !args.no_default_features;
-        let opts = ResolveOpts::new(
-            dev_deps,
-            RequestedFeatures::from_command_line(
-                &args.features,
-                args.all_features,
-                uses_default_features,
-            ),
-        );
+
+        let cli_features = CliFeatures::from_command_line(
+            &args.features,
+            args.all_features,
+            uses_default_features,
+        )
+        .unwrap();
+
         let prev = ops::load_pkg_lockfile(workspace)?;
         let resolve = ops::resolve_with_previous(
             registry,
             workspace,
-            &opts,
+            &cli_features,
+            HasDevUnits::Yes,
             prev.as_ref(),
             None,
             &[PackageIdSpec::from_package_id(package_id)],

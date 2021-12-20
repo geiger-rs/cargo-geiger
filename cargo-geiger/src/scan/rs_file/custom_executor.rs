@@ -1,6 +1,7 @@
 use cargo::core::compiler::{CompileMode, Executor, Unit};
 use cargo::core::{PackageId, Target};
-use cargo::util::{CargoResult, ProcessBuilder};
+use cargo::util::CargoResult;
+use cargo_util::ProcessBuilder;
 use std::collections::HashSet;
 use std::error::Error;
 use std::ffi::OsString;
