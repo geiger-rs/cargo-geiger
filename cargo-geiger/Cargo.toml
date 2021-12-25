@@ -8,25 +8,25 @@ license = "Apache-2.0/MIT"
 name = "cargo-geiger"
 readme = "README.md"
 repository = "https://github.com/rust-secure-code/cargo-geiger"
-version = "0.11.1"
+version = "0.11.2"
 
 [badges]
 maintenance = { status = "experimental" }
 
 [dependencies]
-anyhow = "1.0.40"
+anyhow = "1.0.52"
 cargo = "0.58.0"
-cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.0" }
+cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.1" }
 cargo_metadata = "0.14.1"
-cargo-platform = "0.1.1"
+cargo-platform = "0.1.2"
 colored = "2.0.0"
 console = "0.15.0"
-geiger = { path = "../geiger", version = "0.4.7" }
+geiger = { path = "../geiger", version = "0.4.8" }
 krates = "0.9.0"
 petgraph = "0.6.0"
-pico-args = "0.4.0"
-regex = "1.4.5"
-serde = { version = "1.0.125", features = ["derive"] }
+pico-args = "0.4.2"
+regex = "1.5.4"
+serde = { version = "1.0.132", features = ["derive"] }
 serde_json = "1.0.64"
 strum = "0.23.0"
 strum_macros = "0.23.1"
@@ -41,9 +41,9 @@ vendored-openssl = ["cargo/vendored-openssl"]
 assert_cmd = "2.0.2"
 better-panic = "0.2.0"
 fs_extra = "1.2.0"
-insta = "1.7.1"
-rand = "0.8.3"
-regex = "1.4.5"
+insta = "1.9.0"
+rand = "0.8.4"
+regex = "1.5.4"
 rstest = "0.12.0"
 semver = "1.0.4"
 tempfile = "3.2.0"

@@ -7,9 +7,9 @@ license = "Apache-2.0/MIT"
 keywords = ["unsafe"]
 name = "cargo-geiger-serde"
 repository = "https://github.com/rust-secure-code/cargo-geiger"
-version = "0.2.0"
+version = "0.2.1"
 
 [dependencies]
 semver = { version = "1.0.4", features = ["serde"] }
-serde = { version = "1.0.125", features = ["derive"] }
-url = { version = "2.2.1", features = ["serde"] }
+serde = { version = "1.0.132", features = ["derive"] }
+url = { version = "2.2.2", features = ["serde"] }
