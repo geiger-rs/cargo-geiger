@@ -11,6 +11,9 @@ For more details please see the `README.md` in [cargo-geiger].
 Changelog
 ---------
 
+### 0.4.8
+ - Upgraded dependencies.
+
 ### 0.4.7
  - Reverted public API breakage from 0.4.6. [#204]
 

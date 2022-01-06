@@ -1,6 +1,9 @@
 # Changelog
 ---------
 
+## 0.11.2
+ - Upgraded dependencies including from Cargo 0.52.0 to 0.58.0 [#230], [#225]
+
 ## 0.11.1
  - Removed a failing test case that depended on the crate version.
 
