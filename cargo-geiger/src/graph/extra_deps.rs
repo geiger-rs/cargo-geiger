@@ -13,8 +13,9 @@ impl ExtraDeps {
     #[allow(clippy::match_like_matches_macro)]
     pub fn allows(&self, dependency_kind: DependencyKind) -> bool {
         match (self, dependency_kind) {
-            (_, DependencyKind::Normal) => true,
             (ExtraDeps::All, _) => true,
+            (ExtraDeps::NoMore, _) => false,
+            (_, DependencyKind::Normal) => true,
             (ExtraDeps::Build, DependencyKind::Build) => true,
             (ExtraDeps::Dev, DependencyKind::Development) => true,
             _ => false,
@@ -34,7 +35,7 @@ mod extra_deps_tests {
         case(ExtraDeps::All, DependencyKind::Normal, true),
         case(ExtraDeps::Build, DependencyKind::Normal, true),
         case(ExtraDeps::Dev, DependencyKind::Normal, true),
-        case(ExtraDeps::NoMore, DependencyKind::Normal, true),
+        case(ExtraDeps::NoMore, DependencyKind::Normal, false),
         case(ExtraDeps::All, DependencyKind::Build, true),
         case(ExtraDeps::All, DependencyKind::Development, true),
         case(ExtraDeps::Build, DependencyKind::Build, true),
