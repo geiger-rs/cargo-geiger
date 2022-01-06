@@ -155,7 +155,7 @@ fn build_graph_prerequisites<'a>(
     } else if deps_args.dev_deps {
         ExtraDeps::Dev
     } else {
-        ExtraDeps::NoMore
+        ExtraDeps::Build
     };
 
     let target = if target_args.all_targets {
