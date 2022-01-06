@@ -386,19 +386,6 @@ dependencies = [
 
 [[package]]
 name = "console"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3993e6445baa160675931ec041a5e03ca84b9c6e32a056150d3aa2bdda0a1f45"
-dependencies = [
- "encode_unicode",
- "lazy_static",
- "libc",
- "terminal_size",
- "winapi",
-]
-
-[[package]]
-name = "console"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a28b32d32ca44b70c3e4acd7db1babf555fa026e385fb95f18028f88848b3c31"
@@ -806,11 +793,11 @@ dependencies = [
 
 [[package]]
 name = "insta"
-version = "1.9.0"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86c4e56d571b4cc829f0ce71506bd865a90369eeab5f3d3657ba96230beb8012"
+checksum = "b3cb858fc306825b542b1311d5fd536e4483680528f303a17a1d6803b0f6ce17"
 dependencies = [
- "console 0.14.1",
+ "console 0.15.0",
  "lazy_static",
  "serde",
  "serde_json",
