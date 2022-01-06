@@ -48,7 +48,7 @@ OPTIONS:
         --offline                 Run without accessing the network.
     -Z \"<FLAG>...\"                Unstable (nightly-only) flags to Cargo.
         --include-tests           Count unsafe usage in tests.
-        --build-dependencies      Also analyze build dependencies.
+        --no-dependencies         Analyze no dependencies.
         --dev-dependencies        Also analyze dev dependencies.
         --all-dependencies        Analyze all dependencies, including build and
                                   dev.
@@ -105,7 +105,7 @@ impl Args {
             color: raw_args.opt_value_from_str("--color")?,
             deps_args: DepsArgs {
                 all_deps: raw_args.contains("--all-dependencies"),
-                build_deps: raw_args.contains("--build-dependencies"),
+                no_deps: raw_args.contains("--no-dependencies"),
                 dev_deps: raw_args.contains("--dev-dependencies"),
             },
             features_args: FeaturesArgs {
@@ -209,7 +209,7 @@ impl Args {
 #[derive(Debug, Default)]
 pub struct DepsArgs {
     pub all_deps: bool,
-    pub build_deps: bool,
+    pub no_deps: bool,
     pub dev_deps: bool,
 }
 

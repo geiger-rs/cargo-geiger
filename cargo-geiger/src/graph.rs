@@ -150,8 +150,8 @@ fn build_graph_prerequisites<'a>(
 ) -> (ExtraDeps, Option<&'a str>) {
     let extra_deps = if deps_args.all_deps {
         ExtraDeps::All
-    } else if deps_args.build_deps {
-        ExtraDeps::Build
+    } else if deps_args.no_deps {
+        ExtraDeps::NoMore
     } else if deps_args.dev_deps {
         ExtraDeps::Dev
     } else {
@@ -211,7 +211,7 @@ mod graph_tests {
         case(
             DepsArgs {
                 all_deps: true,
-                build_deps: false,
+                no_deps: false,
                 dev_deps: false
             },
             ExtraDeps::All
@@ -219,15 +219,15 @@ mod graph_tests {
         case(
             DepsArgs {
                 all_deps: false,
-                build_deps: true,
+                no_deps: true,
                 dev_deps: false
             },
-            ExtraDeps::Build
+            ExtraDeps::NoMore
         ),
         case(
             DepsArgs {
                 all_deps: false,
-                build_deps: false,
+                no_deps: false,
                 dev_deps: true
             },
             ExtraDeps::Dev
@@ -235,10 +235,10 @@ mod graph_tests {
         case(
             DepsArgs {
                 all_deps: false,
-                build_deps: false,
+                no_deps: false,
                 dev_deps: false
             },
-            ExtraDeps::NoMore
+            ExtraDeps::Build
         )
     )]
     fn build_graph_prerequisites_extra_deps_test(
