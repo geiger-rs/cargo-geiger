@@ -49,7 +49,6 @@ OPTIONS:
     -Z \"<FLAG>...\"                Unstable (nightly-only) flags to Cargo.
         --include-tests           Count unsafe usage in tests.
         --no-dependencies         Analyze no dependencies.
-        --dev-dependencies        Also analyze dev dependencies.
         --all-dependencies        Analyze all dependencies, including build and
                                   dev.
         --forbid-only             Don't build or clean anything, only scan
@@ -106,7 +105,6 @@ impl Args {
             deps_args: DepsArgs {
                 all_deps: raw_args.contains("--all-dependencies"),
                 no_deps: raw_args.contains("--no-dependencies"),
-                dev_deps: raw_args.contains("--dev-dependencies"),
             },
             features_args: FeaturesArgs {
                 all_features: raw_args.contains("--all-features"),
@@ -210,7 +208,6 @@ impl Args {
 pub struct DepsArgs {
     pub all_deps: bool,
     pub no_deps: bool,
-    pub dev_deps: bool,
 }
 
 #[derive(Debug, Default)]

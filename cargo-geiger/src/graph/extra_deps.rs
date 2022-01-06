@@ -4,7 +4,6 @@ use cargo_metadata::DependencyKind;
 pub enum ExtraDeps {
     All,
     Build,
-    Dev,
     NoMore,
 }
 
@@ -17,7 +16,6 @@ impl ExtraDeps {
             (ExtraDeps::NoMore, _) => false,
             (_, DependencyKind::Normal) => true,
             (ExtraDeps::Build, DependencyKind::Build) => true,
-            (ExtraDeps::Dev, DependencyKind::Development) => true,
             _ => false,
         }
     }
@@ -34,14 +32,9 @@ mod extra_deps_tests {
         expected_allows,
         case(ExtraDeps::All, DependencyKind::Normal, true),
         case(ExtraDeps::Build, DependencyKind::Normal, true),
-        case(ExtraDeps::Dev, DependencyKind::Normal, true),
         case(ExtraDeps::NoMore, DependencyKind::Normal, false),
         case(ExtraDeps::All, DependencyKind::Build, true),
-        case(ExtraDeps::All, DependencyKind::Development, true),
         case(ExtraDeps::Build, DependencyKind::Build, true),
-        case(ExtraDeps::Build, DependencyKind::Development, false),
-        case(ExtraDeps::Dev, DependencyKind::Build, false),
-        case(ExtraDeps::Dev, DependencyKind::Development, true)
     )]
     fn extra_deps_allows_test(
         input_extra_deps: ExtraDeps,

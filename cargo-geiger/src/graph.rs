@@ -152,8 +152,6 @@ fn build_graph_prerequisites<'a>(
         ExtraDeps::All
     } else if deps_args.no_deps {
         ExtraDeps::NoMore
-    } else if deps_args.dev_deps {
-        ExtraDeps::Dev
     } else {
         ExtraDeps::Build
     };
@@ -212,7 +210,6 @@ mod graph_tests {
             DepsArgs {
                 all_deps: true,
                 no_deps: false,
-                dev_deps: false
             },
             ExtraDeps::All
         ),
@@ -220,7 +217,6 @@ mod graph_tests {
             DepsArgs {
                 all_deps: false,
                 no_deps: true,
-                dev_deps: false
             },
             ExtraDeps::NoMore
         ),
@@ -228,15 +224,6 @@ mod graph_tests {
             DepsArgs {
                 all_deps: false,
                 no_deps: false,
-                dev_deps: true
-            },
-            ExtraDeps::Dev
-        ),
-        case(
-            DepsArgs {
-                all_deps: false,
-                no_deps: false,
-                dev_deps: false
             },
             ExtraDeps::Build
         )
