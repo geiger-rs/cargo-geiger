@@ -84,7 +84,7 @@ impl fmt::Display for FormatError {
 
 pub fn get_kind_group_name(dep_kind: DependencyKind) -> Option<&'static str> {
     match dep_kind {
-        DependencyKind::Build => Some("[build-dependencies]"),
+        DependencyKind::Build => None,
         DependencyKind::Development => Some("[dev-dependencies]"),
         DependencyKind::Normal => None,
         _ => panic!("Unrecognised Dependency Kind"),
@@ -115,10 +115,7 @@ mod format_tests {
 
     #[rstest]
     fn get_kind_group_name_test() {
-        assert_eq!(
-            get_kind_group_name(DependencyKind::Build),
-            Some("[build-dependencies]")
-        );
+        assert_eq!(get_kind_group_name(DependencyKind::Build), None);
 
         assert_eq!(
             get_kind_group_name(DependencyKind::Development),

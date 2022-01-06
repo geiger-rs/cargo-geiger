@@ -205,10 +205,7 @@ mod handle_text_tree_line_tests {
     #[rstest(
         input_dep_kind,
         expected_kind_group_name,
-        case(
-            DependencyKind::Build,
-            Some(String::from("[build-dependencies]"))
-        ),
+        case(DependencyKind::Build, None),
         case(
             DependencyKind::Development,
             Some(String::from("[dev-dependencies]"))
