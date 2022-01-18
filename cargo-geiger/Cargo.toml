@@ -38,7 +38,7 @@ cargo-util = "0.1.1"
 vendored-openssl = ["cargo/vendored-openssl"]
 
 [dev-dependencies]
-assert_cmd = "2.0.2"
+assert_cmd = "2.0.4"
 better-panic = "0.2.0"
 fs_extra = "1.2.0"
 insta = "1.10.0"
