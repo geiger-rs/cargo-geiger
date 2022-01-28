@@ -3,6 +3,4 @@ pub struct CargoConfig {
     /* private fields */
 }
 
-pub struct CargoOptions {
-}
-
+pub struct CargoOptions {}

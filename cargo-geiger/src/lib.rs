@@ -14,17 +14,14 @@ pub mod runners;
 
 //use cargo_geiger::traits::GeigerOpts;
 
-
 pub trait GeigerOpts {
-
     fn verbose(&self) -> bool {
         false
     }
 }
 
 #[derive(Debug)]
-pub enum GeigerError {
-}
+pub enum GeigerError {}
 
 pub struct Geiger<R> {
     pub opts: R,
@@ -35,10 +32,8 @@ impl<R: GeigerOpts + std::fmt::Debug> Geiger<R> {
         Self { opts: opts }
     }
     pub fn run(&self) -> Result<(), GeigerError> {
-
         println!("wee running. opts = {:?}", self.opts);
         println!("Verbosity: {:?}", self.opts.verbose());
-
 
         Ok(())
     }
