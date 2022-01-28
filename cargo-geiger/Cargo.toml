@@ -1,5 +1,5 @@
 [package]
-authors = ["anderejd <rajder@gmail.com>"]
+authors = ["Rust Secure Code Working Group"]
 categories = ["command-line-utilities", "development-tools", "development-tools::cargo-plugins", "parsing"]
 description = "Detects usage of unsafe Rust in a Rust crate and its dependencies."
 edition = "2018"
@@ -8,14 +8,12 @@ license = "Apache-2.0/MIT"
 name = "cargo-geiger"
 readme = "README.md"
 repository = "https://github.com/rust-secure-code/cargo-geiger"
-version = "0.11.2"
+version = "0.12.0"
 
 [badges]
 maintenance = { status = "experimental" }
 
 [dependencies]
-anyhow = "1.0.52"
-cargo = "0.59.0"
 cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.1" }
 cargo_metadata = "0.14.1"
 cargo-platform = "0.1.2"
@@ -24,7 +22,6 @@ console = "0.15.0"
 geiger = { path = "../geiger", version = "0.4.8" }
 krates = "0.9.0"
 petgraph = "0.6.0"
-pico-args = "0.4.2"
 regex = "1.5.4"
 serde = { version = "1.0.132", features = ["derive"] }
 serde_json = "1.0.75"
@@ -33,9 +30,12 @@ strum_macros = "0.23.1"
 walkdir = "2.3.2"
 url = "2.2.1"
 cargo-util = "0.1.1"
-
-[features]
-vendored-openssl = ["cargo/vendored-openssl"]
+clap = { version = "3.0.5", features = ["derive", "cargo", "env", "wrap_help"] }
+clap-cargo = { version = "0.8", features = ["cargo_metadata"] }
+clap-verbosity-flag = "0.4"
+escargot = "0.5"
+log = "0.4.14"
+env_logger = "0.9.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.4"

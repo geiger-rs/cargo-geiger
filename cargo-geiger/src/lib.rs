@@ -7,41 +7,39 @@
 #![forbid(unsafe_code)]
 #![deny(warnings)]
 
-/// Argument parsing
-pub mod args;
-/// Bootstrapping functions for structs required by the CLI
-pub mod cli;
-/// Construction of the dependency graph
-pub mod graph;
-/// Mapping functionality from `cargo::core` to `cargo_metadata`
-pub mod mapping;
-/// Interaction with README.md files
-pub mod readme;
-/// Functions for scanning projects for unsafe code
-pub mod scan;
+/// Functions for handling runners
+pub mod runners;
 
-/// Inner display formatting
-mod format;
-/// Tree construction
-mod tree;
+//pub mod traits;
 
-#[cfg(test)]
-mod lib_tests {
-    use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
-    use krates::Builder as KratesBuilder;
-    use krates::Krates;
+//use cargo_geiger::traits::GeigerOpts;
 
-    pub fn construct_krates_and_metadata() -> (Krates, Metadata) {
-        let metadata = MetadataCommand::new()
-            .manifest_path("./Cargo.toml")
-            .features(CargoOpt::AllFeatures)
-            .exec()
-            .unwrap();
 
-        let krates = KratesBuilder::new()
-            .build_with_metadata(metadata.clone(), |_| ())
-            .unwrap();
+pub trait GeigerOpts {
 
-        (krates, metadata)
+    fn verbose(&self) -> bool {
+        false
+    }
+}
+
+#[derive(Debug)]
+pub enum GeigerError {
+}
+
+pub struct Geiger<R> {
+    pub opts: R,
+}
+
+impl<R: GeigerOpts + std::fmt::Debug> Geiger<R> {
+    pub fn from_opts(opts: R) -> Self {
+        Self { opts: opts }
+    }
+    pub fn run(&self) -> Result<(), GeigerError> {
+
+        println!("wee running. opts = {:?}", self.opts);
+        println!("Verbosity: {:?}", self.opts.verbose());
+
+
+        Ok(())
     }
 }
