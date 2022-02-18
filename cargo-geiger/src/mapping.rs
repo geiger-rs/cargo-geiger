@@ -35,6 +35,7 @@ pub trait DepsNotReplaced {
     fn deps_not_replaced<T: ToCargoMetadataPackage + Display>(
         &self,
         package_id: &T,
+        is_root_package: bool,
     ) -> Option<Vec<(CargoMetadataPackageId, HashSet<CargoMetadataDependency>)>>;
 }
 
@@ -72,7 +73,10 @@ pub trait GetPackageRoot: GetPackageInformation {
 }
 
 pub trait MatchesIgnoringSource {
-    fn matches_ignoring_source<T: GetNodeForKid, U: GetPackageIdInformation>(
+    fn matches_ignoring_source<
+        T: GetNodeForKid,
+        U: GetPackageIdInformation + Display,
+    >(
         &self,
         krates: &T,
         package_id: &U,

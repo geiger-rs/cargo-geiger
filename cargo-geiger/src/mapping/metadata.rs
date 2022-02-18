@@ -27,6 +27,7 @@ impl DepsNotReplaced for Metadata {
     fn deps_not_replaced<T: ToCargoMetadataPackage + Display>(
         &self,
         package_id: &T,
+        is_root_package: bool,
     ) -> Option<Vec<(CargoMetadataPackageId, HashSet<CargoMetadataDependency>)>>
     {
         let mut cargo_metadata_deps_not_replaced = vec![];
@@ -38,6 +39,12 @@ impl DepsNotReplaced for Metadata {
                     if let Some(package_id) =
                         dependency.to_cargo_metadata_package_id(self)
                     {
+                        if dependency.kind
+                            == cargo_metadata::DependencyKind::Development
+                            && !is_root_package
+                        {
+                            continue;
+                        }
                         if !package_id_hashset.contains(&package_id) {
                             cargo_metadata_deps_not_replaced.push((
                                 package_id.clone(),
@@ -58,7 +65,10 @@ impl DepsNotReplaced for Metadata {
 }
 
 impl MatchesIgnoringSource for CargoMetadataDependency {
-    fn matches_ignoring_source<T: GetNodeForKid, U: GetPackageIdInformation>(
+    fn matches_ignoring_source<
+        T: GetNodeForKid,
+        U: GetPackageIdInformation + Display,
+    >(
         &self,
         krates: &T,
         package_id: &U,
@@ -69,9 +79,8 @@ impl MatchesIgnoringSource for CargoMetadataDependency {
             }
             _ => {
                 eprintln!(
-                    "Failed to match (ignoring source) package: {} with version: {}",
-                    self.name,
-                    self.req
+                    "Failed to match (ignoring source) package: {} ",
+                    package_id
                 );
                 None
             }
@@ -179,7 +188,7 @@ mod metadata_tests {
 
         let deps_not_replaced = resolve.deps_not_replaced(package.package_id());
         let cargo_metadata_deps_not_replaced = metadata
-            .deps_not_replaced(&cargo_metadata_package_id)
+            .deps_not_replaced(&cargo_metadata_package_id, true)
             .unwrap();
 
         let mut cargo_core_package_names = deps_not_replaced
