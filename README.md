@@ -1,5 +1,5 @@
-cargo-geiger ☢️ 
-===============
+cargo-geiger - EXPERIMENTAL 0.12.0 ☢️ 
+======================================
 
 [![Build Status](https://dev.azure.com/cargo-geiger/cargo-geiger/_apis/build/status/rust-secure-code.cargo-geiger?branchName=master)](https://dev.azure.com/cargo-geiger/cargo-geiger/_build/latest?definitionId=1&branchName=master)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
@@ -17,17 +17,7 @@ This cargo plugin were originally based on the code from two other projects:
 Installation
 ------------
 
-Try to find and use a system-wide installed OpenSSL library:
-
-```bash
 cargo install cargo-geiger
-```
-
-Or, build and statically link OpenSSL as part of the cargo-geiger executable:
-
-```bash
-cargo install cargo-geiger --features vendored-openssl
-```
 
 Usage
 -----
