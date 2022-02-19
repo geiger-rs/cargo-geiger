@@ -51,7 +51,7 @@ pub fn build_graph<'a>(
         graph.graph.add_node(root_package_id.clone()),
     );
 
-    let mut pending_packages = vec![root_package_id];
+    let mut pending_packages = vec![root_package_id.clone()];
 
     let graph_configuration = GraphConfiguration {
         target,
@@ -60,12 +60,14 @@ pub fn build_graph<'a>(
     };
 
     while let Some(package_id) = pending_packages.pop() {
+        let is_root_package = package_id == root_package_id;
         add_package_dependencies_to_graph(
             cargo_metadata_parameters,
             package_id,
             &graph_configuration,
             &mut graph,
             &mut pending_packages,
+            is_root_package,
         );
     }
 
@@ -104,6 +106,7 @@ fn add_package_dependencies_to_graph(
     graph_configuration: &GraphConfiguration,
     graph: &mut Graph,
     pending_packages: &mut Vec<PackageId>,
+    is_root_package: bool,
 ) {
     let index = graph.nodes[&package_id];
 
@@ -112,7 +115,7 @@ fn add_package_dependencies_to_graph(
 
     let dep_not_replaced_option = cargo_metadata_parameters
         .metadata
-        .deps_not_replaced(&package_id);
+        .deps_not_replaced(&package_id, is_root_package);
 
     match (krates_node_option, dep_not_replaced_option) {
         (Some(krates_node), Some(dependencies)) => {
