@@ -8,14 +8,17 @@ use crate::scan::PackageMetrics;
 
 use super::{GeigerContext, ScanMode};
 
-use cargo::util::CargoResult;
-use cargo::{CliError, Config};
+use cargo::{CargoResult, CliError, Config};
 use cargo_metadata::PackageId;
 use geiger::find::find_unsafe_in_file;
 use geiger::{IncludeTests, RsFileMetrics, ScanFileError};
+use rayon::{in_place_scope, prelude::*};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::sync_channel;
+use std::sync::{Arc, Mutex};
 use walkdir::WalkDir;
 
 pub fn find_unsafe(
@@ -25,13 +28,13 @@ pub fn find_unsafe(
     print_config: &PrintConfig,
 ) -> Result<GeigerContext, CliError> {
     let mut progress = cargo::util::Progress::new("Scanning", config);
-    let geiger_context = find_unsafe_in_packages(
+    let geiger_context = find_unsafe_in_packages_with_progress(
         print_config.allow_partial_results,
         cargo_metadata_parameters,
         print_config.include_tests,
         mode,
-        |i, count| -> CargoResult<()> {
-            progress.tick(i, count, "find_unsafe_tick")
+        |progress_count, count| {
+            progress.tick(progress_count, count, "find_unsafe_tick")
         },
     );
     progress.clear();
@@ -39,56 +42,103 @@ pub fn find_unsafe(
     Ok(geiger_context)
 }
 
+fn find_unsafe_in_packages_with_progress<F>(
+    allow_partial_results: bool,
+    cargo_metadata_parameters: &CargoMetadataParameters,
+    include_tests: IncludeTests,
+    mode: ScanMode,
+    mut progress_fn: F,
+) -> GeigerContext
+where
+    F: FnMut(usize, usize) -> CargoResult<()>,
+{
+    let mut res: Option<GeigerContext> = None;
+    let (progress_sender, progress_receiver) = sync_channel(0);
+    let on_processed = move |count_processed, count| {
+        progress_sender.send((count_processed, count)).unwrap();
+    };
+    in_place_scope(|s| {
+        s.spawn(|_| {
+            res = Some(find_unsafe_in_packages(
+                allow_partial_results,
+                cargo_metadata_parameters,
+                include_tests,
+                mode,
+                Some(on_processed),
+            ))
+        });
+
+        while let Ok((progress_counter, count)) = progress_receiver.recv() {
+            let _ = progress_fn(progress_counter, count);
+        }
+    });
+    res.unwrap()
+}
+
 fn find_unsafe_in_packages<F>(
     allow_partial_results: bool,
     cargo_metadata_parameters: &CargoMetadataParameters,
     include_tests: IncludeTests,
     mode: ScanMode,
-    mut progress_step: F,
+    on_processed: Option<F>,
 ) -> GeigerContext
 where
-    F: FnMut(usize, usize) -> CargoResult<()>,
+    F: Fn(usize, usize) + Send + Sync,
 {
-    let mut package_id_to_metrics = HashMap::new();
-    let mut ignored = HashSet::new();
+    let package_id_to_metrics = Arc::new(Mutex::new(HashMap::new()));
+    let ignored = Arc::new(Mutex::new(HashSet::new()));
     let packages = cargo_metadata_parameters.metadata.packages.to_vec();
     let package_code_files: Vec<_> =
         find_rs_files_in_packages(&packages).collect();
     let package_code_file_count = package_code_files.len();
-    for (i, (package_id, rs_code_file)) in
-        package_code_files.into_iter().enumerate()
-    {
-        if let RsFile::CustomBuildRoot(path_buf) = rs_code_file {
-            ignored.insert(path_buf);
-            continue;
-        }
-        let (is_entry_point, path_buf) =
-            into_is_entry_point_and_path_buf(rs_code_file);
-        if let (false, ScanMode::EntryPointsOnly) = (is_entry_point, &mode) {
-            continue;
-        }
-        match find_unsafe_in_file(&path_buf, include_tests) {
-            Err(error) => {
-                handle_unsafe_in_file_error(
-                    allow_partial_results,
-                    error,
-                    &path_buf,
+    let processed_count = AtomicUsize::new(0);
+    package_code_files.into_par_iter().for_each_with(
+        (package_id_to_metrics.clone(), ignored.clone()),
+        |(package_id_to_metrics, ignored), (package_id, rs_code_file)| {
+            if let RsFile::CustomBuildRoot(path_buf) = rs_code_file {
+                let mut ignored = ignored.lock().unwrap();
+                ignored.insert(path_buf);
+                return;
+            }
+            let (is_entry_point, path_buf) =
+                into_is_entry_point_and_path_buf(rs_code_file);
+            if let (false, ScanMode::EntryPointsOnly) = (is_entry_point, &mode)
+            {
+                return;
+            }
+            match find_unsafe_in_file(&path_buf, include_tests) {
+                Err(error) => {
+                    handle_unsafe_in_file_error(
+                        allow_partial_results,
+                        error,
+                        &path_buf,
+                    );
+                }
+                Ok(rs_file_metrics) => {
+                    let package_id_to_metrics =
+                        &mut package_id_to_metrics.lock().unwrap();
+                    update_package_id_to_metrics_with_rs_file_metrics(
+                        is_entry_point,
+                        package_id,
+                        package_id_to_metrics,
+                        path_buf,
+                        rs_file_metrics,
+                    );
+                }
+            }
+
+            if let Some(on_processed) = &on_processed {
+                on_processed(
+                    processed_count.fetch_add(1, Ordering::Relaxed),
+                    package_code_file_count,
                 );
             }
-            Ok(rs_file_metrics) => {
-                update_package_id_to_metrics_with_rs_file_metrics(
-                    is_entry_point,
-                    package_id,
-                    &mut package_id_to_metrics,
-                    path_buf,
-                    rs_file_metrics,
-                );
-            }
-        }
-        let _ = progress_step(i, package_code_file_count);
-    }
+        },
+    );
 
     let cargo_core_package_metrics = package_id_to_metrics
+        .lock()
+        .unwrap()
         .iter()
         .map(|(cargo_metadata_package_id, package_metrics)| {
             (cargo_metadata_package_id.clone(), package_metrics.clone())
@@ -97,7 +147,7 @@ where
 
     GeigerContext {
         package_id_to_metrics: cargo_core_package_metrics,
-        ignored_paths: ignored,
+        ignored_paths: Arc::try_unwrap(ignored).unwrap().into_inner().unwrap(),
     }
 }
 
