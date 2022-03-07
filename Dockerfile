@@ -1,23 +1,23 @@
-FROM rust as planner
+FROM rust as chef
+RUN cargo install cargo-chef --locked
 WORKDIR app
-RUN cargo install cargo-chef
+
+FROM chef as planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
-FROM rust as cacher
-WORKDIR app
-RUN cargo install cargo-chef
+FROM chef as builder
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
-
-FROM rust as builder
-WORKDIR app
 COPY . .
-COPY --from=cacher /app/target target
-COPY --from=cacher /usr/local/cargo /usr/local/cargo
-RUN cargo build --release --bin cargo-geiger
+RUN cargo build --release --offline --locked --frozen --bin cargo-geiger
 
-FROM rust as runtime
-WORKDIR app
+FROM debian:bullseye-slim as runtime
+ENV PATH=$PATH:/usr/local/cargo/bin
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y libcurl4 \
+    && apt-get clean
+WORKDIR "/workdir"
+COPY --from=chef /usr/local/cargo /usr/local/cargo
 COPY --from=builder /app/target/release/cargo-geiger /usr/local/bin/cargo-geiger
 ENTRYPOINT ["cargo-geiger"]
