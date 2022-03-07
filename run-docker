@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+shopt -s inherit_errexit
+
+PWD=$(pwd)
+DOCKER_BUILDKIT=1 docker build -t cargo-geiger:dev .
+
+exec docker run -it --rm \
+  -v "${PWD}:/workdir:ro" \
+  --name cargo-geiger \
+  cargo-geiger:dev \
+  "$@"
