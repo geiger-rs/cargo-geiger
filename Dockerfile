@@ -12,7 +12,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release --offline --locked --frozen --bin cargo-geiger
 
-FROM debian:bullseye-slim as runtime
+FROM rust:slim as runtime
 ENV PATH=$PATH:/usr/local/cargo/bin
 RUN apt-get update \
     && apt-get install --no-install-recommends -y libcurl4 \
