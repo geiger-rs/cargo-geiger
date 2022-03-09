@@ -13,11 +13,9 @@ COPY . .
 RUN cargo build --release --offline --locked --frozen --bin cargo-geiger
 
 FROM rust:slim as runtime
-ENV PATH=$PATH:/usr/local/cargo/bin
 RUN apt-get update \
     && apt-get install --no-install-recommends -y libcurl4 \
     && apt-get clean
 WORKDIR "/workdir"
-COPY --from=chef /usr/local/cargo /usr/local/cargo
 COPY --from=builder /app/target/release/cargo-geiger /usr/local/bin/cargo-geiger
 ENTRYPOINT ["cargo-geiger"]
