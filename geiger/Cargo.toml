@@ -15,7 +15,7 @@ maintenance = { status = "experimental" }
 
 [dependencies]
 cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.1" }
-syn = { version = "1.0.86", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
+syn = { version = "1.0.87", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
 proc-macro2 = "1.0.36"
 
 [dev-dependencies]
