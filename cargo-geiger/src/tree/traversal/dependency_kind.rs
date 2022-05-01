@@ -12,7 +12,7 @@ use std::slice::Iter;
 pub fn walk_dependency_kind(
     cargo_metadata_parameters: &CargoMetadataParameters,
     dep_kind: DependencyKind,
-    deps: &mut Vec<PackageId>,
+    deps: &mut [PackageId],
     walk_dependency_parameters: &mut WalkDependencyParameters,
 ) -> Vec<TextTreeLine> {
     if deps.is_empty() {
