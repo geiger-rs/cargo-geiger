@@ -132,8 +132,8 @@ mod cli_tests {
             .iter()
             .filter(|cfg| matches!(cfg, Cfg::KeyPair(_, _)));
 
-        assert!(!names.next().is_none());
-        assert!(!key_pairs.next().is_none());
+        assert!(names.next().is_some());
+        assert!(key_pairs.next().is_some());
     }
 
     #[rstest]

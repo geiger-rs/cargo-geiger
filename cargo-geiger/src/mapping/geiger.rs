@@ -71,12 +71,11 @@ fn handle_path_source<T: GetPackageIdRepr>(
         .pop()
         .unwrap();
 
-    let source_url: Url;
-    if cfg!(windows) {
-        source_url = Url::from_file_path(&raw_path_repr[1..]).unwrap();
+    let source_url = if cfg!(windows) {
+        Url::from_file_path(&raw_path_repr[1..]).unwrap()
     } else {
-        source_url = Url::from_file_path(raw_path_repr).unwrap();
-    }
+        Url::from_file_path(raw_path_repr).unwrap()
+    };
 
     CargoGeigerSerdeSource::Path(source_url)
 }

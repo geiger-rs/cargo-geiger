@@ -27,7 +27,7 @@ pub struct TreeSymbols {
 }
 
 fn construct_tree_vines_string(
-    levels_continue: &mut Vec<bool>,
+    levels_continue: &mut [bool],
     print_config: &PrintConfig,
 ) -> String {
     let tree_symbols = get_tree_symbols(print_config.output_format);

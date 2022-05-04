@@ -237,7 +237,7 @@ fn parse_features(raw_features: Option<String>) -> Vec<String> {
     raw_features
         .as_ref()
         .cloned()
-        .unwrap_or_else(String::new)
+        .unwrap_or_default()
         .split(' ')
         .map(str::to_owned)
         .filter(|f| !f.is_empty())

@@ -47,10 +47,11 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 
     let workspace = get_workspace(config, args.manifest_path.clone())?;
 
-    let cargo_metadata_root_package_id;
-
-    if let Some(cargo_metadata_root_package) = cargo_metadata.root_package() {
-        cargo_metadata_root_package_id = cargo_metadata_root_package.id.clone();
+    let cargo_metadata_root_package_id = if let Some(
+        cargo_metadata_root_package,
+    ) = cargo_metadata.root_package()
+    {
+        cargo_metadata_root_package.id.clone()
     } else {
         eprintln!(
             "manifest path `{}` is a virtual manifest, but this command requires running against an actual package in this workspace",
@@ -60,8 +61,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
             }.as_os_str().to_str().unwrap()
         );
 
-        return CliResult::Err(CliError::code(1));
-    }
+        return Err(CliError::code(1));
+    };
 
     let graph = build_graph(
         args,
