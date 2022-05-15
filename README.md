@@ -10,6 +10,20 @@ cargo-geiger ☢️
 A program that lists statistics related to the usage of unsafe Rust code in a Rust
 crate and all its dependencies.
 
+These statistics currently provide blunt information to aid auditing, e.g:
+* https://github.com/rust-secure-code/safety-dance
+
+This tool is currently not meant to advise end-user whether the code ultimately is truly unsound or not
+
+This project is an attempt to:
+* Create pressure against __unnecessary__ usage of unsafe Rust
+
+This project is *not* an attempt to:
+* Create pressure against __necessary__ usage of unsafe Rust
+
+There are several proposals / projects to qualify the statistics in more end-user usable form:
+* https://github.com/rust-secure-code/cargo-geiger/discussions/303
+
 This cargo plugin were originally based on the code from two other projects:
 <https://github.com/icefoxen/cargo-osha> and
 <https://github.com/sfackler/cargo-tree>.
@@ -42,15 +56,6 @@ Output example
 
 Why even care about unsafe Rust usage?
 --------------------------------------
-
-When and why to use unsafe Rust is out of scope for this project; it is simply
-a tool that provides information to aid auditing and hopefully to guide
-dependency selection. It is, however, the opinion of the author of this project
-that __libraries choosing to abstain from unsafe Rust usage when possible should
-be promoted__.
-
-This project is an attempt to create pressure against __unnecessary__ usage of
-unsafe Rust in public Rust libraries.
 
 Why the name?
 -------------
