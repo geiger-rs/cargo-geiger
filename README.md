@@ -14,12 +14,12 @@ These statistics currently provide blunt information to aid auditing, e.g:
 * https://github.com/rust-secure-code/safety-dance
 * https://github.com/crev-dev/cargo-crev
 
-This tool is currently not meant to advise directly whether the code ultimately is truly unsound or not
+This tool is currently not meant to advise directly whether the code ultimately is truly unsound or not.
 
-This project is an attempt to:
+This project is intended as an attempt to:
 * Create pressure against __unnecessary__ usage of unsafe Rust
 
-This project is not an attempt to:
+This project is not intended as an attempt to:
 * Create pressure against __necessary__ usage of unsafe Rust
 
 There are several proposals / projects to qualify the statistics in more end-user usable form:
