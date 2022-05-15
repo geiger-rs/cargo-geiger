@@ -7,26 +7,27 @@ cargo-geiger ☢️
 [![crates.io](https://img.shields.io/crates/v/cargo-geiger.svg)](https://crates.io/crates/cargo-geiger)
 [![Crates.io](https://img.shields.io/crates/d/cargo-geiger?label=cargo%20installs)](https://crates.io/crates/cargo-geiger)
 
-A program that lists statistics related to the usage of unsafe Rust code in a Rust
+A tool that lists statistics related to the usage of unsafe Rust code in a Rust
 crate and all its dependencies.
 
 These statistics currently provide blunt information to aid auditing, e.g:
 * https://github.com/rust-secure-code/safety-dance
+* https://github.com/crev-dev/cargo-crev
 
-This tool is currently not meant to advise end-user whether the code ultimately is truly unsound or not
+This tool is currently not meant to advise directly whether the code ultimately is truly unsound or not
 
 This project is an attempt to:
 * Create pressure against __unnecessary__ usage of unsafe Rust
 
-This project is *not* an attempt to:
+This project is not an attempt to:
 * Create pressure against __necessary__ usage of unsafe Rust
 
 There are several proposals / projects to qualify the statistics in more end-user usable form:
 * https://github.com/rust-secure-code/cargo-geiger/discussions/303
 
 This cargo plugin were originally based on the code from two other projects:
-<https://github.com/icefoxen/cargo-osha> and
-<https://github.com/sfackler/cargo-tree>.
+* <https://github.com/icefoxen/cargo-osha> and
+* <https://github.com/sfackler/cargo-tree>
 
 Installation
 ------------
@@ -53,9 +54,6 @@ Output example
 --------------
 
 ![Example output](https://user-images.githubusercontent.com/3704611/53132247-845f7080-356f-11e9-9c76-a9498d4a744b.png)
-
-Why even care about unsafe Rust usage?
---------------------------------------
 
 Why the name?
 -------------
