@@ -25,6 +25,9 @@ This project is not intended as an attempt to:
 There are several proposals / projects to qualify the statistics in more end-user usable form:
 * Safety Cross-Checking Human Validations - https://github.com/rust-secure-code/cargo-geiger/discussions/303
 
+Also worthwhile to look at:
+* Formal Methods WG - https://rust-formal-methods.github.io/tools.html
+
 This cargo plugin were originally based on the code from two other projects:
 * <https://github.com/icefoxen/cargo-osha> and
 * <https://github.com/sfackler/cargo-tree>
