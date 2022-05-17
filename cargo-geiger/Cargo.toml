@@ -8,7 +8,7 @@ license = "Apache-2.0/MIT"
 name = "cargo-geiger"
 readme = "README.md"
 repository = "https://github.com/rust-secure-code/cargo-geiger"
-version = "0.11.2"
+version = "0.11.3"
 
 [badges]
 maintenance = { status = "experimental" }
@@ -16,12 +16,12 @@ maintenance = { status = "experimental" }
 [dependencies]
 anyhow = "1.0.57"
 cargo = "0.60.0"
-cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.1" }
+cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.2" }
 cargo_metadata = "0.14.2"
 cargo-platform = "0.1.2"
 colored = "2.0.0"
 console = "0.15.0"
-geiger = { path = "../geiger", version = "0.4.8" }
+geiger = { path = "../geiger", version = "0.4.9" }
 krates = "0.10.1"
 petgraph = "0.6.0"
 pico-args = "0.4.2"
