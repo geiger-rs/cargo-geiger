@@ -1,6 +1,10 @@
 # Changelog
 ---------
 
+## 0.11.3
+ - Add threaded scanning [#268]
+ - Upgraded dependencies including from Cargo 0.58.0 to 0.60.0 [#251], [#275]
+
 ## 0.11.2
  - Upgraded dependencies including from Cargo 0.52.0 to 0.58.0 [#230], [#225]
 
