@@ -23,7 +23,7 @@ This project is not intended as an attempt to:
 * Create pressure against __necessary__ usage of unsafe Rust
 
 There are several proposals / projects to qualify the statistics in more end-user usable form:
-* Unsafe block Cross-Checking and Tracking - https://github.com/rust-secure-code/cargo-geiger/discussions/303
+* Unsafe block Cross-Tracking and Matching - https://github.com/rust-secure-code/cargo-geiger/discussions/303
 
 This cargo plugin was originally based on the code from two other projects:
 * <https://github.com/icefoxen/cargo-osha> and
