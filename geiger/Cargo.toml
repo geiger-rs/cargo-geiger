@@ -8,13 +8,13 @@ license = "Apache-2.0/MIT"
 name = "geiger"
 readme = "README.md"
 repository = "https://github.com/rust-secure-code/cargo-geiger"
-version = "0.4.8"
+version = "0.4.9"
 
 [badges]
 maintenance = { status = "experimental" }
 
 [dependencies]
-cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.1" }
+cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.2" }
 syn = { version = "1.0.95", features = ["parsing", "printing", "clone-impls", "full", "extra-traits", "visit"] }
 proc-macro2 = "1.0.39"
 
