@@ -14,7 +14,7 @@ These statistics currently provide blunt information to aid auditing, e.g:
 * https://github.com/rust-secure-code/safety-dance
 * https://github.com/crev-dev/cargo-crev
 
-This tool is currently not meant to advise directly whether the code ultimately is truly unsound or not.
+This tool is currently not meant to advise directly whether the code ultimately is truly insecure or not.
 
 This project is intended as an attempt to:
 * Create pressure against __unnecessary__ usage of unsafe Rust
@@ -23,9 +23,9 @@ This project is not intended as an attempt to:
 * Create pressure against __necessary__ usage of unsafe Rust
 
 There are several proposals / projects to qualify the statistics in more end-user usable form:
-* Safety Cross-Checking Human Validations - https://github.com/rust-secure-code/cargo-geiger/discussions/303
+* Unsafe block Cross-Checking and Tracking - https://github.com/rust-secure-code/cargo-geiger/discussions/303
 
-This cargo plugin were originally based on the code from two other projects:
+This cargo plugin was originally based on the code from two other projects:
 * <https://github.com/icefoxen/cargo-osha> and
 * <https://github.com/sfackler/cargo-tree>
 
