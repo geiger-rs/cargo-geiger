@@ -2,6 +2,6 @@
 source: cargo-geiger/tests/integration_tests.rs
 expression: stderr
 ---
-{"`{ARTIFACT_JSON_BLOB}`
-{"`{ARTIFACT_JSON_BLOB}`
+`{ARTIFACT_JSON_BLOB}`
+`{ARTIFACT_JSON_BLOB}`
 
