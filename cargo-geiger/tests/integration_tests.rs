@@ -32,8 +32,14 @@ fn test_package(name: &str) {
         .expect("output should have been valid utf-8");
 
     if !stderr.is_empty() {
-        let re = regex::Regex::new(r"`([^`]+).toml`").unwrap();
-        let stderr = re.replace(&stderr, "`{MANIFEST_PATH}`");
+        let manifest_path_regex = regex::Regex::new(r"`([^`]+).toml`").unwrap();
+        let artifact_json_blob_regex =
+            regex::Regex::new(r"artifact.*/tmp.*").unwrap();
+
+        let stderr = manifest_path_regex.replace(&stderr, "`{MANIFEST_PATH}`");
+        let stderr = artifact_json_blob_regex
+            .replace_all(&stderr, "`{ARTIFACT_JSON_BLOB}`");
+
         assert_snapshot!(stderr_filename, stderr);
     }
 
