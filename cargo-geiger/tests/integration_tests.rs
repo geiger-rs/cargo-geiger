@@ -34,7 +34,7 @@ fn test_package(name: &str) {
     if !stderr.is_empty() {
         let manifest_path_regex = regex::Regex::new(r"`([^`]+).toml`").unwrap();
         let artifact_json_blob_regex =
-            regex::Regex::new(r".*artifact.*/tmp.*").unwrap();
+            regex::Regex::new(r#"\{"artifact":.*"emit":.*\}"#).unwrap();
 
         let stderr = manifest_path_regex.replace(&stderr, "`{MANIFEST_PATH}`");
         let stderr = artifact_json_blob_regex
