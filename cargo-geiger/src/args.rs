@@ -312,11 +312,11 @@ pub mod args_tests {
 
         assert!(args_result.is_ok());
 
-        let args = args_result.unwrap();
-
-        assert_eq!(args.all, expected_all);
-        assert_eq!(args.output_format, expected_output_format);
-        assert_eq!(args.verbose, expected_verbose)
+        if let Ok(args) = args_result {
+            assert_eq!(args.all, expected_all);
+            assert_eq!(args.output_format, expected_output_format);
+            assert_eq!(args.verbose, expected_verbose);
+        }
     }
 
     #[rstest(

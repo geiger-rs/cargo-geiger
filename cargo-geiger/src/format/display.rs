@@ -13,7 +13,7 @@ pub struct Display<'a> {
 
 impl<'a> fmt::Display for Display<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        for chunk in &self.pattern.0 {
+        for chunk in &self.pattern.chunks {
             match *chunk {
                 Chunk::License => {
                     if let Some(ref license) =
@@ -66,15 +66,15 @@ pub mod display_tests {
         input_pattern,
         expected_formatted_string,
         case(
-            Pattern(vec![Chunk::License]),
+            Pattern::new(vec![Chunk::License]),
             "Apache-2.0/MIT"
         ),
         case(
-            Pattern(vec![Chunk::Raw(String::from("chunk_value"))]),
+            Pattern::new(vec![Chunk::Raw(String::from("chunk_value"))]),
             "chunk_value"
         ),
         case(
-            Pattern(vec![Chunk::Repository]),
+            Pattern::new(vec![Chunk::Repository]),
             "https://github.com/rust-secure-code/cargo-geiger"
         )
     )]

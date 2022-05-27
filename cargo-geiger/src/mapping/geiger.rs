@@ -26,15 +26,15 @@ fn handle_source_repr(source_repr: &str) -> CargoGeigerSerdeSource {
 
     let source_type = source_repr_vec[0];
 
-    match source_type {
-        "registry" => {
+    match SourceType::from(source_type) {
+        SourceType::Registry => {
             CargoGeigerSerdeSource::Registry {
                 // It looks like cargo metadata drops this information
                 name: String::from("crates.io"),
                 url: Url::parse(source_repr_vec.pop().unwrap()).unwrap(),
             }
         }
-        "git" => {
+        SourceType::Git => {
             let raw_git_representation = source_repr_vec.pop().unwrap();
             let raw_git_url = Url::parse(raw_git_representation).unwrap();
             let git_url_without_query = format!(
@@ -78,6 +78,22 @@ fn handle_path_source<T: GetPackageIdRepr>(
     };
 
     CargoGeigerSerdeSource::Path(source_url)
+}
+
+enum SourceType {
+    Registry,
+    Git,
+    Unrecognised,
+}
+
+impl SourceType {
+    fn from(raw: &str) -> Self {
+        match raw {
+            "registry" => SourceType::Registry,
+            "git" => SourceType::Git,
+            _ => SourceType::Unrecognised,
+        }
+    }
 }
 
 #[cfg(test)]

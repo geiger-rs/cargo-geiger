@@ -141,20 +141,21 @@ mod tests {
         input_include_tests: IncludeTests,
         expected_rs_file_metrics: RsFileMetrics,
     ) {
-        let temp_dir = tempdir().unwrap();
-        let lib_file_path = temp_dir.path().join("lib.rs");
-        let mut file = File::create(lib_file_path.clone()).unwrap();
+        if let Ok(temp_dir) = tempdir() {
+            let lib_file_path = temp_dir.path().join("lib.rs");
+            let mut file = File::create(lib_file_path.clone()).unwrap();
 
-        writeln!(file, "{}", FILE_CONTENT_STRING).unwrap();
+            writeln!(file, "{}", FILE_CONTENT_STRING).unwrap();
 
-        let unsafe_in_file_result =
-            find_unsafe_in_file(&lib_file_path, input_include_tests);
+            let unsafe_in_file_result =
+                find_unsafe_in_file(&lib_file_path, input_include_tests);
 
-        assert!(unsafe_in_file_result.is_ok());
+            assert!(unsafe_in_file_result.is_ok());
 
-        let unsafe_in_file = unsafe_in_file_result.unwrap();
+            let unsafe_in_file = unsafe_in_file_result.unwrap();
 
-        assert_eq!(unsafe_in_file, expected_rs_file_metrics);
+            assert_eq!(unsafe_in_file, expected_rs_file_metrics);
+        }
     }
 
     #[rstest(

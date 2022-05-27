@@ -9,8 +9,8 @@ use crate::scan::{GeigerContext, ScanResult};
 use crate::tree::TextTreeLine;
 
 use handle_text_tree_line::{
-    handle_text_tree_line_extra_deps_group, handle_text_tree_line_package,
-    HandlePackageParameters,
+    text_tree_line_extra_deps_group_to_table_line_string,
+    text_tree_line_package_to_table_line_string, HandlePackageParameters,
 };
 use total_package_counts::TotalPackageCounts;
 
@@ -48,29 +48,55 @@ pub fn create_table_from_text_tree_lines(
         warning_count: &mut warning_count,
     };
 
-    for text_tree_line in text_tree_lines {
-        match text_tree_line {
-            TextTreeLine::ExtraDepsGroup {
-                kind: dep_kind,
-                tree_vines,
-            } => handle_text_tree_line_extra_deps_group(
-                dep_kind,
-                &mut table_lines,
-                tree_vines,
-            ),
-            TextTreeLine::Package {
-                id: package_id,
-                tree_vines,
-            } => handle_text_tree_line_package(
+    /*match text_tree_line {
+        TextTreeLine::ExtraDepsGroup {
+            kind: dep_kind,
+            tree_vines,
+        } => if let Some(line) = text_tree_line_extra_deps_group_to_table_line_string(
+            dep_kind,
+            tree_vines,
+        ) {
+            table_lines.push(line)
+        },
+        TextTreeLine::Package {
+            id: package_id,
+            tree_vines,
+        } => {
+            if let Some(line) = text_tree_line_package_to_table_line_string(
                 cargo_metadata_parameters,
                 &emoji_symbols,
                 &mut handle_package_parameters,
                 package_id,
-                &mut table_lines,
+                table_parameters,
+                tree_vines,
+            ) {
+                table_lines.push(line)
+            }
+        },
+    }*/
+
+    for table_line in text_tree_lines.into_iter().filter_map(|text_tree_line| {
+        match text_tree_line {
+            TextTreeLine::ExtraDepsGroup {
+                kind: dep_kind,
+                tree_vines,
+            } => text_tree_line_extra_deps_group_to_table_line_string(
+                dep_kind, tree_vines,
+            ),
+            TextTreeLine::Package {
+                id: package_id,
+                tree_vines,
+            } => text_tree_line_package_to_table_line_string(
+                cargo_metadata_parameters,
+                &emoji_symbols,
+                &mut handle_package_parameters,
+                package_id,
                 table_parameters,
                 tree_vines,
             ),
         }
+    }) {
+        table_lines.push(table_line);
     }
 
     table_lines.push(String::new());
