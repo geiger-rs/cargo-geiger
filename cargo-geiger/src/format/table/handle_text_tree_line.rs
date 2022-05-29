@@ -49,21 +49,6 @@ pub fn text_tree_line_package_to_table_line_string(
             *handle_package_parameters.warning_count += package_is_new as u64;
             eprintln!("WARNING: No metrics found for package: {}", package_id);
             return None;
-
-            /*if emoji_symbols.will_output_emoji()
-                && table_parameters.print_config.output_format
-                != OutputFormat::GitHubMarkdown
-            {
-                line.push('\r'); // Return the cursor to the start of the line.
-                line.push_str(format!("\x1B[{}C", shift_chars).as_str()); // Move the cursor to the right so that it points to the icon character.
-            } else if table_parameters.print_config.output_format
-                == OutputFormat::GitHubMarkdown
-                && crate_detection_status == CrateDetectionStatus::UnsafeDetected
-            {
-                // When rendering output in the GitHubMarkdown format, the Rads symbol
-                // is only rendered as a single char, needing an extra space
-                line.push(' ');
-            }*/
         }
     };
     let unsafe_info =
