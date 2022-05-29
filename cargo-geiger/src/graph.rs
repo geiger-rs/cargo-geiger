@@ -161,7 +161,7 @@ fn build_graph_prerequisites<'a>(
     let target = if target_args.all_targets {
         None
     } else {
-        Some(target_args.target.as_deref().unwrap_or(&config_host))
+        Some(target_args.target.as_deref().unwrap_or(config_host))
     };
 
     (extra_deps, target)

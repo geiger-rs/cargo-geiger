@@ -25,7 +25,7 @@ use cargo::{CliError, CliResult, Config};
 
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
-fn real_main(args: &Args, config: &mut Config) -> CliResult {
+fn cli_result_main(args: &Args) -> CliResult {
     if args.version {
         println!("cargo-geiger {}", VERSION.unwrap_or("unknown version"));
         return Ok(());
@@ -35,9 +35,10 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         return Ok(());
     }
 
-    args.update_config(config)?;
+    let mut config = Config::default()?;
+    args.update_config(&mut config)?;
 
-    let cargo_metadata = get_cargo_metadata(args, config)?;
+    let cargo_metadata = get_cargo_metadata(args, &config)?;
     let krates = get_krates(&cargo_metadata)?;
 
     let cargo_metadata_parameters = CargoMetadataParameters {
@@ -45,7 +46,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         krates: &krates,
     };
 
-    let workspace = get_workspace(config, args.manifest_path.clone())?;
+    let workspace = get_workspace(&config, args.manifest_path.clone())?;
 
     let cargo_metadata_root_package_id = if let Some(
         cargo_metadata_root_package,
@@ -89,7 +90,7 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
     } = scan(
         args,
         &cargo_metadata_parameters,
-        config,
+        &config,
         &graph,
         query_resolve_root_package_id,
         &workspace,
@@ -117,15 +118,8 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
 }
 
 fn main() {
-    let mut config = match Config::default() {
-        Ok(cfg) => cfg,
-        Err(e) => {
-            let mut shell = Shell::new();
-            cargo::exit_with_error(e.into(), &mut shell)
-        }
-    };
     let args = Args::parse_args(pico_args::Arguments::from_env()).unwrap();
-    if let Err(e) = real_main(&args, &mut config) {
+    if let Err(e) = cli_result_main(&args) {
         let mut shell = Shell::new();
         cargo::exit_with_error(e, &mut shell)
     }
