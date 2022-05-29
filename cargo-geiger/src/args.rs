@@ -86,21 +86,9 @@ pub struct Args {
     pub readme_args: ReadmeArgs,
     pub target_args: TargetArgs,
     pub unstable_flags: Vec<String>,
-    //pub verbose: u32,
     pub verbosity: Verbosity,
     pub version: bool,
 }
-
-/*
-           verbose: match (
-               raw_args.contains("-vv"),
-               raw_args.contains(["-v", "--verbose"]),
-           ) {
-               (false, false) => 0,
-               (false, true) => 1,
-               (true, _) => 2,
-           },
-*/
 
 impl Args {
     /// Construct `Args` struct from `pico_args::Arguments` loaded from command line arguments
