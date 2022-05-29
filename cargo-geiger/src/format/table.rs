@@ -48,33 +48,6 @@ pub fn create_table_from_text_tree_lines(
         warning_count: &mut warning_count,
     };
 
-    /*match text_tree_line {
-        TextTreeLine::ExtraDepsGroup {
-            kind: dep_kind,
-            tree_vines,
-        } => if let Some(line) = text_tree_line_extra_deps_group_to_table_line_string(
-            dep_kind,
-            tree_vines,
-        ) {
-            table_lines.push(line)
-        },
-        TextTreeLine::Package {
-            id: package_id,
-            tree_vines,
-        } => {
-            if let Some(line) = text_tree_line_package_to_table_line_string(
-                cargo_metadata_parameters,
-                &emoji_symbols,
-                &mut handle_package_parameters,
-                package_id,
-                table_parameters,
-                tree_vines,
-            ) {
-                table_lines.push(line)
-            }
-        },
-    }*/
-
     for table_line in text_tree_lines.into_iter().filter_map(|text_tree_line| {
         match text_tree_line {
             TextTreeLine::ExtraDepsGroup {
