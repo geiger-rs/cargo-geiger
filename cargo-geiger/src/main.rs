@@ -64,12 +64,14 @@ fn real_main(args: &Args, config: &mut Config) -> CliResult {
         return Err(CliError::code(1));
     };
 
+    let global_rustc = config.load_global_rustc(Some(&workspace))?;
+
     let graph = build_graph(
         args,
         &cargo_metadata_parameters,
-        config,
+        &global_rustc.host,
+        &global_rustc.path,
         cargo_metadata_root_package_id.clone(),
-        &workspace,
     )?;
 
     let query_resolve_root_package_id = args.package.as_ref().map_or(
