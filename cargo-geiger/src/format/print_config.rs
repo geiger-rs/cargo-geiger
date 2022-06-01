@@ -156,14 +156,14 @@ mod print_config_tests {
     #[rstest(
         input_format_string,
         expected_format,
-        case(String::from("{p}"), Pattern(vec![Chunk::Package])),
-        case(String::from("{l}"), Pattern(vec![Chunk::License])),
-        case(String::from("{r}"), Pattern(vec![Chunk::Repository])),
-        case(String::from("Text"), Pattern(vec![Chunk::Raw(String::from("Text"))])),
+        case(String::from("{p}"), Pattern::new(vec![Chunk::Package])),
+        case(String::from("{l}"), Pattern::new(vec![Chunk::License])),
+        case(String::from("{r}"), Pattern::new(vec![Chunk::Repository])),
+        case(String::from("Text"), Pattern::new(vec![Chunk::Raw(String::from("Text"))])),
         case(
             String::from("{p}-{l}-{r}-Text"),
-            Pattern(
-                vec![
+            Pattern {
+                chunks: vec ! [
                     Chunk::Package,
                     Chunk::Raw(String::from("-")),
                     Chunk::License,
@@ -171,7 +171,7 @@ mod print_config_tests {
                     Chunk::Repository,
                     Chunk::Raw(String::from("-Text"))
                 ]
-            )
+            }
         )
     )]
     fn print_config_new_test_format(

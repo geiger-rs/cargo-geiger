@@ -19,31 +19,22 @@ pub struct HandlePackageParameters<'a> {
     pub warning_count: &'a mut u64,
 }
 
-pub fn handle_text_tree_line_extra_deps_group(
+pub fn text_tree_line_extra_deps_group_to_table_line_string(
     dep_kind: DependencyKind,
-    table_lines: &mut Vec<String>,
     tree_vines: String,
-) {
-    if let Some(name) = get_kind_group_name(dep_kind) {
-        // TODO: Fix the alignment on macOS (others too?)
-        table_lines.push(format!(
-            "{}{}{}",
-            table_row_empty(),
-            tree_vines,
-            name
-        ));
-    }
+) -> Option<String> {
+    get_kind_group_name(dep_kind)
+        .map(|name| format!("{}{}{}", table_row_empty(), tree_vines, name,))
 }
 
-pub fn handle_text_tree_line_package(
+pub fn text_tree_line_package_to_table_line_string(
     cargo_metadata_parameters: &CargoMetadataParameters,
     emoji_symbols: &EmojiSymbols,
     handle_package_parameters: &mut HandlePackageParameters,
     package_id: PackageId,
-    table_lines: &mut Vec<String>,
     table_parameters: &TableParameters,
     tree_vines: String,
-) {
+) -> Option<String> {
     let package_is_new = handle_package_parameters
         .visited_package_ids
         .insert(package_id.clone());
@@ -57,7 +48,7 @@ pub fn handle_text_tree_line_package(
         None => {
             *handle_package_parameters.warning_count += package_is_new as u64;
             eprintln!("WARNING: No metrics found for package: {}", package_id);
-            return;
+            return None;
         }
     };
     let unsafe_info =
@@ -114,7 +105,7 @@ pub fn handle_text_tree_line_package(
         ),
     );
 
-    let line = construct_package_text_tree_line(
+    Some(construct_package_text_tree_line(
         crate_detection_status,
         emoji_symbols,
         icon,
@@ -122,9 +113,7 @@ pub fn handle_text_tree_line_package(
         table_parameters,
         tree_vines,
         unsafe_info,
-    );
-
-    table_lines.push(line);
+    ))
 }
 
 fn construct_package_text_tree_line(
@@ -148,19 +137,27 @@ fn construct_package_text_tree_line(
     // count as a single character if using the column formatting provided by
     // Rust. This could be unrelated to Rust and a quirk of this particular
     // symbol or something in the Terminal app on macOS.
-    if emoji_symbols.will_output_emoji()
-        && table_parameters.print_config.output_format
-            != OutputFormat::GitHubMarkdown
-    {
-        line.push('\r'); // Return the cursor to the start of the line.
-        line.push_str(format!("\x1B[{}C", shift_chars).as_str()); // Move the cursor to the right so that it points to the icon character.
-    } else if table_parameters.print_config.output_format
-        == OutputFormat::GitHubMarkdown
-        && crate_detection_status == CrateDetectionStatus::UnsafeDetected
-    {
-        // When rendering output in the GitHubMarkdown format, the Rads symbol
-        // is only rendered as a single char, needing an extra space
-        line.push(' ');
+    match (
+        emoji_symbols.will_output_emoji(),
+        table_parameters.print_config.output_format,
+        crate_detection_status,
+    ) {
+        (true, output_format, _)
+            if output_format != OutputFormat::GitHubMarkdown =>
+        {
+            line.push('\r'); // Return the cursor to the start of the line.
+            line.push_str(format!("\x1B[{}C", shift_chars).as_str()); // Move the cursor to the right so that it points to the icon character.
+        }
+        (
+            _,
+            OutputFormat::GitHubMarkdown,
+            CrateDetectionStatus::UnsafeDetected,
+        ) => {
+            // When rendering output in the GitHubMarkdown format, the Rads symbol
+            // is only rendered as a single char, needing an extra space
+            line.push(' ');
+        }
+        _ => (),
     }
 
     format!("{} {}{}", line, tree_vines, package_name)
@@ -204,45 +201,37 @@ mod handle_text_tree_line_tests {
 
     #[rstest(
         input_dep_kind,
-        expected_kind_group_name,
+        expected_table_line_option,
         case(
             DependencyKind::Build,
-            Some(String::from("[build-dependencies]"))
+            Some(
+                String::from(
+                    format!("{}{}{}", table_row_empty(), "tree_vines", "[build-dependencies]")
+                )
+            )
         ),
         case(
             DependencyKind::Development,
-            Some(String::from("[dev-dependencies]"))
+            Some(
+                String::from(
+                    format!("{}{}{}", table_row_empty(), "tree_vines", "[dev-dependencies]")
+                )
+            )
         ),
         case(DependencyKind::Normal, None)
     )]
-    fn handle_text_tree_line_extra_deps_group_test(
+    fn text_tree_line_extra_deps_group_to_table_line_string_test(
         input_dep_kind: DependencyKind,
-        expected_kind_group_name: Option<String>,
+        expected_table_line_option: Option<String>,
     ) {
-        let mut table_lines = Vec::<String>::new();
-
         let tree_vines = String::from("tree_vines");
-
-        handle_text_tree_line_extra_deps_group(
-            input_dep_kind,
-            &mut table_lines,
-            tree_vines.clone(),
-        );
-
-        if expected_kind_group_name.is_some() {
-            assert_eq!(table_lines.len(), 1);
-            assert_eq!(
-                table_lines.first().unwrap().as_str(),
-                format!(
-                    "{}{}{}",
-                    table_row_empty(),
-                    tree_vines,
-                    expected_kind_group_name.unwrap(),
-                )
+        let actual_table_lines =
+            text_tree_line_extra_deps_group_to_table_line_string(
+                input_dep_kind,
+                tree_vines.clone(),
             );
-        } else {
-            assert!(table_lines.is_empty());
-        }
+
+        assert_eq!(actual_table_lines, expected_table_line_option);
     }
 
     #[rstest(

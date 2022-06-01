@@ -204,15 +204,11 @@ mod dependency_node_tests {
     }
 
     fn create_cargo_metadata_package_id_vec(count: i32) -> Vec<PackageId> {
-        let mut package_id_vec = vec![];
-
-        for i in 0..count {
-            package_id_vec.push(PackageId {
+        (0..count)
+            .map(|i| PackageId {
                 repr: format!("string_repr_{}", i),
-            });
-        }
-
-        package_id_vec
+            })
+            .collect()
     }
 
     fn create_print_config(edge_direction: EdgeDirection) -> PrintConfig {
@@ -220,7 +216,7 @@ mod dependency_node_tests {
             all: false,
             allow_partial_results: false,
             direction: edge_direction,
-            format: Pattern(vec![]),
+            format: Pattern::new(vec![]),
             include_tests: IncludeTests::Yes,
             prefix: Prefix::Depth,
             output_format: OutputFormat::Ascii,

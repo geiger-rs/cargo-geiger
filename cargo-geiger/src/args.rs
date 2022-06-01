@@ -334,7 +334,6 @@ pub mod args_tests {
         assert!(args_result.is_ok());
 
         let args = args_result.unwrap();
-
         assert_eq!(args.all, expected_all);
         assert_eq!(args.output_format, expected_output_format);
         assert_eq!(args.verbosity, expected_verbosity)

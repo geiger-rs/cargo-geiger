@@ -8,9 +8,15 @@ use cargo_metadata::PackageId;
 use std::error::Error;
 
 #[derive(Debug, PartialEq)]
-pub struct Pattern(pub Vec<Chunk>);
+pub struct Pattern {
+    pub chunks: Vec<Chunk>,
+}
 
 impl Pattern {
+    pub fn new(chunks: Vec<Chunk>) -> Self {
+        Pattern { chunks }
+    }
+
     pub fn display<'a>(
         &'a self,
         cargo_metadata_parameters: &'a CargoMetadataParameters,
@@ -40,7 +46,7 @@ impl Pattern {
             chunks.push(chunk);
         }
 
-        Ok(Pattern(chunks))
+        Ok(Pattern { chunks })
     }
 }
 
@@ -52,14 +58,14 @@ mod pattern_tests {
     #[rstest(
         input_format_string,
         expected_pattern,
-        case("{p}", Pattern(vec![Chunk::Package])),
-        case("{l}", Pattern(vec![Chunk::License])),
-        case("{r}", Pattern(vec![Chunk::Repository])),
-        case("Text", Pattern(vec![Chunk::Raw(String::from("Text"))])),
+        case("{p}", Pattern::new(vec![Chunk::Package])),
+        case("{l}", Pattern::new(vec![Chunk::License])),
+        case("{r}", Pattern::new(vec![Chunk::Repository])),
+        case("Text", Pattern::new(vec![Chunk::Raw(String::from("Text"))])),
         case(
             "{p}-{l}-{r}-Text",
-            Pattern(
-                vec![
+            Pattern {
+                chunks: vec! [
                     Chunk::Package,
                     Chunk::Raw(String::from("-")),
                     Chunk::License,
@@ -67,7 +73,7 @@ mod pattern_tests {
                     Chunk::Repository,
                     Chunk::Raw(String::from("-Text"))
                 ]
-            )
+            }
         )
     )]
     fn pattern_try_build_test(
