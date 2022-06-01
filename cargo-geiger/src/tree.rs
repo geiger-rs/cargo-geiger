@@ -83,7 +83,6 @@ mod tree_tests {
     use crate::format::pattern::Pattern;
     use crate::format::print_config::OutputFormat;
 
-    use cargo::core::shell::Verbosity;
     use geiger::IncludeTests;
     use petgraph::EdgeDirection;
     use rstest::*;
@@ -129,7 +128,6 @@ mod tree_tests {
         let pattern = Pattern::try_build("{p}").unwrap();
         PrintConfig {
             all: false,
-            verbosity: Verbosity::Verbose,
             direction: EdgeDirection::Outgoing,
             prefix,
             format: pattern,

@@ -8,15 +8,13 @@ use crate::mapping::{
     CargoMetadataParameters, DepsNotReplaced, MatchesIgnoringSource,
 };
 
-use cargo::core::Workspace;
-use cargo::util::interning::InternedString;
 use cargo::util::CargoResult;
-use cargo::Config;
 use cargo_metadata::{Dependency, DependencyKind, Package, PackageId};
 use cargo_platform::Cfg;
 use petgraph::graph::NodeIndex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// Representation of the package dependency graph
 pub struct Graph {
@@ -30,17 +28,16 @@ pub struct Graph {
 pub fn build_graph<'a>(
     args: &Args,
     cargo_metadata_parameters: &'a CargoMetadataParameters,
-    config: &Config,
+    config_host: &'a str,
+    global_rustc_path: &'a PathBuf,
     root_package_id: PackageId,
-    workspace: &Workspace,
 ) -> CargoResult<Graph> {
-    let config_host = config.load_global_rustc(Some(workspace))?.host;
     let (extra_deps, target) = build_graph_prerequisites(
-        &config_host,
+        config_host,
         &args.deps_args,
         &args.target_args,
     );
-    let cfgs = get_cfgs(config, &args.target_args.target, workspace)?;
+    let cfgs = get_cfgs(global_rustc_path, &args.target_args.target)?;
 
     let mut graph = Graph {
         graph: petgraph::Graph::new(),
@@ -81,7 +78,7 @@ struct GraphConfiguration<'a> {
 }
 
 fn add_graph_node_if_not_present_and_edge(
-    dependency: &cargo_metadata::Dependency,
+    dependency: &Dependency,
     dependency_package_id: PackageId,
     graph: &mut Graph,
     index: NodeIndex,
@@ -147,7 +144,7 @@ fn add_package_dependencies_to_graph(
 }
 
 fn build_graph_prerequisites<'a>(
-    config_host: &'a InternedString,
+    config_host: &'a str,
     deps_args: &'a DepsArgs,
     target_args: &'a TargetArgs,
 ) -> (ExtraDeps, Option<&'a str>) {
@@ -248,7 +245,7 @@ mod graph_tests {
         input_deps_args: DepsArgs,
         expected_extra_deps: ExtraDeps,
     ) {
-        let config_host = InternedString::new("config_host");
+        let config_host = "config_host";
         let target_args = TargetArgs::default();
 
         let (extra_deps, _) = build_graph_prerequisites(
@@ -288,7 +285,7 @@ mod graph_tests {
         input_target_args: TargetArgs,
         expected_target: Option<&str>,
     ) {
-        let config_host = InternedString::new("default_config_host");
+        let config_host = "default_config_host";
         let deps_args = DepsArgs::default();
 
         let (_, target) = build_graph_prerequisites(

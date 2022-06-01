@@ -12,6 +12,12 @@ pub struct Display<'a> {
 }
 
 impl<'a> fmt::Display for Display<'a> {
+    // This clippy recommendation is quite strict, not allowing an error message
+    // to be written out when failing to format the struct.
+    // Perhaps we shouldn't be using `impl fmt::Display` at all, and instead
+    // should define our own trait for anything which is to be constructed for
+    // outputting?
+    #[allow(clippy::print_in_format_impl)]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for chunk in &self.pattern.chunks {
             match *chunk {

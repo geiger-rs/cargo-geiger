@@ -1,3 +1,4 @@
+use crate::args::Verbosity::{Normal, Quiet, Verbose};
 use crate::format::print_config::OutputFormat;
 
 use cargo::core::shell::ColorChoice;
@@ -85,7 +86,7 @@ pub struct Args {
     pub readme_args: ReadmeArgs,
     pub target_args: TargetArgs,
     pub unstable_flags: Vec<String>,
-    pub verbose: u32,
+    pub verbosity: Verbosity,
     pub version: bool,
 }
 
@@ -143,15 +144,16 @@ impl Args {
                 .opt_value_from_str("-Z")?
                 .map(|s: String| s.split(' ').map(|s| s.to_owned()).collect())
                 .unwrap_or_else(Vec::new),
-            verbose: match (
+
+            version: raw_args.contains(["-V", "--version"]),
+            verbosity: match (
                 raw_args.contains("-vv"),
                 raw_args.contains(["-v", "--verbose"]),
             ) {
-                (false, false) => 0,
-                (false, true) => 1,
-                (true, _) => 2,
+                (false, false) => Quiet,
+                (false, true) => Normal,
+                (true, _) => Verbose,
             },
-            version: raw_args.contains(["-V", "--version"]),
             output_format: raw_args
                 .opt_value_from_str("--output-format")?
                 .unwrap_or(OutputFormat::Utf8),
@@ -184,8 +186,14 @@ impl Args {
     /// ```
     pub fn update_config(&self, config: &mut Config) -> CliResult {
         let target_dir = None; // Doesn't add any value for cargo-geiger.
+        let cargo_config_verbosity = match self.verbosity {
+            Quiet => 0,
+            Normal => 1,
+            Verbose => 2,
+        };
+
         config.configure(
-            self.verbose,
+            cargo_config_verbosity,
             self.quiet,
             self.color.as_deref(),
             self.frozen,
@@ -233,6 +241,19 @@ pub struct ReadmeArgs {
     pub update_readme: bool,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum Verbosity {
+    Verbose,
+    Normal,
+    Quiet,
+}
+
+impl Default for Verbosity {
+    fn default() -> Self {
+        Verbose
+    }
+}
+
 fn parse_features(raw_features: Option<String>) -> Vec<String> {
     raw_features
         .as_ref()
@@ -249,7 +270,7 @@ pub mod args_tests {
     use super::*;
 
     use cargo::core::shell::ColorChoice;
-    use cargo::core::Verbosity;
+    use cargo::core::Verbosity as CargoCoreVerbosity;
     use rstest::*;
     use std::ffi::OsString;
 
@@ -257,55 +278,55 @@ pub mod args_tests {
         input_argument_vector,
         expected_all,
         expected_output_format,
-        expected_verbose,
+        expected_verbosity,
         case(
             vec![],
             false,
             OutputFormat::Utf8,
-            0
+            Quiet
         ),
         case(
             vec![OsString::from("--all")],
             true,
             OutputFormat::Utf8,
-            0,
+            Quiet,
         ),
         case(
             vec![OsString::from("--output-format"), OsString::from("Ascii")],
             false,
             OutputFormat::Ascii,
-            0
+            Quiet
         ),
         case(
             vec![OsString::from("-v")],
             false,
             OutputFormat::Utf8,
-            1
+            Normal
         ),
         case(
             vec![OsString::from("-vv")],
             false,
             OutputFormat::Utf8,
-            2
+            Verbose
         ),
         case(
             vec![OsString::from("--update-readme")],
             false,
             OutputFormat::GitHubMarkdown,
-            0
+            Quiet
         ),
         case(
             vec![OsString::from("--update-readme"), OsString::from("--output-format"), OsString::from("Ascii")],
             false,
             OutputFormat::GitHubMarkdown,
-            0
+            Quiet
         )
     )]
     fn parse_args_test(
         input_argument_vector: Vec<OsString>,
         expected_all: bool,
         expected_output_format: OutputFormat,
-        expected_verbose: u32,
+        expected_verbosity: Verbosity,
     ) {
         let args_result =
             Args::parse_args(Arguments::from_vec(input_argument_vector));
@@ -315,7 +336,7 @@ pub mod args_tests {
         let args = args_result.unwrap();
         assert_eq!(args.all, expected_all);
         assert_eq!(args.output_format, expected_output_format);
-        assert_eq!(args.verbose, expected_verbose);
+        assert_eq!(args.verbosity, expected_verbosity)
     }
 
     #[rstest(
@@ -351,25 +372,25 @@ pub mod args_tests {
 
     #[rstest(
         input_quiet,
-        input_verbose,
+        input_verbosity,
         expected_extra_verbose,
         expected_shell_verbosity,
-        case(true, 0, false, Verbosity::Quiet),
-        case(false, 0, false, Verbosity::Normal),
-        case(false, 1, false, Verbosity::Verbose),
-        case(false, 2, true, Verbosity::Verbose)
+        case(true, Quiet, false, CargoCoreVerbosity::Quiet),
+        case(false, Quiet, false, CargoCoreVerbosity::Normal),
+        case(false, Normal, false, CargoCoreVerbosity::Verbose),
+        case(false, Verbose, true, CargoCoreVerbosity::Verbose)
     )]
     fn update_config_test_verbosity(
         input_quiet: bool,
-        input_verbose: u32,
+        input_verbosity: Verbosity,
         expected_extra_verbose: bool,
-        expected_shell_verbosity: Verbosity,
+        expected_shell_verbosity: CargoCoreVerbosity,
     ) {
         let offline = rand::random();
         let args = Args {
             offline,
             quiet: input_quiet,
-            verbose: input_verbose,
+            verbosity: input_verbosity,
             ..Default::default()
         };
         let mut config = Config::default().unwrap();

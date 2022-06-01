@@ -2,7 +2,6 @@ use crate::args::Args;
 use crate::format::pattern::Pattern;
 use crate::format::{CrateDetectionStatus, FormatError};
 
-use cargo::core::shell::Verbosity;
 use cargo::util::errors::CliError;
 use colored::{ColoredString, Colorize};
 use geiger::IncludeTests;
@@ -46,7 +45,6 @@ pub struct PrintConfig {
     pub include_tests: IncludeTests,
     pub prefix: Prefix,
     pub output_format: OutputFormat,
-    pub verbosity: Verbosity,
 }
 
 impl PrintConfig {
@@ -80,11 +78,6 @@ impl PrintConfig {
             (false, false) => Prefix::Indent,
         };
 
-        let verbosity = match args.verbose {
-            0 => Verbosity::Normal,
-            _ => Verbosity::Verbose,
-        };
-
         Ok(PrintConfig {
             all: args.all,
             allow_partial_results,
@@ -93,7 +86,6 @@ impl PrintConfig {
             include_tests,
             output_format: args.output_format,
             prefix,
-            verbosity,
         })
     }
 }
@@ -108,7 +100,6 @@ impl Default for PrintConfig {
             include_tests: IncludeTests::Yes,
             prefix: Prefix::Depth,
             output_format: Default::default(),
-            verbosity: Verbosity::Verbose,
         }
     }
 }
@@ -246,28 +237,6 @@ mod print_config_tests {
 
         assert!(print_config_result.is_ok());
         assert_eq!(print_config_result.unwrap().prefix, expected_output_prefix);
-    }
-
-    #[rstest(
-        input_verbosity_u32,
-        expected_verbosity,
-        case(0, Verbosity::Normal),
-        case(1, Verbosity::Verbose),
-        case(1, Verbosity::Verbose)
-    )]
-    fn print_config_new_test_verbosity(
-        input_verbosity_u32: u32,
-        expected_verbosity: Verbosity,
-    ) {
-        let args = Args {
-            verbose: input_verbosity_u32,
-            ..Default::default()
-        };
-
-        let print_config_result = PrintConfig::new(&args);
-
-        assert!(print_config_result.is_ok());
-        assert_eq!(print_config_result.unwrap().verbosity, expected_verbosity);
     }
 
     #[rstest(

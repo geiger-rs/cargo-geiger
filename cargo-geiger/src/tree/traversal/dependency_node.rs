@@ -94,7 +94,6 @@ mod dependency_node_tests {
     use crate::format::pattern::Pattern;
     use crate::format::print_config::{OutputFormat, Prefix, PrintConfig};
 
-    use cargo::core::Verbosity;
     use cargo_metadata::DependencyKind;
     use geiger::IncludeTests;
     use petgraph::graph::NodeIndex;
@@ -221,7 +220,6 @@ mod dependency_node_tests {
             include_tests: IncludeTests::Yes,
             prefix: Prefix::Depth,
             output_format: OutputFormat::Ascii,
-            verbosity: Verbosity::Verbose,
         }
     }
 }

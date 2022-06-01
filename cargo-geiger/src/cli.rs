@@ -32,18 +32,19 @@ pub fn get_cargo_metadata(
     let mut metadata_command = MetadataCommand::new();
     metadata_command.manifest_path(root_manifest_path);
 
-    if args.features_args.all_features {
-        metadata_command.features(CargoOpt::AllFeatures);
-    }
-
-    if args.features_args.no_default_features {
-        metadata_command.features(CargoOpt::NoDefaultFeatures);
-    }
-
-    if !args.features_args.features.is_empty() {
-        metadata_command.features(CargoOpt::SomeFeatures(
-            args.features_args.features.clone(),
-        ));
+    if let Some(metadata_command_features) = match &args.features_args {
+        features_args if features_args.all_features => {
+            Some(CargoOpt::AllFeatures)
+        }
+        features_args if features_args.no_default_features => {
+            Some(CargoOpt::NoDefaultFeatures)
+        }
+        features_args if !features_args.features.is_empty() => {
+            Some(CargoOpt::SomeFeatures(args.features_args.features.clone()))
+        }
+        _ => None,
+    } {
+        metadata_command.features(metadata_command_features);
     }
 
     Ok(metadata_command.exec()?)
@@ -53,13 +54,10 @@ pub fn get_cargo_metadata(
 /// This function seems to be looking up the active flags for conditional
 /// compilation (`cargo_platform::Cfg` instances).
 pub fn get_cfgs(
-    config: &Config,
+    global_rustc_path: &PathBuf,
     target: &Option<String>,
-    workspace: &Workspace,
 ) -> CargoResult<Option<Vec<Cfg>>> {
-    let mut process = cargo_util::ProcessBuilder::new(
-        &config.load_global_rustc(Some(workspace))?.path,
-    );
+    let mut process = cargo_util::ProcessBuilder::new(global_rustc_path);
     process.arg("--print=cfg").env_remove("RUST_LOG");
     if let Some(ref s) = *target {
         process.arg("--target").arg(s);
@@ -118,7 +116,9 @@ mod cli_tests {
             important_paths::find_root_manifest_for_wd(config.cwd()).unwrap();
         let workspace = Workspace::new(&root, &config).unwrap();
 
-        let cfgs = get_cfgs(&config, &target, &workspace);
+        let global_rustc = config.load_global_rustc(Some(&workspace)).unwrap();
+
+        let cfgs = get_cfgs(&global_rustc.path, &target);
 
         assert!(cfgs.is_ok());
         let cfg_vec_option = cfgs.unwrap();
