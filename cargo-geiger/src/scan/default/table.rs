@@ -1,3 +1,4 @@
+use crate::args::Verbosity;
 use crate::format::emoji_symbols::EmojiSymbols;
 use crate::format::print_config::OutputFormat;
 use crate::format::table::{
@@ -14,7 +15,6 @@ use super::super::{
 };
 use super::scan;
 
-use cargo::core::shell::Verbosity;
 use cargo::core::Workspace;
 use cargo::CliError;
 use cargo_metadata::PackageId;
@@ -34,7 +34,7 @@ pub fn scan_to_table(
         geiger_context,
     } = scan(cargo_metadata_parameters, scan_parameters, workspace)?;
 
-    if scan_parameters.print_config.verbosity == Verbosity::Verbose {
+    if scan_parameters.args.verbosity != Verbosity::Quiet {
         let mut rs_files_used_lines =
             construct_rs_files_used_lines(&rs_files_used);
         combined_scan_output_lines.append(&mut rs_files_used_lines);
