@@ -15,8 +15,8 @@ Symbols:
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
 1/1        4/4          0/0    0/0     0/0      !  test2_package_with_shallow_deps 0.1.0
-0/0        2/2          0/0    0/0     0/0      !  |-- ref_slice 1.1.1
-1/1        2/2          0/0    0/0     0/0      !  `-- test1_package_with_no_deps 0.1.0
+0/0        2/2          0/0    0/0     0/0      !  ├── ref_slice 1.1.1
+1/1        2/2          0/0    0/0     0/0      !  └── test1_package_with_no_deps 0.1.0
 
 2/2        8/8          0/0    0/0     0/0    
 

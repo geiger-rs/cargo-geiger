@@ -1,5 +1,5 @@
 ---
-source: cargo-geiger/tests/mod.rs
+source: cargo-geiger/tests/integration_tests.rs
 expression: stdout
 ---
 
@@ -15,14 +15,14 @@ Symbols:
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
 0/0        0/0          0/0    0/0     0/0      :) test6_cargo_lock_out_of_date 0.1.0
-0/0        0/0          0/0    0/0     0/0      :) |-- generational-arena 0.2.2
-0/0        0/0          0/0    0/0     0/0      ?  |   `-- cfg-if 0.1.9
-0/0        1/1          0/0    0/0     0/0      !  `-- idna 0.1.5
-0/0        0/0          0/0    0/0     0/0      ?      |-- matches 0.1.8
-0/0        0/0          0/0    0/0     0/0      :)     |-- unicode-bidi 0.3.4
-0/0        0/0          0/0    0/0     0/0      ?      |   `-- matches 0.1.8
-0/0        20/20        0/0    0/0     0/0      !      `-- unicode-normalization 0.1.8
-2/2        354/354      4/4    1/1     13/13    !          `-- smallvec 0.6.9
+0/0        0/0          0/0    0/0     0/0      :) ├── generational-arena 0.2.2
+0/0        0/0          0/0    0/0     0/0      ?  │   └── cfg-if 0.1.9
+0/0        1/1          0/0    0/0     0/0      !  └── idna 0.1.5
+0/0        0/0          0/0    0/0     0/0      ?      ├── matches 0.1.8
+0/0        0/0          0/0    0/0     0/0      :)     ├── unicode-bidi 0.3.4
+0/0        0/0          0/0    0/0     0/0      ?      │   └── matches 0.1.8
+0/0        20/20        0/0    0/0     0/0      !      └── unicode-normalization 0.1.8
+2/2        354/354      4/4    1/1     13/13    !          └── smallvec 0.6.9
 
 2/2        375/375      4/4    1/1     13/13  
 

@@ -1,5 +1,5 @@
 ---
-source: cargo-geiger/tests/mod.rs
+source: cargo-geiger/tests/integration_tests.rs
 expression: stdout
 ---
 
@@ -15,8 +15,8 @@ Symbols:
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
 0/0        0/0          0/0    0/0     0/0      :) test7_package_with_patched_dep 0.1.0
-0/0        0/0          0/0    0/0     0/0      ?  `-- num_cpus 1.10.1
-1/1        2/2          0/0    0/0     0/0      !      `-- test1_package_with_no_deps 0.1.0
+0/0        0/0          0/0    0/0     0/0      ?  └── num_cpus 1.10.1
+1/1        2/2          0/0    0/0     0/0      !      └── test1_package_with_no_deps 0.1.0
 
 1/1        2/2          0/0    0/0     0/0    
 
