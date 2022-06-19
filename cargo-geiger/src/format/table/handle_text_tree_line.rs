@@ -204,19 +204,11 @@ mod handle_text_tree_line_tests {
         expected_table_line_option,
         case(
             DependencyKind::Build,
-            Some(
-                String::from(
-                    format!("{}{}{}", table_row_empty(), "tree_vines", "[build-dependencies]")
-                )
-            )
+            Some(format!("{}{}{}", table_row_empty(), "tree_vines", "[build-dependencies]"))
         ),
         case(
             DependencyKind::Development,
-            Some(
-                String::from(
-                    format!("{}{}{}", table_row_empty(), "tree_vines", "[dev-dependencies]")
-                )
-            )
+            Some(format!("{}{}{}", table_row_empty(), "tree_vines", "[dev-dependencies]"))
         ),
         case(DependencyKind::Normal, None)
     )]
@@ -228,7 +220,7 @@ mod handle_text_tree_line_tests {
         let actual_table_lines =
             text_tree_line_extra_deps_group_to_table_line_string(
                 input_dep_kind,
-                tree_vines.clone(),
+                tree_vines,
             );
 
         assert_eq!(actual_table_lines, expected_table_line_option);

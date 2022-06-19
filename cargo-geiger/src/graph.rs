@@ -249,7 +249,7 @@ mod graph_tests {
         let target_args = TargetArgs::default();
 
         let (extra_deps, _) = build_graph_prerequisites(
-            &config_host,
+            config_host,
             &input_deps_args,
             &target_args,
         );
@@ -289,7 +289,7 @@ mod graph_tests {
         let deps_args = DepsArgs::default();
 
         let (_, target) = build_graph_prerequisites(
-            &config_host,
+            config_host,
             &deps_args,
             &input_target_args,
         );
