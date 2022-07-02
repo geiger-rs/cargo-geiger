@@ -45,7 +45,7 @@ mod krates_tests {
     use crate::lib_tests::construct_krates_and_metadata;
     use crate::mapping::GetPackageIdInformation;
 
-    use cargo_metadata::Version;
+    use cargo_metadata::semver::Version;
     use rstest::*;
     use semver::{BuildMetadata, Prerelease};
 
@@ -95,23 +95,23 @@ mod krates_tests {
         expected_package_name,
         expected_package_version,
         case(
-            "cargo_metadata:0.14.2",
+            "cargo_metadata:0.15.0",
             "cargo_metadata",
             Version {
                 major: 0,
-                minor: 14,
-                patch: 2,
+                minor: 15,
+                patch: 0,
                 pre: Prerelease::EMPTY,
                 build: BuildMetadata::EMPTY
             }
         ),
         case(
-            "cargo_metadata:0.14.2",
+            "cargo_metadata:0.15.0",
             "cargo_metadata",
             Version {
                 major: 0,
-                minor: 14,
-                patch: 2,
+                minor: 15,
+                patch: 0,
                 pre: Prerelease::EMPTY,
                 build: BuildMetadata::EMPTY
             }

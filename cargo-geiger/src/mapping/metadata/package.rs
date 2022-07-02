@@ -1,4 +1,5 @@
-use cargo_metadata::{Package, Version};
+use cargo_metadata::{Package};
+use cargo_metadata::semver::Version;
 use std::path::Path;
 
 use crate::mapping::GetPackageRoot;

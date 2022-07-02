@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 use cargo_metadata::Dependency as CargoMetadataDependency;
 use cargo_metadata::PackageId as CargoMetadataPackageId;
-use cargo_metadata::Version as CargoMetadataVersion;
+use cargo_metadata::semver::Version as CargoMetadataVersion;
 
 use crate::mapping::krates::GetNodeForKid;
 use crate::mapping::metadata::dependency::GetDependencyInformation;
