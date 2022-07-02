@@ -45,14 +45,15 @@ impl Executor for CustomExecutor {
         _on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>,
         _on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
     ) -> CargoResult<()> {
-        let args = cmd.get_args();
+        let mut args = cmd.get_args();
         let out_dir_key = OsString::from("--out-dir");
-        let out_dir_key_idx =
-            args.iter().position(|s| *s == out_dir_key).ok_or_else(|| {
-                CustomExecutorError::OutDirKeyMissing(cmd.to_string())
-            })?;
+
+        args.position(|s| *s == out_dir_key).ok_or_else(|| {
+            CustomExecutorError::OutDirKeyMissing(cmd.to_string())
+        })?;
+
         let out_dir = args
-            .get(out_dir_key_idx + 1)
+            .next()
             .ok_or_else(|| {
                 CustomExecutorError::OutDirValueMissing(cmd.to_string())
             })
@@ -72,7 +73,6 @@ impl Executor for CustomExecutor {
                 CustomExecutorError::InnerContextMutex(e.to_string())
             })?;
             for (arg_name, _) in args
-                .iter()
                 .map(|s| (s, s.to_string_lossy().to_lowercase()))
                 .filter(|(_, arg_value)| arg_value.ends_with(".rs"))
             {
