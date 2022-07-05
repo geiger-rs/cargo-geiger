@@ -1,7 +1,7 @@
 use crate::mapping::krates::GetNodeForKid;
 use crate::mapping::GetPackageIdInformation;
-use cargo_metadata::{Metadata, Package, PackageId};
 use cargo_metadata::semver::Version;
+use cargo_metadata::{Metadata, Package, PackageId};
 
 impl GetPackageIdInformation for PackageId {
     fn get_package_id_licence<T: GetNodeForKid>(
