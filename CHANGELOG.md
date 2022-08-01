@@ -1,6 +1,15 @@
 # Changelog
 ---------
 
+## 0.11.4
+ - Bump insta from 1.16 to 1.17 [#353], [#354]
+ - Bump regex from 0.5 to 0.6 [#348]
+ - Code clean-ups - thanks @jmcconnell26 [#333]
+ - Bump pico-args from 0.4 to 0.5 [#328]
+ - Upgraded from Cargo 0.62.0 to 0.63.0 [#345]
+ - Upgraded from Cargo 0.60.0 to 0.62.0 - thanks @jmcconnell26 [#317]
+ - Bump lockfile [#349]
+
 ## 0.11.3
  - Add threaded scanning [#268]
  - Upgraded dependencies including from Cargo 0.58.0 to 0.60.0 [#251], [#275]
