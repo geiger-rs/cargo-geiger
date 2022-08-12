@@ -33,7 +33,7 @@ strum = "0.24.1"
 strum_macros = "0.24.3"
 walkdir = "2.3.2"
 url = "2.2.1"
-cargo-util = "0.2.0"
+cargo-util = "0.2.1"
 
 [features]
 vendored-openssl = ["cargo/vendored-openssl"]
