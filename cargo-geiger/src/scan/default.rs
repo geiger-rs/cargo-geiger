@@ -102,18 +102,27 @@ fn scan(
         &scan_parameters.args.features_args,
         scan_parameters.config,
     );
-    let rs_files_used =
-        resolve_rs_file_deps(&compile_options, workspace).unwrap();
-    let geiger_context = find_unsafe(
-        cargo_metadata_parameters,
-        scan_parameters.config,
-        ScanMode::Full,
-        scan_parameters.print_config,
-    )?;
-    Ok(ScanDetails {
-        rs_files_used,
-        geiger_context,
-    })
+
+    match resolve_rs_file_deps(&compile_options, workspace) {
+        Ok(rs_files_used) => {
+            let geiger_context = find_unsafe(
+                cargo_metadata_parameters,
+                scan_parameters.config,
+                ScanMode::Full,
+                scan_parameters.print_config,
+            )?;
+            Ok(ScanDetails {
+                rs_files_used,
+                geiger_context,
+            })
+        },
+        Err(rs_resolve_error) => Err(CliError::new(
+            rs_resolve_error.into(),
+            1
+        ))
+    }
+
+
 }
 
 fn scan_to_report(
