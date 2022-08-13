@@ -1,6 +1,6 @@
 use cargo_metadata::DependencyKind;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ExtraDeps {
     All,
     Build,

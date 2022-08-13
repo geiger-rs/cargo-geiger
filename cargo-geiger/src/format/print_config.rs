@@ -8,7 +8,7 @@ use geiger::IncludeTests;
 use petgraph::{Direction, EdgeDirection};
 use strum_macros::EnumString;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Prefix {
     Depth,
     Indent,
@@ -30,7 +30,7 @@ impl Default for OutputFormat {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct PrintConfig {
     /// Don't truncate dependencies that have already been displayed.
     pub all: bool,

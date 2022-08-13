@@ -11,7 +11,7 @@ use std::fmt;
 use std::str::{self, FromStr};
 use strum_macros::EnumIter;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Charset {
     Ascii,
     GitHubMarkdown,
@@ -24,7 +24,7 @@ impl Default for Charset {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Chunk {
     License,
     Package,
@@ -46,14 +46,14 @@ impl FromStr for Charset {
     }
 }
 
-#[derive(Debug, Clone, EnumIter, PartialEq)]
+#[derive(Debug, Clone, EnumIter, Eq, PartialEq)]
 pub enum CrateDetectionStatus {
     NoneDetectedForbidsUnsafe,
     NoneDetectedAllowsUnsafe,
     UnsafeDetected,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum RawChunk<'a> {
     Argument(&'a str),
     Error(&'static str),

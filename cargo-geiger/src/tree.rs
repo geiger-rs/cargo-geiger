@@ -1,12 +1,13 @@
 pub mod traversal;
 
 use crate::format::print_config::{OutputFormat, Prefix, PrintConfig};
+use std::fmt::Write as _;
 
 use cargo_metadata::{DependencyKind, PackageId};
 
 /// A step towards decoupling some parts of the table-tree printing from the
 /// dependency graph traversal.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum TextTreeLine {
     /// A text line for a package
     Package { id: PackageId, tree_vines: String },
@@ -18,7 +19,7 @@ pub enum TextTreeLine {
     },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct TreeSymbols {
     pub down: &'static str,
     pub tee: &'static str,
@@ -40,14 +41,14 @@ fn construct_tree_vines_string(
             {
                 for &continues in rest {
                     let c = if continues { tree_symbols.down } else { " " };
-                    buffer.push_str(&format!("{}   ", c));
+                    (write!(buffer, "{}   ", c)).unwrap();
                 }
                 let c = if last_continues {
                     tree_symbols.tee
                 } else {
                     tree_symbols.ell
                 };
-                buffer.push_str(&format!("{0}{1}{1} ", c, tree_symbols.right));
+                (write!(buffer, "{0}{1}{1} ", c, tree_symbols.right)).unwrap();
             }
             buffer
         }

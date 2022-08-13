@@ -27,7 +27,7 @@ pub enum IncludeTests {
 }
 
 /// Scan result for a single `.rs` file.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RsFileMetrics {
     /// Metrics storage.
     pub counters: CounterBlock,
