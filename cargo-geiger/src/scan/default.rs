@@ -115,14 +115,9 @@ fn scan(
                 rs_files_used,
                 geiger_context,
             })
-        },
-        Err(rs_resolve_error) => Err(CliError::new(
-            rs_resolve_error.into(),
-            1
-        ))
+        }
+        Err(rs_resolve_error) => Err(CliError::new(rs_resolve_error.into(), 1)),
     }
-
-
 }
 
 fn scan_to_report(
