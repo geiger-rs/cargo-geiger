@@ -7,7 +7,7 @@ use super::display::Display;
 use cargo_metadata::PackageId;
 use std::error::Error;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Pattern {
     pub chunks: Vec<Chunk>,
 }

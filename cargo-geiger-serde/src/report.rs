@@ -7,7 +7,7 @@ use std::{
 };
 
 /// Package dependency information
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PackageInfo {
     pub id: PackageId,
     #[serde(serialize_with = "set_serde::serialize")]
@@ -38,7 +38,7 @@ impl PackageInfo {
 }
 
 /// Entry of the report generated from scanning for packages that forbid the use of `unsafe`
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct QuickReportEntry {
     pub package: PackageInfo,
     /// Whether this package forbids the use of `unsafe`
@@ -46,7 +46,7 @@ pub struct QuickReportEntry {
 }
 
 /// Report generated from scanning for packages that forbid the use of `unsafe`
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct QuickSafetyReport {
     /// Packages that were scanned successfully
     #[serde(with = "entry_serde")]
@@ -57,7 +57,7 @@ pub struct QuickSafetyReport {
 }
 
 /// Entry of the report generated from scanning for the use of `unsafe`
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ReportEntry {
     pub package: PackageInfo,
     /// Unsafety scan results
@@ -65,7 +65,7 @@ pub struct ReportEntry {
 }
 
 /// Report generated from scanning for the use of `unsafe`
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SafetyReport {
     #[serde(with = "entry_serde")]
     pub packages: HashMap<PackageId, ReportEntry>,
@@ -76,7 +76,7 @@ pub struct SafetyReport {
 }
 
 /// Unsafety usage in a package
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UnsafeInfo {
     /// Unsafe usage statistics for code used by the project
     pub used: CounterBlock,
@@ -98,7 +98,7 @@ pub enum DependencyKind {
 }
 
 /// Statistics about the use of `unsafe`
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Count {
     /// Number of safe items
     pub safe: u64,
@@ -135,7 +135,7 @@ impl AddAssign for Count {
 }
 
 /// Unsafe usage metrics collection.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct CounterBlock {
     pub functions: Count,
     pub exprs: Count,

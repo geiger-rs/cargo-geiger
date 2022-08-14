@@ -6,6 +6,7 @@ use crate::tree::{get_tree_symbols, TextTreeLine, TreeSymbols};
 use super::dependency_node::walk_dependency_node;
 
 use cargo_metadata::{DependencyKind, PackageId};
+use std::fmt::Write as _;
 use std::iter::Peekable;
 use std::slice::Iter;
 
@@ -75,9 +76,9 @@ fn push_extra_deps_group_text_tree_line_for_non_normal_dependencies(
         DependencyKind::Normal => (),
         _ => {
             let mut tree_vines = String::new();
-            for &continues in &*levels_continue {
+            for &continues in levels_continue {
                 let c = if continues { tree_symbols.down } else { " " };
-                tree_vines.push_str(&format!("{}   ", c))
+                (write!(tree_vines, "{}   ", c)).unwrap()
             }
             text_tree_lines.push(TextTreeLine::ExtraDepsGroup {
                 kind: dep_kind,

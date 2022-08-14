@@ -241,7 +241,7 @@ pub struct ReadmeArgs {
     pub update_readme: bool,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Verbosity {
     Verbose,
     Normal,

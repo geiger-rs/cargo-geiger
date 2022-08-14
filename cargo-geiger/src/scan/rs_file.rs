@@ -22,7 +22,7 @@ use walkdir::{DirEntry, WalkDir};
 /// Provides information needed to scan for crate root
 /// `#![forbid(unsafe_code)]`.
 /// The wrapped `PathBufs` are canonicalized.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum RsFile {
     /// Executable entry point source file, usually src/main.rs
     BinRoot(PathBuf),
