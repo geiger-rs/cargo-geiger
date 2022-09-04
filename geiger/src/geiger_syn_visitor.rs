@@ -132,8 +132,6 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
 #[cfg(test)]
 mod geiger_syn_visitor_tests {
     use super::*;
-
-    use crate::IncludeTests;
     use cargo_geiger_serde::{Count, CounterBlock};
     use rstest::*;
     use syn::visit::Visit;
@@ -161,9 +159,7 @@ mod geiger_syn_visitor_tests {
         expected_unsafe_exprs: u64,
     ) {
         let mut geiger_syn_visitor = GeigerSynVisitor::new(IncludeTests::Yes);
-
         let expr: Expr = syn::parse_str(expression_str).unwrap();
-
         geiger_syn_visitor.visit_expr(&expr);
 
         assert_eq!(
@@ -283,9 +279,7 @@ mod geiger_syn_visitor_tests {
         expected_counter_block: CounterBlock,
     ) {
         let mut geiger_syn_visitor = GeigerSynVisitor::new(input_include_tests);
-
         let input_file: File = syn::parse_str(input_file_str).unwrap();
-
         geiger_syn_visitor.visit_file(&input_file);
 
         assert_eq!(geiger_syn_visitor.metrics.counters, expected_counter_block,)
