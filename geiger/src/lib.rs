@@ -165,3 +165,119 @@ fn meta_list_is_cfg_test(meta_list: &syn::MetaList) -> bool {
         _ => false,
     })
 }
+
+#[cfg(test)]
+mod lib_tests {
+    use super::*;
+    use rstest::*;
+    use syn::{File, ItemFn, MetaList};
+
+    #[rstest(
+        input_file_str,
+        expected_file_forbids_unsafe,
+        case(
+            "#![forbid(unsafe_code)]
+             #![deny(warnings)]
+             mod a {
+                fn b() {3}
+             }",
+            true,
+        ),
+        case(
+            "#![deny(warnings)]
+             mod a {
+                fn b() {3}
+             }",
+            false,
+        )
+    )]
+    fn file_forbids_unsafe_test(
+        input_file_str: &str,
+        expected_file_forbids_unsafe: bool,
+    ) {
+        let input_file: File = syn::parse_str(input_file_str).unwrap();
+
+        assert_eq!(
+            file_forbids_unsafe(&input_file),
+            expected_file_forbids_unsafe,
+        )
+    }
+
+    #[rstest(
+        input_item_fn_str,
+        expected_is_test_fn,
+        case("#[test] fn a() { 3 }", true,),
+        case("fn a() { 3 }", false,),
+        case("#[rstest] fn a() { 3 }", false,)
+    )]
+    fn is_test_fn_test(input_item_fn_str: &str, expected_is_test_fn: bool) {
+        let input_item_fn: ItemFn = syn::parse_str(input_item_fn_str).unwrap();
+
+        assert_eq!(is_test_fn(&input_item_fn), expected_is_test_fn);
+    }
+
+    #[rstest(
+        input_item_fn_str,
+        expected_has_unsafe_attributes,
+        case(
+            "#[no_mangle]
+             pub extern \"C\" fn hello_from_rust() {
+                 println!(\"Hello from Rust!\");
+             }",
+            true
+        ),
+        case(
+            "#[export_name = \"exported_symbol_name\"]
+             pub fn name_in_rust() {
+                 println!(\"Hello from Rust!\");
+             }
+            ",
+            true
+        ),
+        case("fn a() { 3 }", false),
+        case("#[test] fn a() { 3 }", false)
+    )]
+    fn has_unsafe_attributes_test(
+        input_item_fn_str: &str,
+        expected_has_unsafe_attributes: bool,
+    ) {
+        let input_item_fn: ItemFn = syn::parse_str(input_item_fn_str).unwrap();
+
+        assert_eq!(
+            has_unsafe_attributes(&input_item_fn),
+            expected_has_unsafe_attributes
+        )
+    }
+
+    #[rstest(
+        input_item_mod_str,
+        expected_is_test_mod,
+        case("#[cfg(test)] mod a { fn b() {3} }", true,),
+        case("mod a { fn b() {3} }", false,)
+    )]
+    fn is_test_mod_test(input_item_mod_str: &str, expected_is_test_mod: bool) {
+        let input_mod: ItemMod = syn::parse_str(input_item_mod_str).unwrap();
+
+        assert_eq!(is_test_mod(&input_mod), expected_is_test_mod,);
+    }
+
+    #[rstest(
+        input_meta_list_str,
+        expected_meta_list_is_cfg_test,
+        case("cfg(test)", true,),
+        case("cfg(feature)", false,),
+        case("derive(Debug, Eq, PartialEq)", false,)
+    )]
+    fn meta_list_is_cfg_test_test(
+        input_meta_list_str: &str,
+        expected_meta_list_is_cfg_test: bool,
+    ) {
+        let input_meta_list: MetaList =
+            syn::parse_str(input_meta_list_str).unwrap();
+
+        assert_eq!(
+            meta_list_is_cfg_test(&input_meta_list),
+            expected_meta_list_is_cfg_test,
+        )
+    }
+}
