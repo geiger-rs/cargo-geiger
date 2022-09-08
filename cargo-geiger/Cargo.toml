@@ -32,7 +32,7 @@ serde_json = "1.0.85"
 strum = "0.24.1"
 strum_macros = "0.24.3"
 walkdir = "2.3.2"
-url = "2.2.1"
+url = "2.3.0"
 cargo-util = "0.2.1"
 
 [features]
