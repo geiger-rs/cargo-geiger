@@ -15,7 +15,7 @@ maintenance = { status = "experimental" }
 
 [dependencies]
 anyhow = "1.0.65"
-cargo = "0.64.0"
+cargo = "0.65.0"
 cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.3" }
 cargo_metadata = "0.15.0"
 cargo-platform = "0.1.2"
@@ -42,7 +42,7 @@ vendored-openssl = ["cargo/vendored-openssl"]
 assert_cmd = "2.0.4"
 better-panic = "0.3.0"
 fs_extra = "1.2.0"
-insta = "1.19.1"
+insta = "1.20.0"
 rand = "0.8.5"
 regex = "1.6.0"
 rstest = "0.15.0"
