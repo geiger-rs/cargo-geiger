@@ -28,7 +28,7 @@ pico-args = "0.5.0"
 rayon = "1.5.3"
 regex = "1.6.0"
 serde = { version = "1.0.132", features = ["derive"] }
-serde_json = "1.0.85"
+serde_json = "1.0.86"
 strum = "0.24.1"
 strum_macros = "0.24.3"
 walkdir = "2.3.2"
