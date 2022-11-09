@@ -22,7 +22,7 @@ cargo-platform = "0.1.2"
 colored = "2.0.0"
 console = "0.15.2"
 geiger = { path = "../geiger", version = "0.4.10" }
-krates = "0.11.0"
+krates = "0.12.5"
 petgraph = "0.6.2"
 pico-args = "0.5.0"
 rayon = "1.5.3"
