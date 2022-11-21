@@ -15,7 +15,7 @@ maintenance = { status = "experimental" }
 
 [dependencies]
 anyhow = "1.0.66"
-cargo = "0.65.0"
+cargo = "0.66.0"
 cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.3" }
 cargo_metadata = "0.15.0"
 cargo-platform = "0.1.2"
