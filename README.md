@@ -58,8 +58,9 @@ The use of unsafe is nuanced and necessary in some cases and any motivation to u
 
 It is important that any reporting is handled with care and it is important to understand what unsafe in Rust means:
 
-- https://www.reddit.com/r/rust/comments/y1u068/the_stigma_around_unsafe/
-- https://github.com/rust-lang/unsafe-code-guidelines
+- [Reddit: The Stigma around Unsafe](https://www.reddit.com/r/rust/comments/y1u068/the_stigma_around_unsafe/)
+- [YouTube: Rust NYC: Jon Gjengset - Demystifying unsafe code](https://youtu.be/QAz-maaH0KM)
+- [Rust-lang: WG Unsafe Code Guidelines](https://github.com/rust-lang/unsafe-code-guidelines)
 
 Known issues
 ------------
