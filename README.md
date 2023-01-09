@@ -52,7 +52,10 @@ Intended Use
 
 This tool is not meant to advise directly whether the code ultimately is truly insecure or not.
 
-The purpose of cargo-geiger is to provide statistical input to auditing e.g. with [safety-dance](https://github.com/rust-secure-code/safety-dance).
+The purpose of cargo-geiger is to provide statistical input to auditing e.g. with:
+
+- [cargo-crev](https://crates.io/crates/cargo-crev)
+- [safety-dance](https://github.com/rust-secure-code/safety-dance)
 
 The use of unsafe is nuanced and necessary in some cases and any motivation to use it is outside the scope of cargo-geiger.
 
