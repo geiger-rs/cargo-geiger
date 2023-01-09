@@ -10,21 +10,6 @@ cargo-geiger ☢️
 A tool that lists statistics related to the usage of unsafe Rust code in a Rust
 crate and all its dependencies.
 
-These statistics currently provide blunt information to aid auditing, e.g:
-* https://github.com/rust-secure-code/safety-dance
-* https://github.com/crev-dev/cargo-crev
-
-This tool is currently not meant to advise directly whether the code ultimately is truly insecure or not.
-
-This project is intended as an attempt to:
-* Create pressure against __unnecessary__ usage of unsafe Rust
-
-This project is not intended as an attempt to:
-* Create pressure against __necessary__ usage of unsafe Rust
-
-There are several proposals / projects to qualify the statistics in more end-user usable form:
-* Unsafe block Cross-Tracking and Matching - https://github.com/rust-secure-code/cargo-geiger/discussions/303
-
 This cargo plugin was originally based on the code from two other projects:
 * <https://github.com/icefoxen/cargo-osha> and
 * <https://github.com/sfackler/cargo-tree>
@@ -61,6 +46,20 @@ Why the name?
 <https://en.wikipedia.org/wiki/Geiger_counter>
 
 Unsafe code, like ionizing radiation, is unavoidable in some situations and should be safely contained!
+
+Intended Use
+------------
+
+This tool is not meant to advise directly whether the code ultimately is truly insecure or not.
+
+The purpose of cargo-geiger is to provide statistical input to auditing e.g. with [safety-dance](https://github.com/rust-secure-code/safety-dance).
+
+The use of unsafe is nuanced and necessary in some cases and any motivation to use it is outside the scope of cargo-geiger.
+
+It is important that any reporting is handled with care and it is important to understand what unsafe in Rust means:
+
+- https://www.reddit.com/r/rust/comments/y1u068/the_stigma_around_unsafe/
+- https://github.com/rust-lang/unsafe-code-guidelines
 
 Known issues
 ------------

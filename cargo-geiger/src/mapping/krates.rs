@@ -95,23 +95,23 @@ mod krates_tests {
         expected_package_name,
         expected_package_version,
         case(
-            "cargo_metadata:0.15.0",
+            "cargo_metadata:0.15.2",
             "cargo_metadata",
             Version {
                 major: 0,
                 minor: 15,
-                patch: 0,
+                patch: 2,
                 pre: Prerelease::EMPTY,
                 build: BuildMetadata::EMPTY
             }
         ),
         case(
-            "cargo_metadata:0.15.0",
+            "cargo_metadata:0.15.2",
             "cargo_metadata",
             Version {
                 major: 0,
                 minor: 15,
-                patch: 0,
+                patch: 2,
                 pre: Prerelease::EMPTY,
                 build: BuildMetadata::EMPTY
             }
