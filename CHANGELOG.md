@@ -1,6 +1,11 @@
 # Changelog
 ---------
 
+## 0.11.5
+ - Upgraded from Cargo 0.63 to 0.67
+ - Upgraded from rayon 1.5 to 1.6
+ - Bump lockfile
+
 ## 0.11.4
  - Bump insta from 1.16 to 1.17 [#353], [#354]
  - Bump regex from 0.5 to 0.6 [#348]
