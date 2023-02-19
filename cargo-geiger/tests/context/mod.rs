@@ -25,7 +25,7 @@ impl Context {
             .expect("Failed to canonicalize temporary path");
         // Canonicalizing on Windows returns a UNC path (starting with `\\?\`).
         // `cargo build` (as of 1.47.0) fails to use an overriding path dependency if the manifest
-        // given to `cargo build` is a UNC path. Roudtripping to URL gets rid of the UNC prefix.
+        // given to `cargo build` is a UNC path. Roundtripping to URL gets rid of the UNC prefix.
         let path = if cfg!(windows) {
             Url::from_file_path(path)
                 .expect("URL from path must succeed")
