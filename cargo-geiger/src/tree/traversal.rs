@@ -35,7 +35,7 @@ pub fn walk_dependency_tree(
     let mut visited_deps = HashSet::new();
     let mut levels_continue = vec![];
 
-    let mut walk_dependency_paramters = WalkDependencyParameters {
+    let mut walk_dependency_parameters = WalkDependencyParameters {
         graph,
         levels_continue: &mut levels_continue,
         print_config,
@@ -46,6 +46,6 @@ pub fn walk_dependency_tree(
     walk_dependency_node(
         cargo_metadata_parameters,
         node,
-        &mut walk_dependency_paramters,
+        &mut walk_dependency_parameters,
     )
 }

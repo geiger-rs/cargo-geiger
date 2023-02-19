@@ -67,7 +67,7 @@
  - Clean up error handling, remove unwrap() calls, logging. [#188]
  - Update lint enforcement level based on issue. [#189]
  - Implement Display for FoundWarningsError instead of relying on Debug. [#191]
- - Add futher testing. [#192]
+ - Add further testing. [#192]
  - Fix Args::parse_args for -p option. [#196]
  - Refactor mapping module to use traits. [#197]
  - Fix into target kind function logic. [#198]
