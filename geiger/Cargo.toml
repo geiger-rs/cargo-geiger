@@ -19,5 +19,5 @@ syn = { version = "1.0.109", features = ["parsing", "printing", "clone-impls", "
 proc-macro2 = "1.0.54"
 
 [dev-dependencies]
-rstest = "0.16.0"
+rstest = "0.17.0"
 tempfile = "3.4.0"
