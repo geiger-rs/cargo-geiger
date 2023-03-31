@@ -1,0 +1,24 @@
+---
+source: cargo-geiger/tests/integration_tests.rs
+expression: stdout
+---
+
+Metric output format: x/y
+    x = unsafe code used by the build
+    y = total unsafe code found in the crate
+
+Symbols: 
+    :) = No `unsafe` usage found, declares #![forbid(unsafe_code)]
+    ?  = No `unsafe` usage found, missing #![forbid(unsafe_code)]
+    !  = `unsafe` usage found
+
+Functions  Expressions  Impls  Traits  Methods  Dependency
+
+0/0        0/0          0/0    0/0     0/0      ?  test9_package_with_git_deps 0.1.0
+0/0        0/72         0/3    0/1     0/3      ?  ├── itertools 0.8.0
+0/0        0/14         0/0    0/0     0/0      ?  │   └── either 1.8.1
+0/0        2/2          0/0    0/0     0/0      !  └── ref_slice 1.2.1
+
+0/0        2/88         0/3    0/1     0/3    
+
+
