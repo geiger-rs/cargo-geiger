@@ -47,7 +47,7 @@ fn handle_source_repr(source_repr: &str) -> CargoGeigerSerdeSource {
                 .query_pairs()
                 .find(|(query_key, _)| query_key == "rev")
                 .map(|(_, rev)| String::from(rev))
-                .unwrap_or_else(String::new);
+                .unwrap_or_default();
 
             CargoGeigerSerdeSource::Git {
                 url: Url::parse(&git_url_without_query).unwrap(),
