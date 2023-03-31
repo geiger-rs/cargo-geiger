@@ -1,0 +1,9 @@
+[package]
+name = "test9_package_with_git_deps"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+ref_slice = { git = "https://github.com/steveklabnik/ref_slice.git" }
+itertools = { git = "https://github.com/rust-itertools/itertools.git", rev = "8761fbefb3b209" }
+[workspace]
