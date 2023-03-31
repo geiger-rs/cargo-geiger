@@ -1,6 +1,10 @@
 # Changelog
 ---------
 
+## 0.11.6
+ - Upgraded from Cargo 0.67 to 0.69
+ - Fix panic with git dep without rev - thanks @ginger51011 [#462]
+
 ## 0.11.5
  - Upgraded from Cargo 0.63 to 0.67
  - Upgraded from rayon 1.5 to 1.6
