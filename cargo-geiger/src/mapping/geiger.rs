@@ -46,12 +46,12 @@ fn handle_source_repr(source_repr: &str) -> CargoGeigerSerdeSource {
             let revision = raw_git_url
                 .query_pairs()
                 .find(|(query_key, _)| query_key == "rev")
-                .unwrap()
-                .1;
+                .map(|(_, rev)| String::from(rev))
+                .unwrap_or_default();
 
             CargoGeigerSerdeSource::Git {
                 url: Url::parse(&git_url_without_query).unwrap(),
-                rev: String::from(revision),
+                rev: revision,
             }
         }
         _ => {
@@ -118,6 +118,13 @@ mod geiger_tests {
             CargoGeigerSerdeSource::Git {
                 url: Url::parse("https://github.com/rust-itertools/itertools.git").unwrap(),
                 rev: String::from("8761fbefb3b209")
+            }
+        ),
+        case(
+            "git+https://github.com/rust-itertools/itertools.git",
+            CargoGeigerSerdeSource::Git {
+                url: Url::parse("https://github.com/rust-itertools/itertools.git").unwrap(),
+                rev: String::from("")
             }
         )
     )]
