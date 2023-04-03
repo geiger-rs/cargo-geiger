@@ -982,7 +982,7 @@ dependencies = [
  "cargo-geiger-serde",
  "proc-macro2",
  "rstest",
- "syn 1.0.109",
+ "syn 2.0.12",
  "tempfile",
 ]
 
