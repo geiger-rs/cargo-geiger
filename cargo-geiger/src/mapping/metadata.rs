@@ -337,6 +337,7 @@ mod metadata_tests {
             None,
             &[PackageIdSpec::from_package_id(package_id)],
             true,
+            None,
         )?;
         let packages = ops::get_resolved_packages(
             &resolve,

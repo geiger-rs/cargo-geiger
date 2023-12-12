@@ -170,6 +170,7 @@ pub fn resolve_rs_file_deps(
         // later.
         requested_profile: InternedString::new("dev"),
         doc: false,
+        dry_run: false,
     };
 
     ops::clean(workspace, &clean_options)

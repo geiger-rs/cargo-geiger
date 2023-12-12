@@ -1,6 +1,10 @@
 # Changelog
 ---------
 
+## 0.11.7
+ - Upgraded from Cargo 0.69 to 0.75
+ - Instruct to use --locked for installation
+
 ## 0.11.6
  - Upgraded from Cargo 0.67 to 0.69
  - Fix panic with git dep without rev - thanks @ginger51011 [#462]

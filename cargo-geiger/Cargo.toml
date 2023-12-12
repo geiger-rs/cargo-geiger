@@ -8,14 +8,14 @@ license = "Apache-2.0/MIT"
 name = "cargo-geiger"
 readme = "README.md"
 repository = "https://github.com/rust-secure-code/cargo-geiger"
-version = "0.11.6"
+version = "0.11.7"
 
 [badges]
 maintenance = { status = "experimental" }
 
 [dependencies]
 anyhow = "1.0.70"
-cargo = "0.69.0"
+cargo = "0.75.1"
 cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.3" }
 cargo_metadata = "0.15.0"
 cargo-platform = "0.1.2"
