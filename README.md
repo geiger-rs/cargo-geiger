@@ -1,9 +1,8 @@
 cargo-geiger ☢️ 
 ===============
 
-[![Build Status](https://dev.azure.com/cargo-geiger/cargo-geiger/_apis/build/status/rust-secure-code.cargo-geiger?branchName=master)](https://dev.azure.com/cargo-geiger/cargo-geiger/_build/latest?definitionId=1&branchName=master)
+[![CI](https://github.com/geiger-rs/cargo-geiger/actions/workflows/ci.yml/badge.svg)](https://github.com/geiger-rs/cargo-geiger/actions/workflows/ci.yml)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
-[![Code Coverage](https://img.shields.io/azure-devops/coverage/cargo-geiger/cargo-geiger/2/master)](https://img.shields.io/azure-devops/coverage/cargo-geiger/cargo-geiger/2/master)
 [![crates.io](https://img.shields.io/crates/v/cargo-geiger.svg)](https://crates.io/crates/cargo-geiger)
 [![Crates.io](https://img.shields.io/crates/d/cargo-geiger?label=cargo%20installs)](https://crates.io/crates/cargo-geiger)
 
@@ -28,6 +27,8 @@ Or, build and statically link OpenSSL as part of the cargo-geiger executable:
 ```bash
 cargo install --locked cargo-geiger --features vendored-openssl
 ```
+
+Alternatively pre-built binary releases are available from [GitHub releases](https://github.com/geiger-rs/cargo-geiger/releases).
 
 Usage
 -----
