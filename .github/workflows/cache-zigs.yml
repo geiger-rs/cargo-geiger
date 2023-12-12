@@ -1,0 +1,41 @@
+name: "Cache Zigs"
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  matrix:
+    name: Generate test matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix-json: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: rinse-repeat/zig-gh-helper
+          path: zig-helper      
+      - id: set-matrix
+        run: |
+          echo "ZIG_VERSION=${{ inputs.zig-version }}" | tee -a $GITHUB_ENV
+          content=`cat ./zig-helper/matrix.json`
+          # the following lines are only required for multi line json
+          content="${content//'%'/'%25'}"
+          content="${content//$'\n'/'%0A'}"
+          content="${content//$'\r'/'%0D'}"
+          # end of optional handling for multi line json
+          echo "::set-output name=matrix::$content"
+
+  install-zig:
+    needs: [matrix]
+    uses: rinse-repeat/zig-gh-helper/.github/workflows/zig_install.yml@main
+    with:
+      os: ${{ matrix.os }}
+      use-cache: true
+      ext-cache: AAB
+      zig-version: 0.9.1    
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.matrix.outputs.matrix-json) }}
+
