@@ -28,7 +28,7 @@ Or, build and statically link OpenSSL as part of the cargo-geiger executable:
 cargo install --locked cargo-geiger --features vendored-openssl
 ```
 
-Alternatively pre-built binary releases are available.
+Alternatively pre-built binary releases are available from [GitHub releases](https://github.com/geiger-rs/cargo-geiger/releases).
 
 Usage
 -----
