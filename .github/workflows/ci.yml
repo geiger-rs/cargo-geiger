@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ '**' ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: '-D warnings'
+
+jobs:
+  test-stable:
+    name: Test stable
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        include:
+          # 32-bit target
+          - target: i686-unknown-linux-gnu
+            deps: sudo apt update && sudo apt install gcc-multilib
+            runs-on: ubuntu-latest
+
+          # 64-bit target
+          - target: x86_64-unknown-linux-gnu
+            runs-on: ubuntu-latest
+
+          # Windows
+          - target: x86_64-pc-windows-msvc
+            runs-on: windows-latest
+
+          # MacOS
+          - target: x86_64-apple-darwin
+            runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - run: rustup target add ${{ matrix.target }}
+      - run: ${{ matrix.deps }}
+      - run: cargo test --target ${{ matrix.target }} --no-default-features
+      - run: cargo test --target ${{ matrix.target }}
+      - run: cargo test --target ${{ matrix.target }} --all-features
+
+  clippy:
+    name: Check that clippy is happy
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@1.73.0
+      with:
+        components: clippy
+    - run: cargo clippy --target x86_64-unknown-linux-gnu --all-features
+
+  rustfmt:
+    name: Check formatting
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt
+    - run: cargo fmt --all -- --check
+
+  doc:
+    name: Check docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - run: cargo doc --all-features
+
