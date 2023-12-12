@@ -20,13 +20,13 @@ Installation
 Try to find and use a system-wide installed OpenSSL library:
 
 ```bash
-cargo install cargo-geiger
+cargo install --locked cargo-geiger
 ```
 
 Or, build and statically link OpenSSL as part of the cargo-geiger executable:
 
 ```bash
-cargo install cargo-geiger --features vendored-openssl
+cargo install --locked cargo-geiger --features vendored-openssl
 ```
 
 Usage
