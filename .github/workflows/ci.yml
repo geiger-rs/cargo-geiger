@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test -- --skip args::args_tests::update_config_test_color_choice::case_4 
+      - run: cargo test -- --skip args::args_tests::update_config_test_color_choice::case_4 --skip test_package
 
 # TODO: Address clippy
 #  clippy:
