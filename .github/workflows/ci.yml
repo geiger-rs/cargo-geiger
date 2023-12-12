@@ -7,6 +7,7 @@ on:
     branches: [ '**' ]
 
 env:
+  CARGO_TERM_COLOR: 'always'
   RUSTFLAGS: '-D warnings'
 
 jobs:
