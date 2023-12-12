@@ -2,16 +2,6 @@ name: "Cache Zigs"
 
 on:
   workflow_dispatch:
-#    inputs:
-#      name:
-#        description: 'Component'
-#        required: true
-#        type: string
-#        default: pinkforest/auditable-rust-test-project
-#      tag:
-#        description: 'Release tag'
-#        required: true
-#        type: string
 
 jobs:
 
