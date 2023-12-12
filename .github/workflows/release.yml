@@ -32,7 +32,7 @@ jobs:
     needs: [matrix]
     uses: rinse-repeat/auditable-builder/.github/workflows/rust-builder.yml@main
     with:
-      repository: pinkforest/cargo-geiger
+      repository: geiger-rs/cargo-geiger
       rust-target: ${{ matrix.rust-target }}
       os: ${{ matrix.os }}
       rust: ${{ matrix.rust }}
@@ -50,6 +50,6 @@ jobs:
     needs: [build]
     uses: rinse-repeat/auditable-builder/.github/workflows/release-builder.yml@main
     with:
-      repository: pinkforest/cargo-geiger
+      repository: geiger-rs/cargo-geiger
       tag: ${{ github.event.inputs.tag }}
 
