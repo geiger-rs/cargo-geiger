@@ -365,7 +365,7 @@ dependencies = [
  "cargo-geiger-serde",
  "cargo-platform",
  "cargo-util",
- "cargo_metadata",
+ "cargo_metadata 0.15.4",
  "colored",
  "console",
  "fs_extra",
@@ -443,6 +443,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo_metadata"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d886547e41f740c616ae73108f6eb70afe6d940c7bc697cb30f13daec073037"
+dependencies = [
+ "camino",
+ "cargo-platform",
+ "semver",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -454,9 +468,9 @@ dependencies = [
 
 [[package]]
 name = "cfg-expr"
-version = "0.10.3"
+version = "0.15.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aacacf4d96c24b2ad6eb8ee6df040e4f27b0d0b39a5710c30091baa830485db"
+checksum = "6100bc57b6209840798d95cb2775684849d332f7bd788db2a8c8caf7ef82a41a"
 dependencies = [
  "smallvec",
 ]
@@ -2025,11 +2039,11 @@ dependencies = [
 
 [[package]]
 name = "krates"
-version = "0.11.0"
+version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a857d4b6450fbc2b85c03684b2beae51916a5a90e2fb5f9c2b8acc920ad29e49"
+checksum = "930c7df5d5cc675e69384a0ff046fdb7fcd08ff53825bafd619dcec7aa18d1b9"
 dependencies = [
- "cargo_metadata",
+ "cargo_metadata 0.18.1",
  "cfg-expr",
  "petgraph",
  "semver",
