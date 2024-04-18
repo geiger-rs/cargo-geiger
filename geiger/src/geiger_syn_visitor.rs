@@ -3,7 +3,7 @@ use super::{
     IncludeTests, RsFileMetrics,
 };
 
-use syn::{visit, Expr, ImplItemMethod, ItemFn, ItemImpl, ItemMod, ItemTrait};
+use syn::{visit, Expr, ItemFn, ItemImpl, ItemMod, ItemTrait, ImplItemFn, ExprUnsafe};
 
 pub struct GeigerSynVisitor {
     /// Count unsafe usage inside tests
@@ -43,7 +43,7 @@ impl GeigerSynVisitor {
 impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
     fn visit_file(&mut self, i: &'ast syn::File) {
         self.metrics.forbids_unsafe = file_forbids_unsafe(i);
-        syn::visit::visit_file(self, i);
+        visit::visit_file(self, i);
     }
 
     /// Free-standing functions
@@ -66,25 +66,20 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
     fn visit_expr(&mut self, i: &Expr) {
         // Total number of expressions of any type
         match i {
-            Expr::Unsafe(i) => {
-                self.enter_unsafe_scope();
-                visit::visit_expr_unsafe(self, i);
-                self.exit_unsafe_scope();
+            Expr::Lit(..) | Expr::Path(..) | Expr::Unsafe(..) => {
+                // Do not count.
             }
-            Expr::Path(_) | Expr::Lit(_) => {
-                // Do not count. The expression `f(x)` should count as one
-                // expression, not three.
-            }
-            other => {
-                // TODO: Print something pretty here or gather the data for later
-                // printing.
-                // if self.verbosity == Verbosity::Verbose && self.unsafe_scopes > 0 {
-                //     println!("{:#?}", other);
-                // }
+            _ => {
                 self.metrics.counters.exprs.count(self.unsafe_scopes > 0);
-                visit::visit_expr(self, other);
             }
         }
+        visit::visit_expr(self, i);
+    }
+
+    fn visit_expr_unsafe(&mut self, i: &ExprUnsafe) {
+        self.enter_unsafe_scope();
+        visit::visit_expr_unsafe(self, i);
+        self.exit_unsafe_scope();
     }
 
     fn visit_item_mod(&mut self, i: &ItemMod) {
@@ -109,7 +104,7 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
         visit::visit_item_trait(self, i);
     }
 
-    fn visit_impl_item_method(&mut self, i: &ImplItemMethod) {
+    fn visit_impl_item_fn(&mut self, i: &ImplItemFn) {
         if i.sig.unsafety.is_some() {
             self.enter_unsafe_scope()
         }
@@ -117,7 +112,7 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
             .counters
             .methods
             .count(i.sig.unsafety.is_some());
-        visit::visit_impl_item_method(self, i);
+        visit::visit_impl_item_fn(self, i);
         if i.sig.unsafety.is_some() {
             self.exit_unsafe_scope()
         }
