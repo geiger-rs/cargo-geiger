@@ -114,11 +114,11 @@ pub fn doc_comment_safety_report() -> SafetyReport {
 pub fn itertools_package_id() -> PackageId {
     PackageId {
         name: "itertools".into(),
-        version: Version::new(0, 8, 0),
+        version: Version::new(0, 12, 1),
         source: Source::Git {
             url: Url::parse("https://github.com/rust-itertools/itertools.git")
                 .unwrap(),
-            rev: "8761fbefb3b209".into(),
+            rev: "98d3978".into(),
         },
     }
 }

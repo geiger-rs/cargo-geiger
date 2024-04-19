@@ -114,10 +114,10 @@ mod geiger_tests {
             }
         ),
         case(
-            "git+https://github.com/rust-itertools/itertools.git?rev=8761fbefb3b209",
+            "git+https://github.com/rust-itertools/itertools.git?rev=98d3978",
             CargoGeigerSerdeSource::Git {
                 url: Url::parse("https://github.com/rust-itertools/itertools.git").unwrap(),
-                rev: String::from("8761fbefb3b209")
+                rev: String::from("98d3978")
             }
         ),
         case(
