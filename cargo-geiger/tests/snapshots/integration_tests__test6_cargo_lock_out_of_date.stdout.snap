@@ -22,8 +22,8 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0      :)     ├── unicode-bidi 0.3.4
 0/0        0/0          0/0    0/0     0/0      ?      │   └── matches 0.1.8
 0/0        20/20        0/0    0/0     0/0      !      └── unicode-normalization 0.1.8
-2/2        354/354      4/4    1/1     13/13    !          └── smallvec 0.6.9
+2/2        349/349      4/4    1/1     13/13    !          └── smallvec 0.6.9
 
-2/2        375/375      4/4    1/1     13/13  
+2/2        370/370      4/4    1/1     13/13
 
 

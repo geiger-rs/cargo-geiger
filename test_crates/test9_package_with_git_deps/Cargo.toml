@@ -5,5 +5,5 @@ edition = "2018"
 
 [dependencies]
 ref_slice = { git = "https://github.com/steveklabnik/ref_slice.git" }
-itertools = { git = "https://github.com/rust-itertools/itertools.git", rev = "8761fbefb3b209" }
+itertools = { git = "https://github.com/rust-itertools/itertools.git", rev = "98d3978" }
 [workspace]
