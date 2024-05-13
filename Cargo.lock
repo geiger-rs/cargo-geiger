@@ -365,7 +365,7 @@ dependencies = [
  "cargo-geiger-serde",
  "cargo-platform",
  "cargo-util",
- "cargo_metadata 0.18.1",
+ "cargo_metadata",
  "colored",
  "console",
  "fs_extra",
@@ -433,20 +433,6 @@ name = "cargo_metadata"
 version = "0.15.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eee4243f1f26fc7a42710e7439c149e2b10b05472f88090acce52632f231a73a"
-dependencies = [
- "camino",
- "cargo-platform",
- "semver",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "cargo_metadata"
-version = "0.18.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d886547e41f740c616ae73108f6eb70afe6d940c7bc697cb30f13daec073037"
 dependencies = [
  "camino",
  "cargo-platform",
@@ -2043,7 +2029,7 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a857d4b6450fbc2b85c03684b2beae51916a5a90e2fb5f9c2b8acc920ad29e49"
 dependencies = [
- "cargo_metadata 0.15.4",
+ "cargo_metadata",
  "cfg-expr",
  "petgraph",
  "semver",
