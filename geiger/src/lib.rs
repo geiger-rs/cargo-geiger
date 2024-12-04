@@ -5,7 +5,6 @@
 //! from `cargo`.
 
 #![forbid(unsafe_code)]
-#![deny(warnings)]
 
 pub mod find;
 pub use find::*; // preserve APIs

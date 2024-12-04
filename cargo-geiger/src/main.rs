@@ -4,7 +4,6 @@
 #![deny(clippy::cargo)]
 #![deny(clippy::doc_markdown)]
 #![forbid(unsafe_code)]
-#![deny(warnings)]
 
 extern crate cargo;
 extern crate colored;

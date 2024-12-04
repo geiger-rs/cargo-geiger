@@ -4,7 +4,6 @@
 //! This crate provides definitions to serialize the unsafety report.
 
 #![forbid(unsafe_code)]
-#![deny(warnings)]
 
 mod package_id;
 mod report;
