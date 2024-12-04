@@ -15,19 +15,14 @@ pub enum Prefix {
     None,
 }
 
-#[derive(Clone, Copy, Debug, EnumString, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, EnumString, Eq, PartialEq)]
 pub enum OutputFormat {
     Ascii,
     Json,
     GitHubMarkdown,
     Ratio,
+    #[default]
     Utf8,
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        OutputFormat::Utf8
-    }
 }
 
 #[derive(Debug, Eq, PartialEq)]

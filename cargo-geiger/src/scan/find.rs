@@ -2,7 +2,7 @@ use crate::format::print_config::PrintConfig;
 use crate::mapping::{CargoMetadataParameters, GetPackageRoot};
 use crate::scan::rs_file::{
     into_is_entry_point_and_path_buf, into_rs_code_file, into_target_kind,
-    is_file_with_ext, RsFile, RsFileMetricsWrapper,
+    is_file_with_ext, RsFile,
 };
 use crate::scan::PackageMetrics;
 
@@ -236,13 +236,11 @@ fn update_package_id_to_metrics_with_rs_file_metrics(
     path_buf: PathBuf,
     rs_file_metrics: RsFileMetrics,
 ) {
-    let package_metrics = package_id_to_metrics
-        .entry(package_id)
-        .or_insert_with(PackageMetrics::default);
+    let package_metrics = package_id_to_metrics.entry(package_id).or_default();
     let wrapper = package_metrics
         .rs_path_to_metrics
         .entry(path_buf)
-        .or_insert_with(RsFileMetricsWrapper::default);
+        .or_default();
     wrapper.metrics = rs_file_metrics;
     wrapper.is_crate_entry_point = is_entry_point;
 }

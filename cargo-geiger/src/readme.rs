@@ -123,7 +123,7 @@ fn read_file_contents(path: &Path) -> Result<Vec<String>, Error> {
 
     Ok(buf_reader
         .lines()
-        .filter_map(|l| l.ok())
+        .map_while(Result::ok)
         .collect::<Vec<String>>())
 }
 

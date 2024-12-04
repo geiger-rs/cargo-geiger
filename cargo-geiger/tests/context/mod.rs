@@ -17,7 +17,7 @@ impl Context {
             content_only: true,
             ..Default::default()
         };
-        fs_extra::dir::copy(&src_path, dir.path(), &copy_options)
+        fs_extra::dir::copy(src_path, dir.path(), &copy_options)
             .expect("Failed to copy tests");
         let path = dir
             .path()

@@ -11,17 +11,12 @@ use std::fmt;
 use std::str::{self, FromStr};
 use strum_macros::EnumIter;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Default, Debug, Eq, PartialEq)]
 pub enum Charset {
+    #[default]
     Ascii,
     GitHubMarkdown,
     Utf8,
-}
-
-impl Default for Charset {
-    fn default() -> Self {
-        Charset::Ascii
-    }
 }
 
 #[derive(Debug, Eq, PartialEq)]

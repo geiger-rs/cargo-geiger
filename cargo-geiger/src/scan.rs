@@ -184,11 +184,11 @@ fn list_files_used_but_not_scanned(
 
     rs_files_used
         .iter()
-        .cloned()
         .filter(|p| {
             !scanned_files.contains(p)
-                && !geiger_context.ignored_paths.contains(p)
+                && !geiger_context.ignored_paths.contains(*p)
         })
+        .cloned()
         .collect()
 }
 
@@ -357,7 +357,7 @@ mod scan_tests {
             &mut visited,
         );
 
-        assert_eq!(visited, vec![dependency_index].iter().cloned().collect());
+        assert_eq!(visited, [dependency_index].iter().cloned().collect());
         assert_eq!(
             package_info.dependencies.len(),
             expected_package_info_dependency_length
@@ -446,7 +446,7 @@ mod scan_tests {
             input_rs_path_to_metrics_vec.iter().cloned().collect();
 
         let geiger_context = GeigerContext {
-            package_id_to_metrics: vec![(
+            package_id_to_metrics: [(
                 package_id,
                 PackageMetrics { rs_path_to_metrics },
             )]

@@ -218,7 +218,7 @@ fn add_dir_entries_to_path_buf_hash_set(
     path_buf_hash_set: &mut HashSet<PathBuf>,
     workspace_root: PathBuf,
 ) -> Result<(), RsResolveError> {
-    for entry in WalkDir::new(&out_dir) {
+    for entry in WalkDir::new(out_dir) {
         let entry = entry.map_err(RsResolveError::Walkdir)?;
         if !is_file_with_ext(&entry, "d") {
             continue;
@@ -423,7 +423,7 @@ mod rs_file_tests {
         let config = Config::default().unwrap();
         let cwd = config.cwd();
 
-        let walk_dir_rust_files = WalkDir::new(&cwd)
+        let walk_dir_rust_files = WalkDir::new(cwd)
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| e.path().to_str().unwrap().ends_with(".rs"));
@@ -432,7 +432,7 @@ mod rs_file_tests {
             assert!(is_file_with_ext(&entry, "rs"));
         }
 
-        let walk_dir_readme_files = WalkDir::new(&cwd)
+        let walk_dir_readme_files = WalkDir::new(cwd)
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| e.path().to_str().unwrap().contains("README"));

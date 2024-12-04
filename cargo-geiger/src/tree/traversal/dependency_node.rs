@@ -55,8 +55,8 @@ pub fn walk_dependency_node(
     all_out_text_tree_lines
 }
 
-fn construct_dependency_type_nodes_hashmap<'a>(
-    graph: &'a Graph,
+fn construct_dependency_type_nodes_hashmap(
+    graph: &Graph,
     package: &PackageId,
     print_config: &PrintConfig,
 ) -> HashMap<DependencyKind, Vec<PackageId>> {
