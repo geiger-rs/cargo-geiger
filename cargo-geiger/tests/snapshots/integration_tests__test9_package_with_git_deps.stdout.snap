@@ -16,9 +16,9 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 
 0/0        0/0          0/0    0/0     0/0      ?  test9_package_with_git_deps 0.1.0
 0/0        13/83        0/3    0/1     0/3      !  ├── itertools 0.12.1
-0/0        14/14        0/0    0/0     0/0      !  │   └── either 1.11.0
+0/0        2/2          0/0    0/0     0/0      !  │   └── either 1.15.0
 0/0        2/2          0/0    0/0     0/0      !  └── ref_slice 1.2.1
 
-0/0        29/99        0/3    0/1     0/3
+0/0        17/87        0/3    0/1     0/3
 
 
