@@ -5,9 +5,22 @@ use std::{
     ops::{Add, AddAssign},
     path::PathBuf,
 };
+use std::fmt::{Debug, Formatter};
+
+fn debug_fmt_set(f: &mut Formatter<'_>, set: &HashSet<impl Debug>) -> std::fmt::Result {
+    let mut strings: Vec<String> = set.iter().map(|v| format!("{v:?}")).collect();
+    strings.sort();
+    write!(f, "{{ {} }}, ", strings.join(", "))
+}
+
+fn debug_fmt_map(f: &mut Formatter<'_>, set: &HashMap<impl Debug, impl Debug>) -> std::fmt::Result {
+    let mut strings: Vec<String> = set.iter().map(|(k, v)| format!("{k:?}: {v:?}")).collect();
+    strings.sort();
+    write!(f, "{{ {} }}, ", strings.join(", "))
+}
 
 /// Package dependency information
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PackageInfo {
     pub id: PackageId,
     #[serde(serialize_with = "set_serde::serialize")]
@@ -16,6 +29,18 @@ pub struct PackageInfo {
     pub dev_dependencies: HashSet<PackageId>,
     #[serde(serialize_with = "set_serde::serialize")]
     pub build_dependencies: HashSet<PackageId>,
+}
+impl Debug for PackageInfo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "PackageInfo {{ id: {:?}", self.id)?;
+        write!(f, ", dependencies: ")?;
+        debug_fmt_set(f, &self.dependencies)?;
+        write!(f, ", dev_dependencies: ")?;
+        debug_fmt_set(f, &self.dev_dependencies)?;
+        write!(f, ", build_dependencies: ")?;
+        debug_fmt_set(f, &self.build_dependencies)?;
+        write!(f, " }}")
+    }
 }
 
 impl PackageInfo {
@@ -65,7 +90,7 @@ pub struct ReportEntry {
 }
 
 /// Report generated from scanning for the use of `unsafe`
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SafetyReport {
     #[serde(with = "entry_serde")]
     pub packages: HashMap<PackageId, ReportEntry>,
@@ -73,6 +98,17 @@ pub struct SafetyReport {
     pub packages_without_metrics: HashSet<PackageId>,
     #[serde(serialize_with = "set_serde::serialize")]
     pub used_but_not_scanned_files: HashSet<PathBuf>,
+}
+impl Debug for SafetyReport {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SafetyReport {{ packages: ")?;
+        debug_fmt_map(f, &self.packages)?;
+        write!(f, ", packages_without_metrics: ")?;
+        debug_fmt_set(f, &self.packages_without_metrics)?;
+        write!(f, ", used_but_not_scanned_files: ")?;
+        debug_fmt_set(f, &self.used_but_not_scanned_files)?;
+        write!(f, " }}")
+    }
 }
 
 /// Unsafety usage in a package

@@ -226,7 +226,7 @@ impl IntegrationTest for Test4 {
                         unsafe_: 0,
                     },
                     exprs: Count {
-                        safe: 1,
+                        safe: 0,
                         unsafe_: 0,
                     },
                     ..Default::default()
@@ -283,7 +283,7 @@ impl IntegrationTest for Test6 {
                         unsafe_: 0,
                     },
                     exprs: Count {
-                        safe: 1,
+                        safe: 0,
                         unsafe_: 0,
                     },
                     ..Default::default()
@@ -325,7 +325,7 @@ impl IntegrationTest for Test7 {
                         unsafe_: 0,
                     },
                     exprs: Count {
-                        safe: 1,
+                        safe: 0,
                         unsafe_: 0,
                     },
                     ..Default::default()
