@@ -12,8 +12,8 @@ use crate::args::Args;
 // only the terminal output..? That API would be dependent on cargo.
 use cargo::core::Workspace;
 use cargo::util::{important_paths, CargoResult};
-use cargo::Config;
-use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
+use cargo::GlobalContext;
+use krates::cm::{CargoOpt, MetadataCommand};
 use cargo_platform::Cfg;
 use krates::Builder as KratesBuilder;
 use krates::Krates;
@@ -22,8 +22,8 @@ use std::str::{self, FromStr};
 
 pub fn get_cargo_metadata(
     args: &Args,
-    config: &Config,
-) -> CargoResult<Metadata> {
+    config: &GlobalContext,
+) -> CargoResult<krates::cm::Metadata> {
     let root_manifest_path = match args.manifest_path.clone() {
         Some(path) => path,
         None => important_paths::find_root_manifest_for_wd(config.cwd())?,
@@ -75,20 +75,20 @@ pub fn get_cfgs(
     ))
 }
 
-pub fn get_krates(cargo_metadata: &Metadata) -> CargoResult<Krates> {
+pub fn get_krates(cargo_metadata: &krates::cm::Metadata) -> CargoResult<Krates> {
     Ok(KratesBuilder::new()
         .build_with_metadata(cargo_metadata.clone(), |_| ())?)
 }
 
 pub fn get_workspace(
-    config: &Config,
+    gctx: &GlobalContext,
     manifest_path: Option<PathBuf>,
 ) -> CargoResult<Workspace> {
     let root = match manifest_path {
         Some(path) => path,
-        None => important_paths::find_root_manifest_for_wd(config.cwd())?,
+        None => important_paths::find_root_manifest_for_wd(gctx.cwd())?,
     };
-    Workspace::new(&root, config)
+    Workspace::new(&root, gctx)
 }
 
 // TODO: Make a wrapper type for canonical paths and hide all mutable access.
@@ -101,22 +101,22 @@ mod cli_tests {
     #[rstest]
     fn get_cargo_metadata_test() {
         let args = Args::default();
-        let config = Config::default().unwrap();
+        let gctx = GlobalContext::default().unwrap();
 
-        let cargo_metadata_result = get_cargo_metadata(&args, &config);
+        let cargo_metadata_result = get_cargo_metadata(&args, &gctx);
 
         assert!(cargo_metadata_result.is_ok());
     }
 
     #[rstest]
     fn get_cfgs_test() {
-        let config = Config::default().unwrap();
+        let gctx = GlobalContext::default().unwrap();
         let target: Option<String> = None;
         let root =
-            important_paths::find_root_manifest_for_wd(config.cwd()).unwrap();
-        let workspace = Workspace::new(&root, &config).unwrap();
+            important_paths::find_root_manifest_for_wd(gctx.cwd()).unwrap();
+        let workspace = Workspace::new(&root, &gctx).unwrap();
 
-        let global_rustc = config.load_global_rustc(Some(&workspace)).unwrap();
+        let global_rustc = gctx.load_global_rustc(Some(&workspace)).unwrap();
 
         let cfgs = get_cfgs(&global_rustc.path, &target);
 
@@ -139,8 +139,8 @@ mod cli_tests {
     #[rstest]
     fn get_krates_test() {
         let args = Args::default();
-        let config = Config::default().unwrap();
-        let cargo_metadata = get_cargo_metadata(&args, &config).unwrap();
+        let gctx = GlobalContext::default().unwrap();
+        let cargo_metadata = get_cargo_metadata(&args, &gctx).unwrap();
 
         let krates_result = get_krates(&cargo_metadata);
         assert!(krates_result.is_ok());
@@ -148,10 +148,10 @@ mod cli_tests {
 
     #[rstest]
     fn get_workspace_test() {
-        let config = Config::default().unwrap();
+        let gctx = GlobalContext::default().unwrap();
         let manifest_path: Option<PathBuf> = None;
 
-        let workspace_cargo_result = get_workspace(&config, manifest_path);
+        let workspace_cargo_result = get_workspace(&gctx, manifest_path);
         assert!(workspace_cargo_result.is_ok());
         let workspace = workspace_cargo_result.unwrap();
 

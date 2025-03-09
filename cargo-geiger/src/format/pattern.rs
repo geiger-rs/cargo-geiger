@@ -4,7 +4,7 @@ use crate::mapping::CargoMetadataParameters;
 
 use super::display::Display;
 
-use cargo_metadata::PackageId;
+use krates::cm::PackageId;
 use std::error::Error;
 
 #[derive(Debug, Eq, PartialEq)]

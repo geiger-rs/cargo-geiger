@@ -27,7 +27,7 @@ mod tree;
 
 #[cfg(test)]
 mod lib_tests {
-    use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
+    use krates::cm::{CargoOpt, Metadata, MetadataCommand};
     use krates::Builder as KratesBuilder;
     use krates::Krates;
 

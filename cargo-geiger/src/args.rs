@@ -2,7 +2,8 @@ use crate::args::Verbosity::{Normal, Quiet, Verbose};
 use crate::format::print_config::OutputFormat;
 
 use cargo::core::shell::ColorChoice;
-use cargo::{CliResult, Config};
+use cargo::CliResult;
+use cargo::util::context::GlobalContext;
 use pico_args::Arguments;
 use std::path::PathBuf;
 
@@ -176,15 +177,15 @@ impl Args {
     /// Update `cargo::util::Config` with values from `Args` struct, and set the shell
     /// colour choice
     /// ```
-    /// # use cargo::Config;
+    /// # use cargo::GlobalContext;
     /// # use cargo_geiger::args::Args;
     /// let args = Args::parse_args(
     ///     pico_args::Arguments::from_env()
     /// ).unwrap();
-    /// let mut config = Config::default().unwrap();
-    /// args.update_config(&mut config);
+    /// let mut gctx = GlobalContext::default().unwrap();
+    /// args.update_config(&mut gctx);
     /// ```
-    pub fn update_config(&self, config: &mut Config) -> CliResult {
+    pub fn update_config(&self, gctx: &mut GlobalContext) -> CliResult {
         let target_dir = None; // Doesn't add any value for cargo-geiger.
         let cargo_config_verbosity = match self.verbosity {
             Quiet => 0,
@@ -192,7 +193,7 @@ impl Args {
             Verbose => 2,
         };
 
-        config.configure(
+        gctx.configure(
             cargo_config_verbosity,
             self.quiet,
             self.color.as_deref(),
@@ -204,7 +205,7 @@ impl Args {
             &[], // Some cargo API change, TODO: Look closer at this later.
         )?;
 
-        match config.shell().color_choice() {
+        match gctx.shell().color_choice() {
             ColorChoice::Always => colored::control::set_override(true),
             ColorChoice::Never => colored::control::set_override(false),
             ColorChoice::CargoAuto => {}
@@ -393,14 +394,14 @@ pub mod args_tests {
             verbosity: input_verbosity,
             ..Default::default()
         };
-        let mut config = Config::default().unwrap();
-        let update_config_result = args.update_config(&mut config);
+        let mut gctx = GlobalContext::default().unwrap();
+        let update_config_result = args.update_config(&mut gctx);
 
         assert!(update_config_result.is_ok());
-        assert_eq!(config.extra_verbose(), expected_extra_verbose);
-        assert_eq!(config.shell().verbosity(), expected_shell_verbosity);
-        assert_eq!(config.offline(), offline);
-        assert!(config.target_dir().unwrap().is_none());
+        assert_eq!(gctx.extra_verbose(), expected_extra_verbose);
+        assert_eq!(gctx.shell().verbosity(), expected_shell_verbosity);
+        assert_eq!(gctx.offline(), offline);
+        assert!(gctx.target_dir().unwrap().is_none());
     }
 
     #[rstest(
@@ -421,13 +422,13 @@ pub mod args_tests {
             offline,
             ..Default::default()
         };
-        let mut config = Config::default().unwrap();
-        let update_config_result = args.update_config(&mut config);
+        let mut gctx = GlobalContext::default().unwrap();
+        let update_config_result = args.update_config(&mut gctx);
 
         assert!(update_config_result.is_ok());
-        assert_eq!(config.shell().color_choice(), expected_shell_color_choice);
-        assert_eq!(config.offline(), offline);
-        assert!(config.target_dir().unwrap().is_none());
+        assert_eq!(gctx.shell().color_choice(), expected_shell_color_choice);
+        assert_eq!(gctx.offline(), offline);
+        assert!(gctx.target_dir().unwrap().is_none());
     }
 
     #[rstest(
@@ -453,13 +454,13 @@ pub mod args_tests {
             offline,
             ..Default::default()
         };
-        let mut config = Config::default().unwrap();
-        let update_config_result = args.update_config(&mut config);
+        let mut gctx = GlobalContext::default().unwrap();
+        let update_config_result = args.update_config(&mut gctx);
 
         assert!(update_config_result.is_ok());
-        assert_eq!(config.frozen(), expected_frozen);
-        assert_eq!(config.lock_update_allowed(), expected_lock_update_allowed);
-        assert_eq!(config.offline(), offline);
-        assert!(config.target_dir().unwrap().is_none());
+        assert_eq!(gctx.frozen(), expected_frozen);
+        assert_eq!(gctx.lock_update_allowed(), expected_lock_update_allowed);
+        assert_eq!(gctx.offline(), offline);
+        assert!(gctx.target_dir().unwrap().is_none());
     }
 }

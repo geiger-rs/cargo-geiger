@@ -1,5 +1,5 @@
-use cargo_metadata::semver::Version;
-use cargo_metadata::Package;
+use krates::semver::Version;
+use krates::cm::Package;
 use std::path::Path;
 
 use crate::mapping::GetPackageRoot;

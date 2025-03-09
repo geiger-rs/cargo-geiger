@@ -2,7 +2,7 @@ use crate::format::pattern::Pattern;
 use crate::format::Chunk;
 use crate::mapping::{CargoMetadataParameters, GetPackageIdInformation};
 
-use cargo_metadata::PackageId;
+use krates::cm::PackageId;
 use std::fmt;
 
 pub struct Display<'a> {
@@ -64,7 +64,7 @@ pub mod display_tests {
     use crate::format::pattern::Pattern;
     use crate::format::Chunk;
 
-    use cargo_metadata::{CargoOpt, MetadataCommand};
+    use krates::cm::{CargoOpt, MetadataCommand};
     use krates::Builder as KratesBuilder;
     use rstest::*;
 

@@ -21,7 +21,7 @@ use cargo_geiger::scan::{scan, FoundWarningsError, ScanResult};
 
 use cargo::core::shell::Shell;
 use cargo::util::important_paths;
-use cargo::{CliError, CliResult, Config};
+use cargo::{CliError, CliResult, GlobalContext};
 
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
@@ -35,10 +35,10 @@ fn cli_result_main(args: &Args) -> CliResult {
         return Ok(());
     }
 
-    let mut config = Config::default()?;
-    args.update_config(&mut config)?;
+    let mut gctx = GlobalContext::default()?;
+    args.update_config(&mut gctx)?;
 
-    let cargo_metadata = get_cargo_metadata(args, &config)?;
+    let cargo_metadata = get_cargo_metadata(args, &gctx)?;
     let krates = get_krates(&cargo_metadata)?;
 
     let cargo_metadata_parameters = CargoMetadataParameters {
@@ -46,7 +46,7 @@ fn cli_result_main(args: &Args) -> CliResult {
         krates: &krates,
     };
 
-    let workspace = get_workspace(&config, args.manifest_path.clone())?;
+    let workspace = get_workspace(&gctx, args.manifest_path.clone())?;
 
     let cargo_metadata_root_package_id = if let Some(
         cargo_metadata_root_package,
@@ -58,14 +58,14 @@ fn cli_result_main(args: &Args) -> CliResult {
             "manifest path `{}` is a virtual manifest, but this command requires running against an actual package in this workspace",
             match args.manifest_path.clone() {
                 Some(path) => path,
-                None => important_paths::find_root_manifest_for_wd(config.cwd())?,
+                None => important_paths::find_root_manifest_for_wd(gctx.cwd())?,
             }.as_os_str().to_str().unwrap()
         );
 
         return Err(CliError::code(1));
     };
 
-    let global_rustc = config.load_global_rustc(Some(&workspace))?;
+    let global_rustc = gctx.load_global_rustc(Some(&workspace))?;
 
     let graph = build_graph(
         args,
@@ -90,7 +90,7 @@ fn cli_result_main(args: &Args) -> CliResult {
     } = scan(
         args,
         &cargo_metadata_parameters,
-        &config,
+        &gctx,
         &graph,
         query_resolve_root_package_id,
         &workspace,

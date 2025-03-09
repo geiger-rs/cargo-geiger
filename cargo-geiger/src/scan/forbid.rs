@@ -9,9 +9,9 @@ use super::{package_metrics, ScanMode, ScanParameters, ScanResult};
 
 use table::scan_forbid_to_table;
 
-use cargo::{CliError, Config};
+use cargo::{CliError, GlobalContext};
 use cargo_geiger_serde::{QuickReportEntry, QuickSafetyReport};
-use cargo_metadata::PackageId;
+use krates::cm::PackageId;
 
 pub fn scan_forbid_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
@@ -22,7 +22,7 @@ pub fn scan_forbid_unsafe(
     match scan_parameters.args.output_format {
         OutputFormat::Json => scan_forbid_to_report(
             cargo_metadata_parameters,
-            scan_parameters.config,
+            scan_parameters.gctx,
             graph,
             scan_parameters.args.output_format,
             scan_parameters.print_config,
@@ -30,7 +30,7 @@ pub fn scan_forbid_unsafe(
         ),
         _ => scan_forbid_to_table(
             cargo_metadata_parameters,
-            scan_parameters.config,
+            scan_parameters.gctx,
             graph,
             scan_parameters.print_config,
             root_package_id,
@@ -40,7 +40,7 @@ pub fn scan_forbid_unsafe(
 
 fn scan_forbid_to_report(
     cargo_metadata_parameters: &CargoMetadataParameters,
-    config: &Config,
+    gctx: &GlobalContext,
     graph: &Graph,
     output_format: OutputFormat,
     print_config: &PrintConfig,
@@ -48,7 +48,7 @@ fn scan_forbid_to_report(
 ) -> Result<ScanResult, CliError> {
     let geiger_context = find_unsafe(
         cargo_metadata_parameters,
-        config,
+        gctx,
         ScanMode::EntryPointsOnly,
         print_config,
     )?;

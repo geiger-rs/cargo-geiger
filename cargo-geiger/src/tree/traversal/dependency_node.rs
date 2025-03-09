@@ -7,7 +7,7 @@ use crate::tree::TextTreeLine;
 use super::construct_tree_vines_string;
 use super::walk_dependency_kind;
 
-use cargo_metadata::{DependencyKind, PackageId};
+use krates::cm::{DependencyKind, PackageId};
 use petgraph::visit::EdgeRef;
 use petgraph::EdgeDirection;
 use std::collections::HashMap;
@@ -94,7 +94,7 @@ mod dependency_node_tests {
     use crate::format::pattern::Pattern;
     use crate::format::print_config::{OutputFormat, Prefix, PrintConfig};
 
-    use cargo_metadata::DependencyKind;
+    use krates::cm::DependencyKind;
     use geiger::IncludeTests;
     use petgraph::graph::NodeIndex;
     use rstest::*;
@@ -142,7 +142,7 @@ mod dependency_node_tests {
         expected_normal_nodes_length: usize,
     ) {
         let mut inner_graph =
-            petgraph::Graph::<PackageId, cargo_metadata::DependencyKind>::new();
+            petgraph::Graph::<PackageId, DependencyKind>::new();
         let mut nodes = HashMap::<PackageId, NodeIndex>::new();
 
         let package_ids = create_cargo_metadata_package_id_vec(7);

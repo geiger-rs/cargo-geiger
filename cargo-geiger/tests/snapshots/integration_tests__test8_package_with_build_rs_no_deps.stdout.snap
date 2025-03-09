@@ -7,7 +7,7 @@ Metric output format: x/y
     x = unsafe code used by the build
     y = total unsafe code found in the crate
 
-Symbols: 
+Symbols:
     :) = No `unsafe` usage found, declares #![forbid(unsafe_code)]
     ?  = No `unsafe` usage found, missing #![forbid(unsafe_code)]
     !  = `unsafe` usage found

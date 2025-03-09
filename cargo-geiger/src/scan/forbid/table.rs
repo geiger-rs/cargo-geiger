@@ -11,13 +11,13 @@ use crate::tree::TextTreeLine;
 use super::super::find::find_unsafe;
 use super::super::{ScanMode, ScanResult};
 
-use cargo::{CliError, Config};
-use cargo_metadata::PackageId;
+use cargo::{CliError, GlobalContext};
+use krates::cm::PackageId;
 use colored::Colorize;
 
 pub fn scan_forbid_to_table(
     cargo_metadata_parameters: &CargoMetadataParameters,
-    config: &Config,
+    gctx: &GlobalContext,
     graph: &Graph,
     print_config: &PrintConfig,
     root_package_id: PackageId,
@@ -52,7 +52,7 @@ pub fn scan_forbid_to_table(
             } => {
                 let geiger_ctx = find_unsafe(
                     cargo_metadata_parameters,
-                    config,
+                    gctx,
                     ScanMode::EntryPointsOnly,
                     print_config,
                 )?;
@@ -77,7 +77,7 @@ pub fn scan_forbid_to_table(
 }
 
 fn construct_key_lines(emoji_symbols: &EmojiSymbols) -> Vec<String> {
-    let mut output_key_lines = vec![String::new(), String::from("Symbols: ")];
+    let mut output_key_lines = vec![String::new(), String::from("Symbols:")];
 
     let forbids = "All entry point .rs files declare #![forbid(unsafe_code)].";
     let unknown = "This crate may use unsafe code.";

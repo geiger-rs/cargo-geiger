@@ -5,7 +5,7 @@ use crate::tree::{get_tree_symbols, TextTreeLine, TreeSymbols};
 
 use super::dependency_node::walk_dependency_node;
 
-use cargo_metadata::{DependencyKind, PackageId};
+use krates::cm::{DependencyKind, PackageId};
 use std::fmt::Write as _;
 use std::iter::Peekable;
 use std::slice::Iter;

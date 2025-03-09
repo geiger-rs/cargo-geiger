@@ -110,7 +110,7 @@ fn table_footer_unsafe_counts(
         format!("{}/{}", used.unsafe_, used.unsafe_ + not_used.unsafe_)
     };
     let output = format!(
-        "{: <10} {: <12} {: <6} {: <7} {: <7}",
+        "{: <10} {: <12} {: <6} {: <7} {}",
         fmt(&used.functions, &not_used.functions),
         fmt(&used.exprs, &not_used.exprs),
         fmt(&used.item_impls, &not_used.item_impls),
@@ -256,11 +256,11 @@ mod table_tests {
         expected_line,
         case(
             OutputFormat::Ascii,
-            String::from("2/4        4/8          6/12   8/16    10/20  ")
+            String::from("2/4        4/8          6/12   8/16    10/20")
         ),
         case(
             OutputFormat::GitHubMarkdown,
-            String::from("2/4        4/8          6/12   8/16    10/20  ")
+            String::from("2/4        4/8          6/12   8/16    10/20")
         ),
         case(
             OutputFormat::Ratio,
@@ -268,7 +268,7 @@ mod table_tests {
         ),
         case(
             OutputFormat::Utf8,
-            String::from("2/4        4/8          6/12   8/16    10/20  ")
+            String::from("2/4        4/8          6/12   8/16    10/20")
         )
     )]
     fn table_footer_test(

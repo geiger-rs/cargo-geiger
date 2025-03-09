@@ -9,12 +9,13 @@ use crate::mapping::{
 };
 
 use cargo::util::CargoResult;
-use cargo_metadata::{Dependency, DependencyKind, Package, PackageId};
+use krates::cm::{Dependency, DependencyKind, Package, PackageId};
 use cargo_platform::Cfg;
 use petgraph::graph::NodeIndex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use krates::{Kid, Node};
 
 /// Representation of the package dependency graph
 pub struct Graph {
@@ -106,24 +107,23 @@ fn add_package_dependencies_to_graph(
     is_root_package: bool,
 ) {
     let index = graph.nodes[&package_id];
+    let kid: Kid = package_id.clone().into();
 
     let krates_node_option =
-        cargo_metadata_parameters.krates.node_for_kid(&package_id);
+        cargo_metadata_parameters.krates.node_for_kid(&kid);
 
     let dep_not_replaced_option = cargo_metadata_parameters
         .metadata
         .deps_not_replaced(&package_id, is_root_package);
 
     match (krates_node_option, dep_not_replaced_option) {
-        (Some(krates_node), Some(dependencies)) => {
-            let package = krates_node.krate.clone();
-
+        (Some(Node::Krate { krate, ..}), Some(dependencies)) => {
             for (dependency_package_id, _) in dependencies {
                 let dependency_iterator = filter_dependencies(
                     cargo_metadata_parameters,
                     &dependency_package_id,
                     graph_configuration,
-                    &package,
+                    krate,
                 );
 
                 for dependency in dependency_iterator {

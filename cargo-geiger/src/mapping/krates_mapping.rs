@@ -1,23 +1,28 @@
 use crate::mapping::QueryResolve;
 
-use krates::{Krates, Node, PkgSpec};
+use krates::{Kid, Krates, Node, PkgSpec};
 use std::str::FromStr;
 
-use cargo_metadata::{Package, PackageId as CargoMetadataPackageId};
+use krates::cm::{Package, PackageId as CargoMetadataPackageId};
 
-pub trait GetNodeForKid {
-    fn get_node_for_kid(
+pub trait GetPackage {
+    fn get_package(
         &self,
         package_id: &CargoMetadataPackageId,
-    ) -> Option<&Node<Package>>;
+    ) -> Option<&Package>;
 }
 
-impl GetNodeForKid for Krates {
-    fn get_node_for_kid(
+impl GetPackage for Krates {
+    fn get_package(
         &self,
         package_id: &CargoMetadataPackageId,
-    ) -> Option<&Node<Package>> {
-        self.node_for_kid(package_id)
+    ) -> Option<&Package> {
+        let kid: Kid = package_id.clone().into();
+        let node = self.node_for_kid(&kid)?;
+        match node {
+            Node::Krate { krate, .. } => Some(krate),
+            Node::Feature { .. } => None,
+        }
     }
 }
 
@@ -26,8 +31,8 @@ impl QueryResolve for Krates {
         match PkgSpec::from_str(query) {
             Ok(package_spec) => self
                 .krates_by_name(package_spec.name.as_str())
-                .filter(|(_, node)| package_spec.matches(&node.krate))
-                .map(|(_, node)| node.krate.clone().id)
+                .filter(|m| package_spec.matches(&m.krate))
+                .map(|m| m.krate.clone().id)
                 .collect::<Vec<CargoMetadataPackageId>>()
                 .pop(),
             _ => {
@@ -45,7 +50,7 @@ mod krates_tests {
     use crate::lib_tests::construct_krates_and_metadata;
     use crate::mapping::GetPackageIdInformation;
 
-    use cargo_metadata::semver::Version;
+    use krates::semver::Version;
     use rstest::*;
     use semver::{BuildMetadata, Prerelease};
 
@@ -95,23 +100,12 @@ mod krates_tests {
         expected_package_name,
         expected_package_version,
         case(
-            "cargo_metadata:0.15.4",
-            "cargo_metadata",
+            "krates:0.18.1",
+            "krates",
             Version {
                 major: 0,
-                minor: 15,
-                patch: 4,
-                pre: Prerelease::EMPTY,
-                build: BuildMetadata::EMPTY
-            }
-        ),
-        case(
-            "cargo_metadata:0.15.4",
-            "cargo_metadata",
-            Version {
-                major: 0,
-                minor: 15,
-                patch: 4,
+                minor: 18,
+                patch: 1,
                 pre: Prerelease::EMPTY,
                 build: BuildMetadata::EMPTY
             }

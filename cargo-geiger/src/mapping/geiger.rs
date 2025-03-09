@@ -1,11 +1,11 @@
 use super::metadata::package_id::{GetPackageIdRepr, ToCargoMetadataPackage};
 use super::ToCargoGeigerSource;
 
-use cargo_metadata::Metadata;
+use krates::cm::Metadata;
 use url::Url;
 
 use cargo_geiger_serde::Source as CargoGeigerSerdeSource;
-use cargo_metadata::PackageId as CargoMetadataPackageId;
+use krates::cm::PackageId as CargoMetadataPackageId;
 
 impl ToCargoGeigerSource for CargoMetadataPackageId {
     fn to_cargo_geiger_source(

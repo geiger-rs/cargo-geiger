@@ -8,18 +8,18 @@ use super::{
 };
 use package_id::ToCargoMetadataPackage;
 
-use crate::mapping::krates::GetNodeForKid;
+use crate::mapping::krates_mapping::GetPackage;
 use crate::mapping::{ToCargoGeigerDependencyKind, ToCargoGeigerSource};
 
-use cargo_metadata::Metadata;
+use krates::cm::Metadata;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::slice::Iter;
 
-use cargo_metadata::Dependency as CargoMetadataDependency;
-use cargo_metadata::DependencyKind as CargoMetadataDependencyKind;
-use cargo_metadata::Package as CargoMetadataPackage;
-use cargo_metadata::PackageId as CargoMetadataPackageId;
+use krates::cm::Dependency as CargoMetadataDependency;
+use krates::cm::DependencyKind as CargoMetadataDependencyKind;
+use krates::cm::Package as CargoMetadataPackage;
+use krates::cm::PackageId as CargoMetadataPackageId;
 
 use cargo_geiger_serde::DependencyKind as CargoGeigerSerdeDependencyKind;
 
@@ -40,7 +40,7 @@ impl DepsNotReplaced for Metadata {
                         dependency.to_cargo_metadata_package_id(self)
                     {
                         if dependency.kind
-                            == cargo_metadata::DependencyKind::Development
+                            == krates::cm::DependencyKind::Development
                             && !is_root_package
                         {
                             continue;
@@ -66,7 +66,7 @@ impl DepsNotReplaced for Metadata {
 
 impl MatchesIgnoringSource for CargoMetadataDependency {
     fn matches_ignoring_source<
-        T: GetNodeForKid,
+        T: GetPackage,
         U: GetPackageIdInformation + Display,
     >(
         &self,
@@ -164,17 +164,18 @@ mod metadata_tests {
     use cargo::core::{
         Package, PackageId, PackageIdSpec, PackageSet, Resolve, Workspace,
     };
-    use cargo::{ops, CargoResult, Config};
+    use cargo::{ops, CargoResult, GlobalContext};
     use krates::semver::VersionReq;
     use rstest::*;
     use std::path::PathBuf;
+    use cargo::sources::SourceConfigMap;
 
     #[rstest]
     fn deps_not_replaced_test() {
         let args = FeaturesArgs::default();
-        let config = Config::default().unwrap();
+        let gctx = GlobalContext::default().unwrap();
         let (package, mut registry, workspace) =
-            construct_package_registry_workspace_tuple(&config);
+            construct_package_registry_workspace_tuple(&gctx);
 
         let (_, resolve) =
             resolve(&args, package.package_id(), &mut registry, &workspace)
@@ -235,11 +236,11 @@ mod metadata_tests {
         let dependency_package_id = krates
             .krates()
             .filter(|k| {
-                k.krate.name == dependency.name
-                    && dependency.req.matches(&k.krate.version)
+                k.name == dependency.name
+                    && dependency.req.matches(&k.version)
             })
             .map(|k| k.id.clone())
-            .collect::<Vec<cargo_metadata::PackageId>>()
+            .collect::<Vec<krates::cm::PackageId>>()
             .pop()
             .unwrap();
 
@@ -293,21 +294,21 @@ mod metadata_tests {
     }
 
     fn construct_package_registry_workspace_tuple(
-        config: &Config,
+        gctx: &GlobalContext,
     ) -> (Package, PackageRegistry, Workspace) {
         let manifest_path: Option<PathBuf> = None;
-        let workspace = get_workspace(config, manifest_path).unwrap();
+        let workspace = get_workspace(gctx, manifest_path).unwrap();
         let package = workspace.current().unwrap().clone();
-        let registry = get_registry(config, &package).unwrap();
+        let registry = get_registry(gctx, &package).unwrap();
 
         (package, registry, workspace)
     }
 
     fn get_registry<'a>(
-        config: &'a Config,
+        gctx: &'a GlobalContext,
         package: &Package,
     ) -> CargoResult<PackageRegistry<'a>> {
-        let mut registry = PackageRegistry::new(config)?;
+        let mut registry = PackageRegistry::new_with_source_config(gctx, SourceConfigMap::new(gctx).unwrap())?;
         registry.add_sources(Some(package.package_id().source_id()))?;
         Ok(registry)
     }
@@ -328,6 +329,9 @@ mod metadata_tests {
         .unwrap();
 
         let prev = ops::load_pkg_lockfile(workspace)?;
+        let package_id_spec = PackageIdSpec::new(package_id.name().to_string())
+            .with_version(package_id.version().clone().into())
+            .with_url(package_id.source_id().url().clone());
         let resolve = ops::resolve_with_previous(
             registry,
             workspace,
@@ -335,13 +339,15 @@ mod metadata_tests {
             HasDevUnits::Yes,
             prev.as_ref(),
             None,
-            &[PackageIdSpec::from_package_id(package_id)],
+            &[package_id_spec],
             true,
-            None,
         )?;
         let packages = ops::get_resolved_packages(
             &resolve,
-            PackageRegistry::new(workspace.config())?,
+            PackageRegistry::new_with_source_config(
+                workspace.gctx(),
+                SourceConfigMap::new(workspace.gctx()).unwrap(),
+            )?,
         )?;
         Ok((packages, resolve))
     }

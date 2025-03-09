@@ -17,7 +17,7 @@ use super::scan;
 
 use cargo::core::Workspace;
 use cargo::CliError;
-use cargo_metadata::PackageId;
+use krates::cm::PackageId;
 use colored::Colorize;
 
 pub fn scan_to_table(
@@ -114,7 +114,7 @@ fn construct_key_lines(
         }
     }
     output_key_lines.push(String::new());
-    output_key_lines.push(String::from("Symbols: "));
+    output_key_lines.push(String::from("Symbols:"));
 
     let forbids = "No `unsafe` usage found, declares #![forbid(unsafe_code)]";
     let unknown = "No `unsafe` usage found, missing #![forbid(unsafe_code)]";

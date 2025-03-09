@@ -8,7 +8,7 @@ use super::total_package_counts::TotalPackageCounts;
 use super::TableParameters;
 use super::{table_row, table_row_empty};
 
-use cargo_metadata::{DependencyKind, PackageId};
+use krates::cm::{DependencyKind, PackageId};
 use colored::ColoredString;
 use std::collections::HashSet;
 use std::fmt::Display;

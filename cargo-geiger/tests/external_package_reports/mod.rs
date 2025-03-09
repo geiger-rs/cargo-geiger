@@ -487,7 +487,7 @@ pub fn num_cpus_package_id(cx: &Context) -> PackageId {
     PackageId {
         name: "num_cpus".into(),
         version: Version::new(1, 10, 1),
-        source: super::make_workspace_source(cx, "support", "num_cpus"),
+        source: super::make_workspace_source(cx, "support", "num_cpus#1.10."),
     }
 }
 
@@ -522,5 +522,5 @@ pub fn make_package_id(cx: &Context, name: &str) -> PackageId {
 }
 
 fn make_source(cx: &Context, name: &str) -> Source {
-    Source::Path(Url::from_file_path(cx.crate_dir(name)).unwrap())
+    Source::Path(Url::from_file_path(cx.crate_dir(&format!("{}#0.1.", name))).unwrap())
 }

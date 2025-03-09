@@ -8,7 +8,7 @@ use cargo::core::Workspace;
 use cargo::ops;
 use cargo::ops::{CleanOptions, CompileOptions};
 use cargo::util::{interning::InternedString, CargoResult};
-use cargo::Config;
+use cargo::GlobalContext;
 use cargo_util::paths;
 use geiger::RsFileMetrics;
 use std::collections::HashSet;
@@ -50,6 +50,7 @@ pub struct RsFileMetricsWrapper {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum RsResolveError {
     /// This should not happen unless incorrect assumptions have been made in
     /// cargo-geiger about how the cargo API works.
@@ -107,6 +108,7 @@ pub fn into_rs_code_file(target_kind: &TargetKind, path: PathBuf) -> RsFile {
     }
 }
 
+/// TODO: Update the comment below.  It is stale since the switch to krates 18.
 /// `cargo_metadata` returns the serialized strings from
 /// <https://github.com/rust-lang/cargo/blob/master/src/cargo/core/manifest.rs#L122>
 /// `TargetKind::ExampleBin` and `TargetKind::ExampleLib`, are both handled in the same manner
@@ -114,18 +116,13 @@ pub fn into_rs_code_file(target_kind: &TargetKind, path: PathBuf) -> RsFile {
 /// If at a future date, we need to separate these two, the information from
 /// <https://github.com/oli-obk/cargo_metadata/blob/540fc6cd8ea1624055c98faf92ef61f620b6aa8f/src/lib.rs#L400>
 /// can be used to improve this function.
-pub fn into_target_kind(raw_target_kind: Vec<String>) -> TargetKind {
-    let raw_target_kind_str = raw_target_kind
-        .iter()
-        .map(|s| s.as_str())
-        .collect::<Vec<&str>>();
-
-    match &raw_target_kind_str[..] {
-        ["bench"] => TargetKind::Bench,
-        ["bin"] => TargetKind::Bin,
-        ["example"] => TargetKind::ExampleBin,
-        ["test"] => TargetKind::Test,
-        ["custom-build"] => TargetKind::CustomBuild,
+pub fn into_target_kind(raw_target_kind: &Vec<krates::cm::TargetKind>) -> TargetKind {
+    match &raw_target_kind[..] {
+        [krates::cm::TargetKind::Bench] => TargetKind::Bench,
+        [krates::cm::TargetKind::Bin] => TargetKind::Bin,
+        [krates::cm::TargetKind::CustomBuild] => TargetKind::CustomBuild,
+        [krates::cm::TargetKind::Example] => TargetKind::ExampleBin,
+        [krates::cm::TargetKind::Test] => TargetKind::Test,
         _ => TargetKind::Lib(vec![]),
     }
 }
@@ -151,8 +148,8 @@ pub fn resolve_rs_file_deps(
     compile_options: &CompileOptions,
     workspace: &Workspace,
 ) -> Result<HashSet<PathBuf>, RsResolveError> {
-    let config = workspace.config();
-    let (pkg_set, _) = ops::resolve_ws(workspace)
+    let gctx = workspace.gctx();
+    let (pkg_set, _) = ops::resolve_ws(workspace, false)
         .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
     let packages = pkg_set
         .package_ids()
@@ -162,7 +159,7 @@ pub fn resolve_rs_file_deps(
     // TODO: Figure out how this can be avoided to improve performance, clean
     // Rust builds are __slow__.
     let clean_options = CleanOptions {
-        config,
+        gctx,
         spec: packages,
         targets: vec![],
         profile_specified: false,
@@ -180,7 +177,7 @@ pub fn resolve_rs_file_deps(
     {
         compile_with_exec(
             compile_options,
-            config,
+            gctx,
             inner_arc.clone(),
             workspace,
         )?;
@@ -242,12 +239,12 @@ fn add_dir_entries_to_path_buf_hash_set(
 
 fn compile_with_exec(
     compile_options: &CompileOptions,
-    config: &Config,
+    gctx: &GlobalContext,
     inner_arc: Arc<Mutex<CustomExecutorInnerContext>>,
     workspace: &Workspace,
 ) -> Result<(), RsResolveError> {
     let custom_executor = CustomExecutor {
-        cwd: config.cwd().to_path_buf(),
+        cwd: gctx.cwd().to_path_buf(),
         inner_ctx: inner_arc,
     };
 
@@ -379,49 +376,49 @@ mod rs_file_tests {
         input_raw_target_kind,
         expected_target_kind,
         case(
-            vec![String::from("bench")],
+            vec![krates::cm::TargetKind::Bench],
             TargetKind::Bench
         ),
         case(
-            vec![String::from("bin")],
+            vec![krates::cm::TargetKind::Bin],
             TargetKind::Bin
         ),
         case(
-            vec![String::from("example")],
+            vec![krates::cm::TargetKind::Example],
             TargetKind::ExampleBin
         ),
         case(
-            vec![String::from("test")],
+            vec![krates::cm::TargetKind::Test],
             TargetKind::Test
         ),
         case(
-            vec![String::from("custom-build")],
+            vec![krates::cm::TargetKind::CustomBuild],
             TargetKind::CustomBuild
         ),
         case(
             vec![
-                String::from("other"),
-                String::from("raw"),
-                String::from("target"),
-                String::from("kinds")
+                krates::cm::TargetKind::DyLib,
+                krates::cm::TargetKind::ProcMacro,
+                krates::cm::TargetKind::StaticLib,
+                krates::cm::TargetKind::Lib
             ],
             TargetKind::Lib(vec![])
         )
     )]
     fn into_target_kind_test(
-        input_raw_target_kind: Vec<String>,
+        input_raw_target_kind: Vec<krates::cm::TargetKind>,
         expected_target_kind: TargetKind,
     ) {
         assert_eq!(
-            into_target_kind(input_raw_target_kind),
+            into_target_kind(&input_raw_target_kind),
             expected_target_kind
         );
     }
 
     #[rstest]
     fn is_file_with_ext_test() {
-        let config = Config::default().unwrap();
-        let cwd = config.cwd();
+        let gctx = GlobalContext::default().unwrap();
+        let cwd = gctx.cwd();
 
         let walk_dir_rust_files = WalkDir::new(&cwd)
             .into_iter()

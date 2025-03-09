@@ -10,7 +10,7 @@ use super::construct_tree_vines_string;
 use dependency_kind::walk_dependency_kind;
 use dependency_node::walk_dependency_node;
 
-use cargo_metadata::PackageId;
+use krates::cm::PackageId;
 use std::collections::HashSet;
 
 pub struct WalkDependencyParameters<'a> {
