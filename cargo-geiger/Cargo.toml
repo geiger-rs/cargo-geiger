@@ -9,6 +9,7 @@ name = "cargo-geiger"
 readme = "README.md"
 repository = "https://github.com/rust-secure-code/cargo-geiger"
 version = "0.11.7"
+rust-version = "1.85"
 
 [badges]
 maintenance = { status = "experimental" }
