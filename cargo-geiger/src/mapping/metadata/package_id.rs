@@ -1,7 +1,7 @@
 use crate::mapping::krates_mapping::GetPackage;
 use crate::mapping::GetPackageIdInformation;
-use krates::semver::Version;
 use krates::cm::{Metadata, Package, PackageId};
+use krates::semver::Version;
 
 impl GetPackageIdInformation for PackageId {
     fn get_package_id_licence<T: GetPackage>(
@@ -17,9 +17,9 @@ impl GetPackageIdInformation for PackageId {
         &self,
         krates: &T,
     ) -> Option<(String, Version)> {
-        krates.get_package(self).map(|package| {
-            (package.name.clone(), package.version.clone())
-        })
+        krates
+            .get_package(self)
+            .map(|package| (package.name.clone(), package.version.clone()))
     }
 
     fn get_package_id_repository<T: GetPackage>(

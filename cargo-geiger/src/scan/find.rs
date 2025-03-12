@@ -9,9 +9,9 @@ use crate::scan::PackageMetrics;
 use super::{GeigerContext, ScanMode};
 
 use cargo::{CargoResult, CliError, GlobalContext};
-use krates::cm::PackageId;
 use geiger::find::find_unsafe_in_file;
 use geiger::{IncludeTests, RsFileMetrics, ScanFileError};
+use krates::cm::PackageId;
 use rayon::{in_place_scope, prelude::*};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;

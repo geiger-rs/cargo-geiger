@@ -3,7 +3,9 @@ use super::{
     IncludeTests, RsFileMetrics,
 };
 
-use syn::{visit, Expr, ItemFn, ItemImpl, ItemMod, ItemTrait, ImplItemFn, ExprUnsafe};
+use syn::{
+    visit, Expr, ExprUnsafe, ImplItemFn, ItemFn, ItemImpl, ItemMod, ItemTrait,
+};
 
 pub struct GeigerSynVisitor {
     /// Count unsafe usage inside tests

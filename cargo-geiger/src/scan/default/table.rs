@@ -17,8 +17,8 @@ use super::scan;
 
 use cargo::core::Workspace;
 use cargo::CliError;
-use krates::cm::PackageId;
 use colored::Colorize;
+use krates::cm::PackageId;
 
 pub fn scan_to_table(
     cargo_metadata_parameters: &CargoMetadataParameters,

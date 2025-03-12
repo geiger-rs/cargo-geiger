@@ -94,8 +94,8 @@ mod dependency_node_tests {
     use crate::format::pattern::Pattern;
     use crate::format::print_config::{OutputFormat, Prefix, PrintConfig};
 
-    use krates::cm::DependencyKind;
     use geiger::IncludeTests;
+    use krates::cm::DependencyKind;
     use petgraph::graph::NodeIndex;
     use rstest::*;
 

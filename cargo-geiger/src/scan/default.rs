@@ -57,8 +57,7 @@ fn build_compile_options<'a>(
     gctx: &'a GlobalContext,
 ) -> CompileOptions {
     let mut compile_options =
-        CompileOptions::new(gctx, CompileMode::Check { test: false })
-            .unwrap();
+        CompileOptions::new(gctx, CompileMode::Check { test: false }).unwrap();
 
     let uses_default_features = !args.no_default_features;
 

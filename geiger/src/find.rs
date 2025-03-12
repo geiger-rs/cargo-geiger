@@ -41,11 +41,26 @@ mod find_tests {
     use tempfile::tempdir;
 
     const DEFAULT_COUNTERS: CounterBlock = CounterBlock {
-        functions: Count { safe: 0, unsafe_: 0 },
-        exprs: Count { safe: 0, unsafe_: 0 },
-        item_impls: Count { safe: 0, unsafe_: 0 },
-        item_traits: Count { safe: 0, unsafe_: 0 },
-        methods: Count { safe: 0, unsafe_: 0 },
+        functions: Count {
+            safe: 0,
+            unsafe_: 0,
+        },
+        exprs: Count {
+            safe: 0,
+            unsafe_: 0,
+        },
+        item_impls: Count {
+            safe: 0,
+            unsafe_: 0,
+        },
+        item_traits: Count {
+            safe: 0,
+            unsafe_: 0,
+        },
+        methods: Count {
+            safe: 0,
+            unsafe_: 0,
+        },
     };
     const DEFAULT_METRICS: RsFileMetrics = RsFileMetrics {
         counters: DEFAULT_COUNTERS,
@@ -96,11 +111,18 @@ mod tests {
         let from_file =
             find_unsafe_in_file(&file_path, IncludeTests::No).unwrap();
         let from_string =
-            find_unsafe_in_string(FILE_CONTENT_STRING, IncludeTests::No).unwrap();
+            find_unsafe_in_string(FILE_CONTENT_STRING, IncludeTests::No)
+                .unwrap();
         let expected = RsFileMetrics {
             counters: CounterBlock {
-                functions: Count { safe: 1, unsafe_: 3 },
-                exprs: Count { safe: 4, unsafe_: 4 },
+                functions: Count {
+                    safe: 1,
+                    unsafe_: 3,
+                },
+                exprs: Count {
+                    safe: 4,
+                    unsafe_: 4,
+                },
                 ..DEFAULT_COUNTERS
             },
             ..DEFAULT_METRICS
@@ -111,11 +133,18 @@ mod tests {
         let from_file =
             find_unsafe_in_file(&file_path, IncludeTests::Yes).unwrap();
         let from_string =
-            find_unsafe_in_string(FILE_CONTENT_STRING, IncludeTests::Yes).unwrap();
+            find_unsafe_in_string(FILE_CONTENT_STRING, IncludeTests::Yes)
+                .unwrap();
         let expected = RsFileMetrics {
             counters: CounterBlock {
-                functions: Count { safe: 2, unsafe_: 3 },
-                exprs: Count { safe: 4, unsafe_: 5 },
+                functions: Count {
+                    safe: 2,
+                    unsafe_: 3,
+                },
+                exprs: Count {
+                    safe: 4,
+                    unsafe_: 5,
+                },
                 ..DEFAULT_COUNTERS
             },
             ..DEFAULT_METRICS
@@ -126,8 +155,13 @@ mod tests {
 
     #[test]
     fn forbids_unsafe() {
-        let expected = RsFileMetrics { forbids_unsafe: true, ..DEFAULT_METRICS };
-        let actual = find_unsafe_in_string("#![forbid(unsafe_code)]", IncludeTests::No).unwrap();
+        let expected = RsFileMetrics {
+            forbids_unsafe: true,
+            ..DEFAULT_METRICS
+        };
+        let actual =
+            find_unsafe_in_string("#![forbid(unsafe_code)]", IncludeTests::No)
+                .unwrap();
         assert_eq!(actual, expected);
     }
 
@@ -135,8 +169,14 @@ mod tests {
     fn counters_functions() {
         let expected = RsFileMetrics {
             counters: CounterBlock {
-                functions: Count { safe: 2, unsafe_: 3 },
-                exprs: Count { safe: 2, unsafe_: 3 },
+                functions: Count {
+                    safe: 2,
+                    unsafe_: 3,
+                },
+                exprs: Count {
+                    safe: 2,
+                    unsafe_: 3,
+                },
                 ..DEFAULT_COUNTERS
             },
             ..DEFAULT_METRICS
@@ -175,8 +215,14 @@ mod tests {
         ";
         let expected = RsFileMetrics {
             counters: CounterBlock {
-                functions: Count { safe: 2, unsafe_: 1 },
-                exprs: Count { safe: 3, unsafe_: 2 },
+                functions: Count {
+                    safe: 2,
+                    unsafe_: 1,
+                },
+                exprs: Count {
+                    safe: 3,
+                    unsafe_: 2,
+                },
                 ..DEFAULT_COUNTERS
             },
             ..DEFAULT_METRICS
@@ -206,8 +252,14 @@ mod tests {
         ";
         let expected = RsFileMetrics {
             counters: CounterBlock {
-                functions: Count { safe: 3, unsafe_: 2 },
-                exprs: Count { safe: 3, unsafe_: 4 },
+                functions: Count {
+                    safe: 3,
+                    unsafe_: 2,
+                },
+                exprs: Count {
+                    safe: 3,
+                    unsafe_: 4,
+                },
                 ..DEFAULT_COUNTERS
             },
             ..DEFAULT_METRICS

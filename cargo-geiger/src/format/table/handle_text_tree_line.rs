@@ -8,8 +8,8 @@ use super::total_package_counts::TotalPackageCounts;
 use super::TableParameters;
 use super::{table_row, table_row_empty};
 
-use krates::cm::{DependencyKind, PackageId};
 use colored::ColoredString;
+use krates::cm::{DependencyKind, PackageId};
 use std::collections::HashSet;
 use std::fmt::Display;
 

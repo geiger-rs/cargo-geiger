@@ -116,7 +116,9 @@ pub fn into_rs_code_file(target_kind: &TargetKind, path: PathBuf) -> RsFile {
 /// If at a future date, we need to separate these two, the information from
 /// <https://github.com/oli-obk/cargo_metadata/blob/540fc6cd8ea1624055c98faf92ef61f620b6aa8f/src/lib.rs#L400>
 /// can be used to improve this function.
-pub fn into_target_kind(raw_target_kind: &Vec<krates::cm::TargetKind>) -> TargetKind {
+pub fn into_target_kind(
+    raw_target_kind: &Vec<krates::cm::TargetKind>,
+) -> TargetKind {
     match &raw_target_kind[..] {
         [krates::cm::TargetKind::Bench] => TargetKind::Bench,
         [krates::cm::TargetKind::Bin] => TargetKind::Bin,
@@ -175,12 +177,7 @@ pub fn resolve_rs_file_deps(
 
     let inner_arc = Arc::new(Mutex::new(CustomExecutorInnerContext::default()));
     {
-        compile_with_exec(
-            compile_options,
-            gctx,
-            inner_arc.clone(),
-            workspace,
-        )?;
+        compile_with_exec(compile_options, gctx, inner_arc.clone(), workspace)?;
     }
 
     let workspace_root = workspace.root().to_path_buf();

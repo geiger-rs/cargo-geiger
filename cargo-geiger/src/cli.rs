@@ -13,8 +13,8 @@ use crate::args::Args;
 use cargo::core::Workspace;
 use cargo::util::{important_paths, CargoResult};
 use cargo::GlobalContext;
-use krates::cm::{CargoOpt, MetadataCommand};
 use cargo_platform::Cfg;
+use krates::cm::{CargoOpt, MetadataCommand};
 use krates::Builder as KratesBuilder;
 use krates::Krates;
 use std::path::PathBuf;
@@ -75,7 +75,9 @@ pub fn get_cfgs(
     ))
 }
 
-pub fn get_krates(cargo_metadata: &krates::cm::Metadata) -> CargoResult<Krates> {
+pub fn get_krates(
+    cargo_metadata: &krates::cm::Metadata,
+) -> CargoResult<Krates> {
     Ok(KratesBuilder::new()
         .build_with_metadata(cargo_metadata.clone(), |_| ())?)
 }

@@ -12,8 +12,8 @@ use super::super::find::find_unsafe;
 use super::super::{ScanMode, ScanResult};
 
 use cargo::{CliError, GlobalContext};
-use krates::cm::PackageId;
 use colored::Colorize;
+use krates::cm::PackageId;
 
 pub fn scan_forbid_to_table(
     cargo_metadata_parameters: &CargoMetadataParameters,

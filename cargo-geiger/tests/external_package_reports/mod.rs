@@ -522,5 +522,7 @@ pub fn make_package_id(cx: &Context, name: &str) -> PackageId {
 }
 
 fn make_source(cx: &Context, name: &str) -> Source {
-    Source::Path(Url::from_file_path(cx.crate_dir(&format!("{}#0.1.", name))).unwrap())
+    Source::Path(
+        Url::from_file_path(cx.crate_dir(&format!("{}#0.1.", name))).unwrap(),
+    )
 }

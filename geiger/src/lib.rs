@@ -54,12 +54,15 @@ impl fmt::Display for ScanFileError {
 }
 
 fn file_forbids_unsafe(f: &syn::File) -> bool {
-    f.attrs.iter().any(|attr|{
+    f.attrs.iter().any(|attr| {
         // https://docs.rs/syn/latest/syn/meta/struct.ParseNestedMeta.html#example
         let mut is_forbid_unsafe_code = false;
-        if matches!(attr.style, AttrStyle::Inner(_)) { // Parses `#!`.
-            if attr.path().is_ident("forbid") { // Parses `forbid`.
-                let _ = attr.parse_nested_meta(|meta| { // Parses `(`.
+        if matches!(attr.style, AttrStyle::Inner(_)) {
+            // Parses `#!`.
+            if attr.path().is_ident("forbid") {
+                // Parses `forbid`.
+                let _ = attr.parse_nested_meta(|meta| {
+                    // Parses `(`.
                     if meta.path.is_ident("unsafe_code") {
                         if meta.value().is_err() {
                             is_forbid_unsafe_code = true;
@@ -81,18 +84,15 @@ fn is_test_fn(item_fn: &ItemFn) -> bool {
 }
 
 fn has_unsafe_attributes(item_fn: &ItemFn) -> bool {
-    item_fn
-        .attrs
-        .iter()
-        .any(|attr| {
-            if attr.path().is_ident("no_mangle") {
-                return true;
-            }
-            if attr.path().is_ident("export_name") {
-                return true;
-            }
-            false
-        })
+    item_fn.attrs.iter().any(|attr| {
+        if attr.path().is_ident("no_mangle") {
+            return true;
+        }
+        if attr.path().is_ident("export_name") {
+            return true;
+        }
+        false
+    })
 }
 
 /// Will return true for #[cfg(test)] decorated modules.
@@ -103,19 +103,17 @@ fn has_unsafe_attributes(item_fn: &ItemFn) -> bool {
 /// as a general filter for included code.
 /// TODO: Investigate if the needed information can be emitted by rustc today.
 fn is_test_mod(item: &ItemMod) -> bool {
-    item
-        .attrs
-        .iter()
-        .any(|attr| {
-            let mut found_cfg_test = false;
-            if attr.path().is_ident("cfg") {
-                let _ = attr.parse_nested_meta(|meta| { // Parse `(`.
-                    if meta.path.is_ident("test") {
-                        found_cfg_test = true;
-                    }
-                    Ok(())
-                });
-            }
-            found_cfg_test
-        })
+    item.attrs.iter().any(|attr| {
+        let mut found_cfg_test = false;
+        if attr.path().is_ident("cfg") {
+            let _ = attr.parse_nested_meta(|meta| {
+                // Parse `(`.
+                if meta.path.is_ident("test") {
+                    found_cfg_test = true;
+                }
+                Ok(())
+            });
+        }
+        found_cfg_test
+    })
 }

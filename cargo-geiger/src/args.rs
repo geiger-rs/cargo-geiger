@@ -2,8 +2,8 @@ use crate::args::Verbosity::{Normal, Quiet, Verbose};
 use crate::format::print_config::OutputFormat;
 
 use cargo::core::shell::ColorChoice;
-use cargo::CliResult;
 use cargo::util::context::GlobalContext;
+use cargo::CliResult;
 use pico_args::Arguments;
 use std::path::PathBuf;
 

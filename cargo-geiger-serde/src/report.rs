@@ -1,20 +1,28 @@
 use crate::PackageId;
 use serde::{Deserialize, Serialize};
+use std::fmt::{Debug, Formatter};
 use std::{
     collections::{HashMap, HashSet},
     ops::{Add, AddAssign},
     path::PathBuf,
 };
-use std::fmt::{Debug, Formatter};
 
-fn debug_fmt_set(f: &mut Formatter<'_>, set: &HashSet<impl Debug>) -> std::fmt::Result {
-    let mut strings: Vec<String> = set.iter().map(|v| format!("{v:?}")).collect();
+fn debug_fmt_set(
+    f: &mut Formatter<'_>,
+    set: &HashSet<impl Debug>,
+) -> std::fmt::Result {
+    let mut strings: Vec<String> =
+        set.iter().map(|v| format!("{v:?}")).collect();
     strings.sort();
     write!(f, "{{ {} }}, ", strings.join(", "))
 }
 
-fn debug_fmt_map(f: &mut Formatter<'_>, set: &HashMap<impl Debug, impl Debug>) -> std::fmt::Result {
-    let mut strings: Vec<String> = set.iter().map(|(k, v)| format!("{k:?}: {v:?}")).collect();
+fn debug_fmt_map(
+    f: &mut Formatter<'_>,
+    set: &HashMap<impl Debug, impl Debug>,
+) -> std::fmt::Result {
+    let mut strings: Vec<String> =
+        set.iter().map(|(k, v)| format!("{k:?}: {v:?}")).collect();
     strings.sort();
     write!(f, "{{ {} }}, ", strings.join(", "))
 }

@@ -1,5 +1,5 @@
-use krates::semver::Version;
 use krates::cm::Package;
+use krates::semver::Version;
 use std::path::Path;
 
 use crate::mapping::GetPackageRoot;

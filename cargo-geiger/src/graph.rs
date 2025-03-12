@@ -9,13 +9,13 @@ use crate::mapping::{
 };
 
 use cargo::util::CargoResult;
-use krates::cm::{Dependency, DependencyKind, Package, PackageId};
 use cargo_platform::Cfg;
+use krates::cm::{Dependency, DependencyKind, Package, PackageId};
+use krates::{Kid, Node};
 use petgraph::graph::NodeIndex;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use krates::{Kid, Node};
 
 /// Representation of the package dependency graph
 pub struct Graph {
@@ -117,7 +117,7 @@ fn add_package_dependencies_to_graph(
         .deps_not_replaced(&package_id, is_root_package);
 
     match (krates_node_option, dep_not_replaced_option) {
-        (Some(Node::Krate { krate, ..}), Some(dependencies)) => {
+        (Some(Node::Krate { krate, .. }), Some(dependencies)) => {
             for (dependency_package_id, _) in dependencies {
                 let dependency_iterator = filter_dependencies(
                     cargo_metadata_parameters,

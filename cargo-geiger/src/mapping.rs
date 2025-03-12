@@ -11,9 +11,9 @@ use std::collections::HashSet;
 use std::fmt::Display;
 use std::path::PathBuf;
 
-use krates::semver::Version as CargoMetadataVersion;
 use krates::cm::Dependency as CargoMetadataDependency;
 use krates::cm::PackageId as CargoMetadataPackageId;
+use krates::semver::Version as CargoMetadataVersion;
 
 use crate::mapping::krates_mapping::GetPackage;
 use crate::mapping::metadata::dependency::GetDependencyInformation;

@@ -164,11 +164,11 @@ mod metadata_tests {
     use cargo::core::{
         Package, PackageId, PackageIdSpec, PackageSet, Resolve, Workspace,
     };
+    use cargo::sources::SourceConfigMap;
     use cargo::{ops, CargoResult, GlobalContext};
     use krates::semver::VersionReq;
     use rstest::*;
     use std::path::PathBuf;
-    use cargo::sources::SourceConfigMap;
 
     #[rstest]
     fn deps_not_replaced_test() {
@@ -236,8 +236,7 @@ mod metadata_tests {
         let dependency_package_id = krates
             .krates()
             .filter(|k| {
-                k.name == dependency.name
-                    && dependency.req.matches(&k.version)
+                k.name == dependency.name && dependency.req.matches(&k.version)
             })
             .map(|k| k.id.clone())
             .collect::<Vec<krates::cm::PackageId>>()
@@ -308,7 +307,10 @@ mod metadata_tests {
         gctx: &'a GlobalContext,
         package: &Package,
     ) -> CargoResult<PackageRegistry<'a>> {
-        let mut registry = PackageRegistry::new_with_source_config(gctx, SourceConfigMap::new(gctx).unwrap())?;
+        let mut registry = PackageRegistry::new_with_source_config(
+            gctx,
+            SourceConfigMap::new(gctx).unwrap(),
+        )?;
         registry.add_sources(Some(package.package_id().source_id()))?;
         Ok(registry)
     }
