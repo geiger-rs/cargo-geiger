@@ -75,6 +75,7 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
                 self.metrics.counters.exprs.count(self.unsafe_scopes > 0);
             }
         }
+        // This calls `visit_expr_unsafe`.
         visit::visit_expr(self, i);
     }
 

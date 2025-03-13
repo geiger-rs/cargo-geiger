@@ -57,12 +57,12 @@ fn file_forbids_unsafe(f: &syn::File) -> bool {
     f.attrs.iter().any(|attr| {
         // https://docs.rs/syn/latest/syn/meta/struct.ParseNestedMeta.html#example
         let mut is_forbid_unsafe_code = false;
+        // Parses `#!`.
         if matches!(attr.style, AttrStyle::Inner(_)) {
-            // Parses `#!`.
+            // Parses `forbid`.
             if attr.path().is_ident("forbid") {
-                // Parses `forbid`.
+                // Parses `(`.
                 let _ = attr.parse_nested_meta(|meta| {
-                    // Parses `(`.
                     if meta.path.is_ident("unsafe_code") {
                         if meta.value().is_err() {
                             is_forbid_unsafe_code = true;
