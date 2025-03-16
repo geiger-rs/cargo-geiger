@@ -20,7 +20,7 @@ pub trait IntegrationTest {
         assert!(output.status.success());
         let actual =
             serde_json::from_slice::<SafetyReport>(&output.stdout).unwrap();
-        assert_eq!(actual, self.expected_report(&cx));
+        pretty_assertions::assert_eq!(actual, self.expected_report(&cx));
     }
 
     fn run_quick(&self) {
@@ -29,7 +29,7 @@ pub trait IntegrationTest {
         let actual =
             serde_json::from_slice::<QuickSafetyReport>(&output.stdout)
                 .unwrap();
-        assert_eq!(actual, self.expected_quick_report(&cx));
+        pretty_assertions::assert_eq!(actual, self.expected_quick_report(&cx));
     }
 }
 
