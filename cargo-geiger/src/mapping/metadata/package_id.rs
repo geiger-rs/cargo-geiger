@@ -61,12 +61,6 @@ impl ToCargoMetadataPackage for PackageId {
         &self,
         metadata: &Metadata,
     ) -> Option<Package> {
-        metadata
-            .packages
-            .iter()
-            .filter(|p| p.id == *self)
-            .cloned()
-            .collect::<Vec<Package>>()
-            .pop()
+        metadata.packages.iter().find(|p| p.id == *self).cloned()
     }
 }
