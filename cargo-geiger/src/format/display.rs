@@ -11,7 +11,7 @@ pub struct Display<'a> {
     pub package: &'a PackageId,
 }
 
-impl<'a> fmt::Display for Display<'a> {
+impl fmt::Display for Display<'_> {
     // This clippy recommendation is quite strict, not allowing an error message
     // to be written out when failing to format the struct.
     // Perhaps we shouldn't be using `impl fmt::Display` at all, and instead

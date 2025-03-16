@@ -27,9 +27,13 @@ pub struct CustomExecutor {
 
 #[derive(Debug)]
 enum CustomExecutorError {
+    #[allow(dead_code)] // TODO: address new lints
     InnerContextMutex(String),
+    #[allow(dead_code)] // TODO: address new lints
     Io(io::Error, PathBuf),
+    #[allow(dead_code)] // TODO: address new lints
     OutDirKeyMissing(String),
+    #[allow(dead_code)] // TODO: address new lints
     OutDirValueMissing(String),
 }
 

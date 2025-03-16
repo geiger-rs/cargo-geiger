@@ -3,6 +3,7 @@
 //! As such, any function contained within may be subject to change.
 
 #![deny(clippy::cargo)]
+#![allow(clippy::multiple_crate_versions)] // TODO: syn2 + dups
 #![deny(clippy::doc_markdown)]
 #![forbid(unsafe_code)]
 

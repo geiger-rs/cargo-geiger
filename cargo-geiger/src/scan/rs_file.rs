@@ -42,7 +42,7 @@ pub struct RsFileMetricsWrapper {
     /// The information returned by the `geiger` crate for a `.rs` file.
     pub metrics: RsFileMetrics,
 
-    /// All crate entry points must declare forbid(unsafe_code) to make it count
+    /// All crate entry points must declare `!#[forbid(unsafe_code)]` to make it count
     /// for the crate as a whole. The `geiger` crate is decoupled from `cargo`
     /// and cannot know if a file is a crate entry point or not, so we add this
     /// information here.
@@ -55,19 +55,24 @@ pub enum RsResolveError {
     /// cargo-geiger about how the cargo API works.
     ArcUnwrap(),
 
-    /// Would like cargo::Error here, but it's private, why?
+    /// Would like `cargo::Error` here, but it's private, why?
     /// This is still way better than a panic though.
+    #[allow(dead_code)] // TODO: address new lints
     Cargo(String),
 
     /// Failed to parse a .dep file.
+    #[allow(dead_code)] // TODO: address new lints
     DepParse(String, PathBuf),
 
     /// Failed to get the inner context out of the mutex.
+    #[allow(dead_code)] // TODO: address new lints
     InnerContextMutex(String),
 
-    /// Like io::Error but with the related path.
+    /// Like `io::Error` but with the related path.
+    #[allow(dead_code)] // TODO: address new lints
     Io(io::Error, PathBuf),
 
+    #[allow(dead_code)] // TODO: address new lints
     Walkdir(walkdir::Error),
 }
 

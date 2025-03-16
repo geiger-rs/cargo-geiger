@@ -64,6 +64,7 @@ pub enum SymbolKind {
 
 #[derive(Debug)]
 pub struct FormatError {
+    #[allow(dead_code)] // TODO: address new lints
     pub message: String,
 }
 

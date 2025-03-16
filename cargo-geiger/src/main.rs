@@ -2,6 +2,7 @@
 //! TODO: Refactor this file to only deal with command line argument processing.
 
 #![deny(clippy::cargo)]
+#![allow(clippy::multiple_crate_versions)] // TODO: syn2 + dups
 #![deny(clippy::doc_markdown)]
 #![forbid(unsafe_code)]
 
