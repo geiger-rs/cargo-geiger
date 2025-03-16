@@ -2,6 +2,7 @@ use super::metadata::package_id::{GetPackageIdRepr, ToCargoMetadataPackage};
 use super::ToCargoGeigerSource;
 
 use cargo_metadata::Metadata;
+use krates::Kid;
 use url::Url;
 
 use cargo_geiger_serde::Source as CargoGeigerSerdeSource;
@@ -63,8 +64,13 @@ fn handle_source_repr(source_repr: &str) -> CargoGeigerSerdeSource {
 fn handle_path_source<T: GetPackageIdRepr>(
     package_id: &T,
 ) -> CargoGeigerSerdeSource {
+    // First `PackageId` is generated from the given string, then converted into a `krates::Kid`
     let raw_repr = package_id.get_package_id_repr();
-    let raw_path_repr = raw_repr[1..raw_repr.len() - 1]
+    let package_id = cargo_metadata::PackageId { repr: raw_repr };
+    let package_id: Kid = package_id.into();
+    let raw_repr = package_id.source().to_string();
+
+    let raw_path_repr = raw_repr
         .split("+file://")
         .skip(1)
         .collect::<Vec<&str>>()
@@ -140,7 +146,7 @@ mod geiger_tests {
     fn handle_path_source_test() {
         if !cfg!(windows) {
             let package_id = CargoMetadataPackageId {
-                repr: String::from("(path+file:///cargo_geiger/test_crates/test1_package_with_no_deps)"),
+                repr: String::from("(path+file:///cargo_geiger/test_crates/test1_package_with_no_deps#0.1.0)"),
             };
 
             let expected_source = CargoGeigerSerdeSource::Path(
