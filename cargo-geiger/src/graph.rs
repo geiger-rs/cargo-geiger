@@ -108,8 +108,9 @@ fn add_package_dependencies_to_graph(
 ) {
     let index = graph.nodes[&package_id];
 
+    let kid = package_id.clone().into();
     let krates_node_option =
-        cargo_metadata_parameters.krates.node_for_kid(&package_id);
+        cargo_metadata_parameters.krates.node_for_kid(&kid);
 
     let dep_not_replaced_option = cargo_metadata_parameters
         .metadata

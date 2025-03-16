@@ -2025,10 +2025,11 @@ dependencies = [
 
 [[package]]
 name = "krates"
-version = "0.15.3"
+version = "0.16.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75779ef79eda4a7b0bb7dd8364cea685c2ad0e2ab1592de9c1dcc66d0bff386f"
+checksum = "7fcb3baf2360eb25ad31f0ada3add63927ada6db457791979b82ac199f835cb9"
 dependencies = [
+ "cargo-platform",
  "cargo_metadata",
  "cfg-expr",
  "petgraph",

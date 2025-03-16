@@ -1,6 +1,6 @@
 use crate::mapping::QueryResolve;
 
-use krates::{Krates, Node, PkgSpec};
+use krates::{Kid, KrateMatch, Krates, Node, PkgSpec};
 use std::str::FromStr;
 
 use cargo_metadata::{Package, PackageId as CargoMetadataPackageId};
@@ -17,17 +17,25 @@ impl GetNodeForKid for Krates {
         &self,
         package_id: &CargoMetadataPackageId,
     ) -> Option<&Node<Package>> {
-        self.node_for_kid(package_id)
+        let kid: Kid = package_id.clone().into();
+        self.node_for_kid(&kid)
     }
 }
 
 impl QueryResolve for Krates {
     fn query_resolve(&self, query: &str) -> Option<CargoMetadataPackageId> {
+        fn convert_kid(
+            krate_match: KrateMatch<'_, Package>,
+        ) -> CargoMetadataPackageId {
+            let repr = krate_match.kid.repr.clone();
+            CargoMetadataPackageId { repr }
+        }
+
         match PkgSpec::from_str(query) {
             Ok(package_spec) => self
                 .krates_by_name(package_spec.name.as_str())
-                .filter(|(_, node)| package_spec.matches(node))
-                .map(|(_, node)| node.id.clone())
+                .filter(|krate_match| package_spec.matches(krate_match.krate))
+                .map(convert_kid)
                 .collect::<Vec<CargoMetadataPackageId>>()
                 .pop(),
             _ => {
@@ -95,28 +103,18 @@ mod krates_tests {
         expected_package_name,
         expected_package_version,
         case(
-            "cargo_metadata:0.15.4",
+            "cargo_metadata:0.18.1",
             "cargo_metadata",
             Version {
                 major: 0,
-                minor: 15,
-                patch: 4,
-                pre: Prerelease::EMPTY,
-                build: BuildMetadata::EMPTY
-            }
-        ),
-        case(
-            "cargo_metadata:0.15.4",
-            "cargo_metadata",
-            Version {
-                major: 0,
-                minor: 15,
-                patch: 4,
+                minor: 18,
+                patch: 1,
                 pre: Prerelease::EMPTY,
                 build: BuildMetadata::EMPTY
             }
         )
     )]
+
     fn query_resolve_test(
         input_query_string: &str,
         expected_package_name: &str,
