@@ -235,8 +235,7 @@ mod metadata_tests {
         let dependency_package_id = krates
             .krates()
             .filter(|k| {
-                k.krate.name == dependency.name
-                    && dependency.req.matches(&k.krate.version)
+                k.name == dependency.name && dependency.req.matches(&k.version)
             })
             .map(|k| k.id.clone())
             .collect::<Vec<cargo_metadata::PackageId>>()

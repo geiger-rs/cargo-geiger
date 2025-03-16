@@ -10,16 +10,22 @@ impl GetPackageIdInformation for PackageId {
     ) -> Option<String> {
         krates
             .get_node_for_kid(self)
-            .and_then(|package| package.krate.clone().license)
+            .and_then(|package| match package {
+                krates::Node::Krate { krate, .. } => krate.license.clone(),
+                _ => None,
+            })
     }
 
     fn get_package_id_name_and_version<T: GetNodeForKid>(
         &self,
         krates: &T,
     ) -> Option<(String, Version)> {
-        krates.get_node_for_kid(self).map(|package| {
-            (package.krate.clone().name, package.krate.clone().version)
-        })
+        match krates.get_node_for_kid(self) {
+            Some(krates::Node::Krate { krate, .. }) => {
+                Some((krate.name.clone(), krate.version.clone()))
+            }
+            _ => None,
+        }
     }
 
     fn get_package_id_repository<T: GetNodeForKid>(
@@ -28,7 +34,10 @@ impl GetPackageIdInformation for PackageId {
     ) -> Option<String> {
         krates
             .get_node_for_kid(self)
-            .and_then(|package| package.krate.clone().repository)
+            .and_then(|package| match package {
+                krates::Node::Krate { krate, .. } => krate.repository.clone(),
+                _ => None,
+            })
     }
 }
 

@@ -1,6 +1,7 @@
 pub mod extra_deps;
 
 use extra_deps::ExtraDeps;
+use krates::Node;
 
 use crate::args::{Args, DepsArgs, TargetArgs};
 use crate::cli::get_cfgs;
@@ -115,8 +116,8 @@ fn add_package_dependencies_to_graph(
         .deps_not_replaced(&package_id, is_root_package);
 
     match (krates_node_option, dep_not_replaced_option) {
-        (Some(krates_node), Some(dependencies)) => {
-            let package = krates_node.krate.clone();
+        (Some(Node::<Package>::Krate { krate, .. }), Some(dependencies)) => {
+            let package = krate.clone();
 
             for (dependency_package_id, _) in dependencies {
                 let dependency_iterator = filter_dependencies(
