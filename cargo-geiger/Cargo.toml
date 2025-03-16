@@ -17,12 +17,12 @@ maintenance = { status = "experimental" }
 anyhow = "1.0.70"
 cargo = "0.75.1"
 cargo-geiger-serde = { path = "../cargo-geiger-serde", version = "0.2.3" }
-cargo_metadata = "0.15.4"
+cargo_metadata = "0.18"
 cargo-platform = "0.1.2"
 colored = "2.0.0"
 console = "0.15.5"
 geiger = { path = "../geiger", version = "0.4.10" }
-krates = "0.12.0"
+krates = "0.15.3"
 petgraph = "0.6.3"
 pico-args = "0.5.0"
 rayon = "1.7.0"
