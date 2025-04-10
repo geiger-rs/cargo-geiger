@@ -1,6 +1,10 @@
 # Changelog
 ---------
 
+## 0.12.0
+ - Upgraded from Cargo 0.75 to 0.86
+ - Fix compilation with new rust versions - thanks @mleonhard [#518] and @justahero [#529] & others
+
 ## 0.11.7
  - Upgraded from Cargo 0.69 to 0.75
  - Instruct to use --locked for installation
