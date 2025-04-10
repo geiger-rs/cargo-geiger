@@ -1,34 +1,34 @@
-use crate::mapping::krates::GetNodeForKid;
+use crate::mapping::krates_mapping::GetPackage;
 use crate::mapping::GetPackageIdInformation;
-use cargo_metadata::semver::Version;
-use cargo_metadata::{Metadata, Package, PackageId};
+use krates::cm::{Metadata, Package, PackageId};
+use krates::semver::Version;
 
 impl GetPackageIdInformation for PackageId {
-    fn get_package_id_licence<T: GetNodeForKid>(
+    fn get_package_id_licence<T: GetPackage>(
         &self,
         krates: &T,
     ) -> Option<String> {
         krates
-            .get_node_for_kid(self)
-            .and_then(|package| package.krate.clone().license)
+            .get_package(self)
+            .and_then(|package| package.license.clone())
     }
 
-    fn get_package_id_name_and_version<T: GetNodeForKid>(
+    fn get_package_id_name_and_version<T: GetPackage>(
         &self,
         krates: &T,
     ) -> Option<(String, Version)> {
-        krates.get_node_for_kid(self).map(|package| {
-            (package.krate.clone().name, package.krate.clone().version)
-        })
+        krates
+            .get_package(self)
+            .map(|package| (package.name.clone(), package.version.clone()))
     }
 
-    fn get_package_id_repository<T: GetNodeForKid>(
+    fn get_package_id_repository<T: GetPackage>(
         &self,
         krates: &T,
     ) -> Option<String> {
         krates
-            .get_node_for_kid(self)
-            .and_then(|package| package.krate.clone().repository)
+            .get_package(self)
+            .and_then(|package| package.repository.clone())
     }
 }
 

@@ -1,4 +1,4 @@
-use cargo_metadata::Dependency;
+use krates::cm::Dependency;
 use krates::semver::VersionReq;
 
 pub trait GetDependencyInformation {

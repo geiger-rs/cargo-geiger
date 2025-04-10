@@ -1,4 +1,4 @@
-use cargo_metadata::DependencyKind;
+use krates::cm::DependencyKind;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ExtraDeps {

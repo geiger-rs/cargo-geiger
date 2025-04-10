@@ -27,9 +27,13 @@ pub struct CustomExecutor {
 
 #[derive(Debug)]
 enum CustomExecutorError {
+    #[allow(dead_code)]
     InnerContextMutex(String),
+    #[allow(dead_code)]
     Io(io::Error, PathBuf),
+    #[allow(dead_code)]
     OutDirKeyMissing(String),
+    #[allow(dead_code)]
     OutDirValueMissing(String),
 }
 

@@ -16,3 +16,4 @@
 .vscode/
 .idea/
 cobertura.xml
+cargo-geiger/tests/snapshots/*.new

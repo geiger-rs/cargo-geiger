@@ -17,11 +17,11 @@ use default::scan_unsafe;
 use forbid::scan_forbid_unsafe;
 
 use cargo::core::Workspace;
-use cargo::{CliError, Config};
+use cargo::{CliError, GlobalContext};
 use cargo_geiger_serde::{
     CounterBlock, DependencyKind, PackageInfo, UnsafeInfo,
 };
-use cargo_metadata::PackageId;
+use krates::cm::PackageId;
 use krates::NodeId;
 use petgraph::prelude::NodeIndex;
 use petgraph::visit::EdgeRef;
@@ -74,14 +74,14 @@ pub enum ScanMode {
 
 pub struct ScanParameters<'a> {
     pub args: &'a Args,
-    pub config: &'a Config,
+    pub gctx: &'a GlobalContext,
     pub print_config: &'a PrintConfig,
 }
 
 pub fn scan(
     args: &Args,
     cargo_metadata_parameters: &CargoMetadataParameters,
-    config: &Config,
+    gctx: &GlobalContext,
     graph: &Graph,
     root_package_id: PackageId,
     workspace: &Workspace,
@@ -90,7 +90,7 @@ pub fn scan(
 
     let scan_parameters = ScanParameters {
         args,
-        config,
+        gctx,
         print_config: &print_config,
     };
 

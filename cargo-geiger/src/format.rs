@@ -6,7 +6,7 @@ pub mod table;
 mod display;
 mod parse;
 
-use cargo_metadata::DependencyKind;
+use krates::cm::DependencyKind;
 use std::fmt;
 use std::str::{self, FromStr};
 use strum_macros::EnumIter;
@@ -68,6 +68,7 @@ pub enum SymbolKind {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct FormatError {
     pub message: String,
 }

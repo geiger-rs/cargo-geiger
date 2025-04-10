@@ -15,7 +15,7 @@ Metric output format: x/y
     x = unsafe code used by the build
     y = total unsafe code found in the crate
 
-Symbols: 
+Symbols:
     🔒  = No `unsafe` usage found, declares #![forbid(unsafe_code)]
     ❓  = No `unsafe` usage found, missing #![forbid(unsafe_code)]
     ☢️  = `unsafe` usage found
@@ -25,7 +25,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/1          0/0    0/0     0/0      ❓  test4_workspace_with_top_level_package 0.1.0
 1/1        2/2          0/0    0/0     0/0      ☢️  └── test1_package_with_no_deps 0.1.0
 
-1/1        2/3          0/0    0/0     0/0    
+1/1        2/3          0/0    0/0     0/0
 
 ```
-

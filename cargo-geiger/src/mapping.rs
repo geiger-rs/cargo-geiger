@@ -1,21 +1,21 @@
 mod geiger;
-mod krates;
+mod krates_mapping;
 mod metadata;
 
 use metadata::package_id::ToCargoMetadataPackage;
 
 use ::krates::Krates;
 use cargo::core::dependency::DepKind;
-use cargo_metadata::Metadata;
+use krates::cm::Metadata;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::path::PathBuf;
 
-use cargo_metadata::semver::Version as CargoMetadataVersion;
-use cargo_metadata::Dependency as CargoMetadataDependency;
-use cargo_metadata::PackageId as CargoMetadataPackageId;
+use krates::cm::Dependency as CargoMetadataDependency;
+use krates::cm::PackageId as CargoMetadataPackageId;
+use krates::semver::Version as CargoMetadataVersion;
 
-use crate::mapping::krates::GetNodeForKid;
+use crate::mapping::krates_mapping::GetPackage;
 use crate::mapping::metadata::dependency::GetDependencyInformation;
 use crate::mapping::metadata::package::GetPackageInformation;
 use crate::mapping::metadata::GetMetadataPackages;
@@ -40,17 +40,17 @@ pub trait DepsNotReplaced {
 }
 
 pub trait GetPackageIdInformation {
-    fn get_package_id_licence<T: GetNodeForKid>(
+    fn get_package_id_licence<T: GetPackage>(
         &self,
         krates: &T,
     ) -> Option<String>;
 
-    fn get_package_id_name_and_version<T: GetNodeForKid>(
+    fn get_package_id_name_and_version<T: GetPackage>(
         &self,
         krates: &T,
     ) -> Option<(String, CargoMetadataVersion)>;
 
-    fn get_package_id_repository<T: GetNodeForKid>(
+    fn get_package_id_repository<T: GetPackage>(
         &self,
         krates: &T,
     ) -> Option<String>;
@@ -74,7 +74,7 @@ pub trait GetPackageRoot: GetPackageInformation {
 
 pub trait MatchesIgnoringSource {
     fn matches_ignoring_source<
-        T: GetNodeForKid,
+        T: GetPackage,
         U: GetPackageIdInformation + Display,
     >(
         &self,

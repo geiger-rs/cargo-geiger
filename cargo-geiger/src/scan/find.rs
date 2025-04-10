@@ -8,10 +8,10 @@ use crate::scan::PackageMetrics;
 
 use super::{GeigerContext, ScanMode};
 
-use cargo::{CargoResult, CliError, Config};
-use cargo_metadata::PackageId;
+use cargo::{CargoResult, CliError, GlobalContext};
 use geiger::find::find_unsafe_in_file;
 use geiger::{IncludeTests, RsFileMetrics, ScanFileError};
+use krates::cm::PackageId;
 use rayon::{in_place_scope, prelude::*};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -23,11 +23,11 @@ use walkdir::WalkDir;
 
 pub fn find_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
-    config: &Config,
+    gctx: &GlobalContext,
     mode: ScanMode,
     print_config: &PrintConfig,
 ) -> Result<GeigerContext, CliError> {
-    let mut progress = cargo::util::Progress::new("Scanning", config);
+    let mut progress = cargo::util::Progress::new("Scanning", gctx);
     let geiger_context = find_unsafe_in_packages_with_progress(
         print_config.allow_partial_results,
         cargo_metadata_parameters,
@@ -38,7 +38,7 @@ pub fn find_unsafe(
         },
     );
     progress.clear();
-    config.shell().status("Scanning", "done")?;
+    gctx.shell().status("Scanning", "done")?;
     Ok(geiger_context)
 }
 
@@ -167,7 +167,7 @@ fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {
     })
 }
 
-fn find_rs_files_in_package(package: &cargo_metadata::Package) -> Vec<RsFile> {
+fn find_rs_files_in_package(package: &krates::cm::Package) -> Vec<RsFile> {
     // Find all build target entry point source files.
     let mut canon_targets = HashMap::new();
     for target in &package.targets {
@@ -199,7 +199,7 @@ fn find_rs_files_in_package(package: &cargo_metadata::Package) -> Vec<RsFile> {
 
     for (path_buf, targets) in canon_targets.into_iter() {
         for target in targets {
-            let target_kind = into_target_kind(target.clone().kind);
+            let target_kind = into_target_kind(&target.kind);
             rs_files.push(into_rs_code_file(&target_kind, path_buf.clone()));
         }
     }
@@ -208,7 +208,7 @@ fn find_rs_files_in_package(package: &cargo_metadata::Package) -> Vec<RsFile> {
 }
 
 fn find_rs_files_in_packages(
-    packages: &[cargo_metadata::Package],
+    packages: &[krates::cm::Package],
 ) -> impl Iterator<Item = (PackageId, RsFile)> + '_ {
     packages.iter().flat_map(|package| {
         find_rs_files_in_package(package)
@@ -251,7 +251,7 @@ fn update_package_id_to_metrics_with_rs_file_metrics(
 mod find_tests {
     use super::*;
 
-    use cargo_metadata::{CargoOpt, MetadataCommand};
+    use krates::cm::{CargoOpt, MetadataCommand};
     use rstest::*;
     use std::fs::File;
     use std::io;
@@ -352,7 +352,7 @@ mod find_tests {
     fn update_package_id_to_metrics_with_rs_file_metrics_test(
         input_is_entry_point: bool,
         expected_is_crate_entry_point: bool,
-        package: cargo_metadata::Package,
+        package: krates::cm::Package,
     ) {
         let mut package_id_to_metrics =
             HashMap::<PackageId, PackageMetrics>::new();
@@ -386,7 +386,7 @@ mod find_tests {
     }
 
     #[fixture]
-    fn get_current_workspace_package() -> cargo_metadata::Package {
+    fn get_current_workspace_package() -> krates::cm::Package {
         let metadata = MetadataCommand::new()
             .manifest_path("./Cargo.toml")
             .features(CargoOpt::AllFeatures)

@@ -3,7 +3,7 @@ pub mod traversal;
 use crate::format::print_config::{OutputFormat, Prefix, PrintConfig};
 use std::fmt::Write as _;
 
-use cargo_metadata::{DependencyKind, PackageId};
+use krates::cm::{DependencyKind, PackageId};
 
 /// A step towards decoupling some parts of the table-tree printing from the
 /// dependency graph traversal.

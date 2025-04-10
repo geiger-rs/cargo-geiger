@@ -1,11 +1,11 @@
 use super::metadata::package_id::{GetPackageIdRepr, ToCargoMetadataPackage};
 use super::ToCargoGeigerSource;
 
-use cargo_metadata::Metadata;
+use krates::cm::Metadata;
 use url::Url;
 
 use cargo_geiger_serde::Source as CargoGeigerSerdeSource;
-use cargo_metadata::PackageId as CargoMetadataPackageId;
+use krates::cm::PackageId as CargoMetadataPackageId;
 
 impl ToCargoGeigerSource for CargoMetadataPackageId {
     fn to_cargo_geiger_source(
@@ -114,10 +114,10 @@ mod geiger_tests {
             }
         ),
         case(
-            "git+https://github.com/rust-itertools/itertools.git?rev=8761fbefb3b209",
+            "git+https://github.com/rust-itertools/itertools.git?rev=98d3978",
             CargoGeigerSerdeSource::Git {
                 url: Url::parse("https://github.com/rust-itertools/itertools.git").unwrap(),
-                rev: String::from("8761fbefb3b209")
+                rev: String::from("98d3978")
             }
         ),
         case(

@@ -63,7 +63,7 @@ pub fn either_safety_report() -> SafetyReport {
                     unsafe_: 0,
                 },
                 exprs: Count {
-                    safe: 102,
+                    safe: 98,
                     unsafe_: 0,
                 },
                 item_impls: Count {
@@ -114,11 +114,11 @@ pub fn doc_comment_safety_report() -> SafetyReport {
 pub fn itertools_package_id() -> PackageId {
     PackageId {
         name: "itertools".into(),
-        version: Version::new(0, 8, 0),
+        version: Version::new(0, 12, 1),
         source: Source::Git {
             url: Url::parse("https://github.com/rust-itertools/itertools.git")
                 .unwrap(),
-            rev: "8761fbefb3b209".into(),
+            rev: "98d3978".into(),
         },
     }
 }
@@ -132,37 +132,37 @@ pub fn itertools_safety_report() -> SafetyReport {
         unsafety: UnsafeInfo {
             used: CounterBlock {
                 functions: Count {
-                    safe: 79,
+                    safe: 108,
                     unsafe_: 0,
                 },
                 exprs: Count {
-                    safe: 2413,
-                    unsafe_: 0,
+                    safe: 4202,
+                    unsafe_: 13,
                 },
                 item_impls: Count {
-                    safe: 129,
+                    safe: 233,
                     unsafe_: 0,
                 },
                 item_traits: Count {
-                    safe: 7,
+                    safe: 17,
                     unsafe_: 0,
                 },
                 methods: Count {
-                    safe: 180,
+                    safe: 337,
                     unsafe_: 0,
                 },
             },
             unused: CounterBlock {
                 functions: Count {
-                    safe: 67,
+                    safe: 110,
                     unsafe_: 0,
                 },
                 exprs: Count {
-                    safe: 1210,
-                    unsafe_: 72,
+                    safe: 1720,
+                    unsafe_: 70,
                 },
                 item_impls: Count {
-                    safe: 24,
+                    safe: 30,
                     unsafe_: 3,
                 },
                 item_traits: Count {
@@ -170,7 +170,7 @@ pub fn itertools_safety_report() -> SafetyReport {
                     unsafe_: 1,
                 },
                 methods: Count {
-                    safe: 29,
+                    safe: 35,
                     unsafe_: 3,
                 },
             },
@@ -215,7 +215,7 @@ pub fn generational_arena_safety_report() -> SafetyReport {
         unsafety: UnsafeInfo {
             used: CounterBlock {
                 exprs: Count {
-                    safe: 372,
+                    safe: 365,
                     unsafe_: 0,
                 },
                 item_impls: Count {
@@ -234,7 +234,7 @@ pub fn generational_arena_safety_report() -> SafetyReport {
                     unsafe_: 0,
                 },
                 exprs: Count {
-                    safe: 243,
+                    safe: 242,
                     unsafe_: 0,
                 },
                 item_impls: Count {
@@ -291,7 +291,7 @@ pub fn idna_safety_report() -> SafetyReport {
                     unsafe_: 0,
                 },
                 exprs: Count {
-                    safe: 185,
+                    safe: 182,
                     unsafe_: 0,
                 },
                 ..Default::default()
@@ -340,8 +340,8 @@ pub fn smallvec_safety_report() -> SafetyReport {
                     unsafe_: 2,
                 },
                 exprs: Count {
-                    safe: 291,
-                    unsafe_: 354,
+                    safe: 287,
+                    unsafe_: 349,
                 },
                 item_impls: Count {
                     safe: 48,
@@ -405,7 +405,7 @@ pub fn unicode_bidi_safety_report() -> SafetyReport {
                     unsafe_: 0,
                 },
                 exprs: Count {
-                    safe: 2119,
+                    safe: 2106,
                     unsafe_: 0,
                 },
                 item_impls: Count {
@@ -487,7 +487,7 @@ pub fn num_cpus_package_id(cx: &Context) -> PackageId {
     PackageId {
         name: "num_cpus".into(),
         version: Version::new(1, 10, 1),
-        source: super::make_workspace_source(cx, "support", "num_cpus"),
+        source: super::make_workspace_source(cx, "support", "num_cpus#1.10."),
     }
 }
 
@@ -522,5 +522,7 @@ pub fn make_package_id(cx: &Context, name: &str) -> PackageId {
 }
 
 fn make_source(cx: &Context, name: &str) -> Source {
-    Source::Path(Url::from_file_path(cx.crate_dir(name)).unwrap())
+    Source::Path(
+        Url::from_file_path(cx.crate_dir(&format!("{}#0.1.", name))).unwrap(),
+    )
 }

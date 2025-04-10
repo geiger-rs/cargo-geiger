@@ -18,9 +18,9 @@ use cargo::core::compiler::CompileMode;
 use cargo::core::resolver::features::CliFeatures;
 use cargo::core::Workspace;
 use cargo::ops::CompileOptions;
-use cargo::{CliError, Config};
+use cargo::{CliError, GlobalContext};
 use cargo_geiger_serde::{ReportEntry, SafetyReport};
-use cargo_metadata::PackageId;
+use krates::cm::PackageId;
 
 pub fn scan_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
@@ -54,11 +54,10 @@ pub fn scan_unsafe(
 /// Tracker rust-secure-code/cargo-geiger/issues/226
 fn build_compile_options<'a>(
     args: &'a FeaturesArgs,
-    config: &'a Config,
+    gctx: &'a GlobalContext,
 ) -> CompileOptions {
     let mut compile_options =
-        CompileOptions::new(config, CompileMode::Check { test: false })
-            .unwrap();
+        CompileOptions::new(gctx, CompileMode::Check { test: false }).unwrap();
 
     let uses_default_features = !args.no_default_features;
 
@@ -100,14 +99,14 @@ fn scan(
 ) -> Result<ScanDetails, CliError> {
     let compile_options = build_compile_options(
         &scan_parameters.args.features_args,
-        scan_parameters.config,
+        scan_parameters.gctx,
     );
 
     match resolve_rs_file_deps(&compile_options, workspace) {
         Ok(rs_files_used) => {
             let geiger_context = find_unsafe(
                 cargo_metadata_parameters,
-                scan_parameters.config,
+                scan_parameters.gctx,
                 ScanMode::Full,
                 scan_parameters.print_config,
             )?;
@@ -193,8 +192,8 @@ mod default_tests {
             no_default_features: rand::random(),
         };
 
-        let config = Config::default().unwrap();
-        let compile_options = build_compile_options(&args, &config);
+        let gctx = GlobalContext::default().unwrap();
+        let compile_options = build_compile_options(&args, &gctx);
         let expected_cli_features =
             CliFeatures::from_command_line(&args.features, false, false)
                 .unwrap();

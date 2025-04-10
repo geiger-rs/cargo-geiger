@@ -18,7 +18,7 @@ use std::fmt;
 use std::io;
 use std::path::PathBuf;
 use std::string::FromUtf8Error;
-use syn::{ItemFn, ItemMod};
+use syn::{AttrStyle, ItemFn, ItemMod};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum IncludeTests {
@@ -54,55 +54,45 @@ impl fmt::Display for ScanFileError {
 }
 
 fn file_forbids_unsafe(f: &syn::File) -> bool {
-    use syn::AttrStyle;
-    use syn::Meta;
-    use syn::MetaList;
-    use syn::NestedMeta;
-    f.attrs
-        .iter()
-        .filter(|a| matches!(a.style, AttrStyle::Inner(_)))
-        .filter_map(|a| a.parse_meta().ok())
-        .filter(|meta| match meta {
-            Meta::List(MetaList {
-                path,
-                paren_token: _paren,
-                nested,
-            }) => {
-                if !path.is_ident("forbid") {
-                    return false;
-                }
-                nested.iter().any(|n| match n {
-                    NestedMeta::Meta(Meta::Path(p)) => {
-                        p.is_ident("unsafe_code")
+    f.attrs.iter().any(|attr| {
+        // https://docs.rs/syn/latest/syn/meta/struct.ParseNestedMeta.html#example
+        let mut is_forbid_unsafe_code = false;
+        // Parses `#!`.
+        if matches!(attr.style, AttrStyle::Inner(_)) {
+            // Parses `forbid`.
+            if attr.path().is_ident("forbid") {
+                // Parses `(`.
+                let _ = attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("unsafe_code") {
+                        if meta.value().is_err() {
+                            is_forbid_unsafe_code = true;
+                        }
                     }
-                    _ => false,
-                })
+                    Ok(())
+                });
             }
-            _ => false,
-        })
-        .count()
-        > 0
+        }
+        is_forbid_unsafe_code
+    })
 }
 
 fn is_test_fn(item_fn: &ItemFn) -> bool {
-    use syn::Attribute;
     item_fn
         .attrs
         .iter()
-        .flat_map(Attribute::parse_meta)
-        .any(|m| meta_contains_ident(&m, "test"))
+        .any(|attr| attr.path().is_ident("test"))
 }
 
 fn has_unsafe_attributes(item_fn: &ItemFn) -> bool {
-    use syn::Attribute;
-    item_fn
-        .attrs
-        .iter()
-        .flat_map(Attribute::parse_meta)
-        .any(|m| {
-            meta_contains_ident(&m, "no_mangle")
-                || meta_contains_attribute(&m, "export_name")
-        })
+    item_fn.attrs.iter().any(|attr| {
+        if attr.path().is_ident("no_mangle") {
+            return true;
+        }
+        if attr.path().is_ident("export_name") {
+            return true;
+        }
+        false
+    })
 }
 
 /// Will return true for #[cfg(test)] decorated modules.
@@ -112,56 +102,18 @@ fn has_unsafe_attributes(item_fn: &ItemFn) -> bool {
 /// every single source file path and span within each source file and use that
 /// as a general filter for included code.
 /// TODO: Investigate if the needed information can be emitted by rustc today.
-fn is_test_mod(i: &ItemMod) -> bool {
-    use syn::Attribute;
-    use syn::Meta;
-    i.attrs
-        .iter()
-        .flat_map(Attribute::parse_meta)
-        .any(|m| match m {
-            Meta::List(ml) => meta_list_is_cfg_test(&ml),
-            _ => false,
-        })
-}
-
-fn meta_contains_ident(m: &syn::Meta, ident: &str) -> bool {
-    use syn::Meta;
-    match m {
-        Meta::Path(p) => p.is_ident(ident),
-        _ => false,
-    }
-}
-
-fn meta_contains_attribute(m: &syn::Meta, ident: &str) -> bool {
-    use syn::Meta;
-    match m {
-        Meta::NameValue(nv) => nv.path.is_ident(ident),
-        _ => false,
-    }
-}
-
-// MetaList {
-//     ident: Ident(
-//         cfg
-//     ),
-//     paren_token: Paren,
-//     nested: [
-//         Meta(
-//             Word(
-//                 Ident(
-//                     test
-//                 )
-//             )
-//         )
-//     ]
-// }
-fn meta_list_is_cfg_test(meta_list: &syn::MetaList) -> bool {
-    use syn::NestedMeta;
-    if !meta_list.path.is_ident("cfg") {
-        return false;
-    }
-    meta_list.nested.iter().any(|n| match n {
-        NestedMeta::Meta(meta) => meta_contains_ident(meta, "test"),
-        _ => false,
+fn is_test_mod(item: &ItemMod) -> bool {
+    item.attrs.iter().any(|attr| {
+        let mut found_cfg_test = false;
+        if attr.path().is_ident("cfg") {
+            let _ = attr.parse_nested_meta(|meta| {
+                // Parse `(`.
+                if meta.path.is_ident("test") {
+                    found_cfg_test = true;
+                }
+                Ok(())
+            });
+        }
+        found_cfg_test
     })
 }
