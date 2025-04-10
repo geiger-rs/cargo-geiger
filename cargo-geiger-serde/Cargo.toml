@@ -1,6 +1,6 @@
 [package]
 authors = ["anderejd <rajder@gmail.com>"]
-categories = ["development-tools", "serialization"]
+categories = ["development-tools"]
 description = "TODO: Write description"
 edition = "2018"
 license = "Apache-2.0/MIT"
