@@ -73,7 +73,7 @@ pub mod display_tests {
         expected_formatted_string,
         case(
             Pattern::new(vec![Chunk::License]),
-            "Apache-2.0/MIT"
+            "Apache-2.0 OR MIT"
         ),
         case(
             Pattern::new(vec![Chunk::Raw(String::from("chunk_value"))]),

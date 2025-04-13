@@ -61,7 +61,7 @@ mod krates_tests {
         let licence_option = &package.id.get_package_id_licence(&krates);
         assert!(licence_option.as_ref().is_some());
         let licence = licence_option.as_ref().unwrap();
-        assert_eq!(licence, &String::from("Apache-2.0/MIT"))
+        assert_eq!(licence, &String::from("Apache-2.0 OR MIT"))
     }
 
     #[rstest]
