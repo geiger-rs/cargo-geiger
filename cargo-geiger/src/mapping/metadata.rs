@@ -135,11 +135,11 @@ impl ToCargoGeigerPackageId for CargoMetadataPackageId {
 impl ToCargoMetadataPackageId for CargoMetadataDependency {}
 
 pub trait GetMetadataPackages {
-    fn get_metadata_packages(&self) -> Iter<CargoMetadataPackage>;
+    fn get_metadata_packages(&self) -> Iter<'_, CargoMetadataPackage>;
 }
 
 impl GetMetadataPackages for Metadata {
-    fn get_metadata_packages(&self) -> Iter<CargoMetadataPackage> {
+    fn get_metadata_packages(&self) -> Iter<'_, CargoMetadataPackage> {
         self.packages.iter()
     }
 }
@@ -294,7 +294,7 @@ mod metadata_tests {
 
     fn construct_package_registry_workspace_tuple(
         gctx: &GlobalContext,
-    ) -> (Package, PackageRegistry, Workspace) {
+    ) -> (Package, PackageRegistry<'_>, Workspace<'_>) {
         let manifest_path: Option<PathBuf> = None;
         let workspace = get_workspace(gctx, manifest_path).unwrap();
         let package = workspace.current().unwrap().clone();

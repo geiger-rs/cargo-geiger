@@ -85,7 +85,7 @@ pub fn get_krates(
 pub fn get_workspace(
     gctx: &GlobalContext,
     manifest_path: Option<PathBuf>,
-) -> CargoResult<Workspace> {
+) -> CargoResult<Workspace<'_>> {
     let root = match manifest_path {
         Some(path) => path,
         None => important_paths::find_root_manifest_for_wd(gctx.cwd())?,
