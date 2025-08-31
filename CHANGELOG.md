@@ -1,6 +1,10 @@
 # Changelog
 ---------
 
+## 0.13.0
+ - Remove `deny(warnings)` from builds
+ - Fix 1.89 build - thanks @gaykitty [#552]
+
 ## 0.12.0
  - Upgraded from Cargo 0.75 to 0.86
  - Fix compilation with new rust versions - thanks @mleonhard [#518] and @justahero [#529] & others
@@ -196,87 +200,6 @@
  - Initial experimental versions.
  - Mostly README.md updates.
 
-[#9]: https://github.com/rust-secure-code/cargo-geiger/pull/9
-[#16]: https://github.com/rust-secure-code/cargo-geiger/issues/16
-[#28]: https://github.com/rust-secure-code/cargo-geiger/issues/28
-[#29]: https://github.com/rust-secure-code/cargo-geiger/issues/29
-[#30]: https://github.com/rust-secure-code/cargo-geiger/issues/30
-[#33]: https://github.com/rust-secure-code/cargo-geiger/issues/33
-[#38]: https://github.com/rust-secure-code/cargo-geiger/issues/38
-[#40]: https://github.com/rust-secure-code/cargo-geiger/issues/40
-[#46]: https://github.com/rust-secure-code/cargo-geiger/issues/46
-[#52]: https://github.com/rust-secure-code/cargo-geiger/issues/52
-[#57]: https://github.com/rust-secure-code/cargo-geiger/issues/57
-[#59]: https://github.com/rust-secure-code/cargo-geiger/issues/59
-[#66]: https://github.com/rust-secure-code/cargo-geiger/issues/66
-[#70]: https://github.com/rust-secure-code/cargo-geiger/pull/70
-[#71]: https://github.com/rust-secure-code/cargo-geiger/issues/71
-[#72]: https://github.com/rust-secure-code/cargo-geiger/pull/72
-[#76]: https://github.com/rust-secure-code/cargo-geiger/pull/76
-[#77]: https://github.com/rust-secure-code/cargo-geiger/pull/77
-[#79]: https://github.com/rust-secure-code/cargo-geiger/issues/79
-[#85]: https://github.com/rust-secure-code/cargo-geiger/pull/85
-[#98]: https://github.com/rust-secure-code/cargo-geiger/pull/98
-[#99]: https://github.com/rust-secure-code/cargo-geiger/pull/99
-[#105]: https://github.com/rust-secure-code/cargo-geiger/issues/105
-[#114]: https://github.com/rust-secure-code/cargo-geiger/pull/114
-[#115]: https://github.com/rust-secure-code/cargo-geiger/pull/115
-[#118]: https://github.com/rust-secure-code/cargo-geiger/pull/118
-[#120]: https://github.com/rust-secure-code/cargo-geiger/pull/120
-[#121]: https://github.com/rust-secure-code/cargo-geiger/pull/121
-[#122]: https://github.com/rust-secure-code/cargo-geiger/pull/122
-[#124]: https://github.com/rust-secure-code/cargo-geiger/pull/124
-[#125]: https://github.com/rust-secure-code/cargo-geiger/pull/125
-[#126]: https://github.com/rust-secure-code/cargo-geiger/pull/126
-[#127]: https://github.com/rust-secure-code/cargo-geiger/pull/127
-[#128]: https://github.com/rust-secure-code/cargo-geiger/pull/128
-[#129]: https://github.com/rust-secure-code/cargo-geiger/pull/129
-[#130]: https://github.com/rust-secure-code/cargo-geiger/pull/130
-[#131]: https://github.com/rust-secure-code/cargo-geiger/pull/131
-[#132]: https://github.com/rust-secure-code/cargo-geiger/pull/132
-[#133]: https://github.com/rust-secure-code/cargo-geiger/pull/133
-[#134]: https://github.com/rust-secure-code/cargo-geiger/pull/134
-[#135]: https://github.com/rust-secure-code/cargo-geiger/pull/135
-[#136]: https://github.com/rust-secure-code/cargo-geiger/pull/136
-[#138]: https://github.com/rust-secure-code/cargo-geiger/pull/138
-[#139]: https://github.com/rust-secure-code/cargo-geiger/pull/139
-[#140]: https://github.com/rust-secure-code/cargo-geiger/pull/140
-[#141]: https://github.com/rust-secure-code/cargo-geiger/pull/141
-[#142]: https://github.com/rust-secure-code/cargo-geiger/pull/142
-[#143]: https://github.com/rust-secure-code/cargo-geiger/pull/143
-[#146]: https://github.com/rust-secure-code/cargo-geiger/pull/146
-[#147]: https://github.com/rust-secure-code/cargo-geiger/pull/147
-[#148]: https://github.com/rust-secure-code/cargo-geiger/pull/148
-[#151]: https://github.com/rust-secure-code/cargo-geiger/issues/151
-[#153]: https://github.com/rust-secure-code/cargo-geiger/pull/153
-[#154]: https://github.com/rust-secure-code/cargo-geiger/pull/154
-[#156]: https://github.com/rust-secure-code/cargo-geiger/pull/156
-[#157]: https://github.com/rust-secure-code/cargo-geiger/pull/157
-[#158]: https://github.com/rust-secure-code/cargo-geiger/pull/158
-[#159]: https://github.com/rust-secure-code/cargo-geiger/pull/159
-[#161]: https://github.com/rust-secure-code/cargo-geiger/pull/161
-[#162]: https://github.com/rust-secure-code/cargo-geiger/pull/162
-[#164]: https://github.com/rust-secure-code/cargo-geiger/pull/164
-[#165]: https://github.com/rust-secure-code/cargo-geiger/pull/165
-[#166]: https://github.com/rust-secure-code/cargo-geiger/issues/166
-[#167]: https://github.com/rust-secure-code/cargo-geiger/pull/167
-[#171]: https://github.com/rust-secure-code/cargo-geiger/pull/171
-[#173]: https://github.com/rust-secure-code/cargo-geiger/pull/173
-[#176]: https://github.com/rust-secure-code/cargo-geiger/pull/176
-[#178]: https://github.com/rust-secure-code/cargo-geiger/pull/178
-[#180]: https://github.com/rust-secure-code/cargo-geiger/pull/180
-[#182]: https://github.com/rust-secure-code/cargo-geiger/pull/182
-[#183]: https://github.com/rust-secure-code/cargo-geiger/pull/183
-[#184]: https://github.com/rust-secure-code/cargo-geiger/pull/184
-[#188]: https://github.com/rust-secure-code/cargo-geiger/pull/188
-[#189]: https://github.com/rust-secure-code/cargo-geiger/pull/189
-[#191]: https://github.com/rust-secure-code/cargo-geiger/pull/191
-[#192]: https://github.com/rust-secure-code/cargo-geiger/pull/192
-[#196]: https://github.com/rust-secure-code/cargo-geiger/pull/196
-[#197]: https://github.com/rust-secure-code/cargo-geiger/pull/197
-[#198]: https://github.com/rust-secure-code/cargo-geiger/pull/198
-[#199]: https://github.com/rust-secure-code/cargo-geiger/pull/199
-[#201]: https://github.com/rust-secure-code/cargo-geiger/pull/201
 [geiger]: https://crates.io/crates/geiger
 [pico-args]: https://crates.io/crates/pico-args
 
