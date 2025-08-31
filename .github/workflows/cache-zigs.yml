@@ -11,7 +11,7 @@ jobs:
     outputs:
       matrix-json: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: rinse-repeat/zig-gh-helper
           path: zig-helper      
