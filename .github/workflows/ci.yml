@@ -24,7 +24,7 @@ jobs:
           # MacOS
           - runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test -- --skip args::args_tests::update_config_test_color_choice::case_4 --skip test_package
 
@@ -33,7 +33,7 @@ jobs:
 #    name: Check that clippy is happy
 #    runs-on: ubuntu-latest
 #    steps:
-#    - uses: actions/checkout@v4
+#    - uses: actions/checkout@v5
 #    - uses: dtolnay/rust-toolchain@1.73.0
 #      with:
 #        components: clippy
@@ -43,7 +43,7 @@ jobs:
     name: Check formatting
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dtolnay/rust-toolchain@stable
       with:
         components: rustfmt

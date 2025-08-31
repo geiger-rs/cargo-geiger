@@ -19,7 +19,7 @@ jobs:
     outputs:
       matrix-json: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: release-repo
       - id: set-matrix
