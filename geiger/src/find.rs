@@ -267,4 +267,33 @@ mod tests {
         let actual = find_unsafe_in_string(file, IncludeTests::Yes).unwrap();
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn counters_functions_with_edition_2024_unsafe_attributes() {
+        let expected = RsFileMetrics {
+            counters: CounterBlock {
+                functions: Count {
+                    safe: 1,
+                    unsafe_: 3,
+                },
+                exprs: Count {
+                    safe: 1,
+                    unsafe_: 3,
+                },
+                ..DEFAULT_COUNTERS
+            },
+            ..DEFAULT_METRICS
+        };
+        let file = "
+            pub fn f() { f(); }
+            #[unsafe(no_mangle)]
+            pub fn f() { f(); }
+            #[unsafe(export_name = \"exported_f\")]
+            pub fn f() { f(); }
+            #[unsafe(naked)]
+            pub extern \"C\" fn f() { f(); }
+        ";
+        let actual = find_unsafe_in_string(file, IncludeTests::No).unwrap();
+        assert_eq!(actual, expected);
+    }
 }

@@ -85,6 +85,12 @@ fn is_test_fn(item_fn: &ItemFn) -> bool {
 
 fn has_unsafe_attributes(item_fn: &ItemFn) -> bool {
     item_fn.attrs.iter().any(|attr| {
+        // Since edition 2024 these attributes have to be wrapped, as in
+        // `#[unsafe(no_mangle)]`. The wrapper is only permitted on
+        // attributes that are unsafe to apply, so its presence is enough.
+        if attr.path().is_ident("unsafe") {
+            return true;
+        }
         if attr.path().is_ident("no_mangle") {
             return true;
         }
