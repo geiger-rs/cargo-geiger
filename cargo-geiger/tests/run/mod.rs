@@ -1,6 +1,6 @@
 use crate::context::Context;
 
-use assert_cmd::prelude::*;
+use assert_cmd::cargo;
 use std::process::{Command, Output};
 
 pub fn run_geiger_with<I>(test_name: &str, extra_args: I) -> (Output, Context)
@@ -9,8 +9,7 @@ where
     I::Item: AsRef<std::ffi::OsStr>,
 {
     let cx = Context::new();
-    let output = Command::cargo_bin("cargo-geiger")
-        .unwrap()
+    let output = Command::new(cargo::cargo_bin!("cargo-geiger"))
         .arg("geiger")
         .arg("--color=never")
         .arg("--quiet")

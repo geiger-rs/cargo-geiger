@@ -100,12 +100,12 @@ mod krates_tests {
         expected_package_name,
         expected_package_version,
         case(
-            "krates:0.18.1",
+            "krates:0.20.0",
             "krates",
             Version {
                 major: 0,
-                minor: 18,
-                patch: 1,
+                minor: 20,
+                patch: 0,
                 pre: Prerelease::EMPTY,
                 build: BuildMetadata::EMPTY
             }
