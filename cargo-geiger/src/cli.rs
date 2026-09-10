@@ -18,6 +18,7 @@ use krates::cm::{CargoOpt, MetadataCommand};
 use krates::Builder as KratesBuilder;
 use krates::Krates;
 use std::path::PathBuf;
+use std::process::Command;
 use std::str::{self, FromStr};
 
 pub fn get_cargo_metadata(
@@ -31,6 +32,20 @@ pub fn get_cargo_metadata(
 
     let mut metadata_command = MetadataCommand::new();
     metadata_command.manifest_path(root_manifest_path);
+    if !args.target_args.all_targets {
+        if let Some(specified_target) = args
+            .target_args
+            .target
+            .as_deref()
+            .map(|s| s.to_string())
+            .or_else(get_host_target)
+        {
+            metadata_command.other_options([
+                "--filter-platform".to_string(),
+                specified_target,
+            ]);
+        }
+    }
 
     if let Some(metadata_command_features) = match &args.features_args {
         features_args if features_args.all_features => {
@@ -91,6 +106,23 @@ pub fn get_workspace(
         None => important_paths::find_root_manifest_for_wd(gctx.cwd())?,
     };
     Workspace::new(&root, gctx)
+}
+
+/// Query the installed rust compiler for the default host triple
+fn get_host_target() -> Option<String> {
+    let rustc_output = Command::new("rustc").arg("-vV").output().ok()?;
+    if rustc_output.status.success() {
+        let output_str = String::from_utf8(rustc_output.stdout).ok()?;
+        for line in output_str.lines() {
+            if line.starts_with("host:") {
+                let parts: Vec<_> = line.split(" ").collect();
+                return parts.get(1).map(|s| s.to_string());
+            }
+        }
+        None
+    } else {
+        None
+    }
 }
 
 // TODO: Make a wrapper type for canonical paths and hide all mutable access.
