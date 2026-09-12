@@ -195,6 +195,34 @@ mod tests {
     }
 
     #[test]
+    fn counters_functions_with_unsafe_attributes_do_not_leak_scope() {
+        let expected = RsFileMetrics {
+            counters: CounterBlock {
+                functions: Count {
+                    safe: 2,
+                    unsafe_: 2,
+                },
+                exprs: Count {
+                    safe: 2,
+                    unsafe_: 2,
+                },
+                ..DEFAULT_COUNTERS
+            },
+            ..DEFAULT_METRICS
+        };
+        let file = "
+            #[no_mangle]
+            pub fn f() { f(); }
+            pub fn f() { f(); }
+            #[export_name = \"exported_f\"]
+            pub fn f() { f(); }
+            pub fn f() { f(); }
+        ";
+        let actual = find_unsafe_in_string(file, IncludeTests::No).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn counters_exprs() {
         let file = "
             pub fn f() {

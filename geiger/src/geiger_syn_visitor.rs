@@ -60,7 +60,7 @@ impl<'ast> visit::Visit<'ast> for GeigerSynVisitor {
         }
         self.metrics.counters.functions.count(unsafe_fn);
         visit::visit_item_fn(self, item_fn);
-        if item_fn.sig.unsafety.is_some() {
+        if unsafe_fn {
             self.exit_unsafe_scope()
         }
     }
