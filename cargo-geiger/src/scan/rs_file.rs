@@ -223,7 +223,7 @@ fn add_dir_entries_to_path_buf_hash_set(
         let canonical_paths = dependencies
             .into_iter()
             .flat_map(|(_, dependency_files)| dependency_files)
-            .filter(|file| !file.ends_with(".md"))
+            .filter(|file| file.ends_with(".rs"))
             .map(PathBuf::from)
             .map(|pb| workspace_root.join(pb))
             .map(|pb| pb.canonicalize().map_err(|e| RsResolveError::Io(e, pb)));
