@@ -457,7 +457,7 @@ dependencies = [
  "geiger",
  "insta",
  "krates",
- "petgraph",
+ "petgraph 0.8.3",
  "pico-args",
  "rand 0.10.3",
  "rayon",
@@ -2662,7 +2662,7 @@ dependencies = [
  "cargo-platform 0.1.9",
  "cargo_metadata",
  "cfg-expr",
- "petgraph",
+ "petgraph 0.7.1",
  "semver",
  "serde",
  "serde_json",
@@ -3271,6 +3271,18 @@ checksum = "3672b37090dbd86368a4145bc067582552b29c27377cad4e0a306c97f9bd7772"
 dependencies = [
  "fixedbitset",
  "indexmap",
+]
+
+[[package]]
+name = "petgraph"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8701b58ea97060d5e5b155d383a69952a60943f0e6dfe30b04c287beb0b27455"
+dependencies = [
+ "fixedbitset",
+ "hashbrown 0.15.5",
+ "indexmap",
+ "serde",
 ]
 
 [[package]]
