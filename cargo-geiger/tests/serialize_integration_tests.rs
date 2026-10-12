@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![forbid(warnings)]
 
 mod context;
 mod external_package_reports;
