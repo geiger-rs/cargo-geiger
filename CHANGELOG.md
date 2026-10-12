@@ -1,6 +1,11 @@
 # Changelog
 ---------
 
+## 0.14.0
+ - Upgraded from Cargo 0.86 to 0.96
+ - Fix: fix scoping on unsafe attributes [#568] - thanks @jakobjung10
+ - Fix: edition 2025 unsafe attributes [#569] - thanks @jakobjung10
+
 ## 0.13.0
  - Remove `deny(warnings)` from builds
  - Fix 1.89 build - thanks @gaykitty [#552]
