@@ -38,6 +38,14 @@ fn generated_rust_is_counted_and_resource_inputs_are_not_rust() {
         "pub unsafe fn uncompiled() {}",
     )
     .unwrap();
+    let target_dir = tempfile::tempdir().unwrap();
+    let deps_dir = target_dir.path().join("debug/deps");
+    fs::create_dir_all(&deps_dir).unwrap();
+    fs::write(
+        deps_dir.join("unrelated.d"),
+        "unrelated: missing-from-another-build.rs\n",
+    )
+    .unwrap();
     for format in ["Ascii", "Json"] {
         let output = assert_cmd::cargo_bin_cmd!("cargo-geiger")
             .args([
@@ -49,6 +57,7 @@ fn generated_rust_is_counted_and_resource_inputs_are_not_rust() {
             ])
             .arg("--manifest-path")
             .arg(dir.path().join("Cargo.toml"))
+            .env("CARGO_TARGET_DIR", target_dir.path())
             .current_dir(dir.path())
             .output()
             .unwrap();
