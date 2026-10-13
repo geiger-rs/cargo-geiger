@@ -1,4 +1,4 @@
-cargo-geiger ☢️ 
+cargo-geiger ☢️
 ===============
 
 [![CI](https://github.com/geiger-rs/cargo-geiger/actions/workflows/ci.yml/badge.svg)](https://github.com/geiger-rs/cargo-geiger/actions/workflows/ci.yml)
@@ -35,6 +35,11 @@ Usage
 
 1. Navigate to the same directory as the `Cargo.toml` you want to analyze.
 2. `cargo geiger`
+
+The source census retains unused and target-specific Rust files in dependency
+packages. It also includes generated Rust inputs recorded by the current
+compiler invocations. Documentation and binary resources referenced through
+`include_str!` or `include_bytes!` are not treated as Rust source files.
 
 Intended Use
 ------------
@@ -88,4 +93,3 @@ Why the name?
 <https://en.wikipedia.org/wiki/Geiger_counter>
 
 Unsafe code, like ionizing radiation, is unavoidable in some situations and should be safely contained!
-

@@ -21,11 +21,16 @@ use std::sync::mpsc::sync_channel;
 use std::sync::{Arc, Mutex};
 use walkdir::WalkDir;
 
+/// Scan package Rust sources and report progress through Cargo.
+///
+/// Compiler dependency groups add generated Rust inputs attributed by target
+/// roots. Without them, only sources in package directories are scanned.
 pub fn find_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
     gctx: &GlobalContext,
     mode: ScanMode,
     print_config: &PrintConfig,
+    dependency_groups: Option<&[HashSet<PathBuf>]>,
 ) -> Result<GeigerContext, CliError> {
     let mut progress = cargo::util::Progress::new("Scanning", gctx);
     let geiger_context = find_unsafe_in_packages_with_progress(
@@ -33,6 +38,7 @@ pub fn find_unsafe(
         cargo_metadata_parameters,
         print_config.include_tests,
         mode,
+        dependency_groups,
         |progress_count, count| {
             progress.tick(progress_count, count, "find_unsafe_tick")
         },
@@ -47,6 +53,7 @@ fn find_unsafe_in_packages_with_progress<F>(
     cargo_metadata_parameters: &CargoMetadataParameters,
     include_tests: IncludeTests,
     mode: ScanMode,
+    dependency_groups: Option<&[HashSet<PathBuf>]>,
     mut progress_fn: F,
 ) -> GeigerContext
 where
@@ -64,6 +71,7 @@ where
                 cargo_metadata_parameters,
                 include_tests,
                 mode,
+                dependency_groups,
                 Some(on_processed),
             ))
         });
@@ -80,6 +88,7 @@ fn find_unsafe_in_packages<F>(
     cargo_metadata_parameters: &CargoMetadataParameters,
     include_tests: IncludeTests,
     mode: ScanMode,
+    dependency_groups: Option<&[HashSet<PathBuf>]>,
     on_processed: Option<F>,
 ) -> GeigerContext
 where
@@ -88,8 +97,25 @@ where
     let package_id_to_metrics = Arc::new(Mutex::new(HashMap::new()));
     let ignored = Arc::new(Mutex::new(HashSet::new()));
     let packages = cargo_metadata_parameters.metadata.packages.to_vec();
-    let package_code_files: Vec<_> =
-        find_rs_files_in_packages(&packages).collect();
+    let compiled_files = packages.iter().flat_map(|package| {
+        dependency_groups
+            .into_iter()
+            .flat_map(move |groups| compiled_rs_files(package, groups))
+            .map(move |file| (package.id.clone(), file))
+    });
+    let mut seen = HashSet::new();
+    let package_code_files: Vec<_> = find_rs_files_in_packages(&packages)
+        .chain(compiled_files)
+        .filter(|(id, file)| {
+            let path = match file {
+                RsFile::BinRoot(path)
+                | RsFile::CustomBuildRoot(path)
+                | RsFile::LibRoot(path)
+                | RsFile::Other(path) => path,
+            };
+            seen.insert((id.clone(), path.clone()))
+        })
+        .collect();
     let package_code_file_count = package_code_files.len();
     let processed_count = AtomicUsize::new(0);
     package_code_files.into_par_iter().for_each_with(
@@ -149,6 +175,37 @@ where
         package_id_to_metrics: cargo_core_package_metrics,
         ignored_paths: Arc::try_unwrap(ignored).unwrap().into_inner().unwrap(),
     }
+}
+
+/// Attribute compiler inputs by the target root in each dep-info group.
+/// Generated include! sources share that group even outside the package tree.
+fn compiled_rs_files(
+    package: &krates::cm::Package,
+    groups: &[HashSet<PathBuf>],
+) -> Vec<RsFile> {
+    let mut files = HashMap::new();
+    for target in &package.targets {
+        let Ok(root) = target.src_path.canonicalize() else {
+            continue;
+        };
+        for group in groups.iter().filter(|group| group.contains(&root)) {
+            for path in group
+                .iter()
+                .filter(|path| path.extension().is_some_and(|ext| ext == "rs"))
+            {
+                files
+                    .entry(path.clone())
+                    .or_insert_with(|| RsFile::Other(path.clone()));
+            }
+        }
+        if files.contains_key(&root) {
+            files.insert(
+                root.clone(),
+                into_rs_code_file(&into_target_kind(&target.kind), root),
+            );
+        }
+    }
+    files.into_values().collect()
 }
 
 fn find_rs_files_in_dir(dir: &Path) -> impl Iterator<Item = PathBuf> {

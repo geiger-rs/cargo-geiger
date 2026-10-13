@@ -51,6 +51,7 @@ fn scan_forbid_to_report(
         gctx,
         ScanMode::EntryPointsOnly,
         print_config,
+        None,
     )?;
     let mut report = QuickSafetyReport::default();
     for (package, package_metrics) in package_metrics(

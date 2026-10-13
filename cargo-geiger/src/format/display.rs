@@ -24,7 +24,7 @@ impl<'a> fmt::Display for Display<'a> {
                 Chunk::License => {
                     if let Some(ref license) =
                         self.package.get_package_id_licence(
-                            self.cargo_metadata_parameters.krates,
+                            self.cargo_metadata_parameters.metadata,
                         )
                     {
                         (write!(fmt, "{}", license))?
@@ -33,7 +33,7 @@ impl<'a> fmt::Display for Display<'a> {
                 Chunk::Package => {
                     if let Some((package_name, package_version)) =
                         self.package.get_package_id_name_and_version(
-                            self.cargo_metadata_parameters.krates,
+                            self.cargo_metadata_parameters.metadata,
                         )
                     {
                         (write!(fmt, "{} {}", package_name, package_version))?
@@ -45,7 +45,7 @@ impl<'a> fmt::Display for Display<'a> {
                 Chunk::Repository => {
                     if let Some(ref repository) =
                         self.package.get_package_id_repository(
-                            self.cargo_metadata_parameters.krates,
+                            self.cargo_metadata_parameters.metadata,
                         )
                     {
                         (write!(fmt, "{}", repository))?
@@ -110,5 +110,52 @@ pub mod display_tests {
         };
 
         assert_eq!(format!("{}", display), expected_formatted_string);
+    }
+
+    #[test]
+    fn package_metadata_is_formatted_without_a_graph_node() {
+        let metadata = MetadataCommand::new()
+            .manifest_path("./Cargo.toml")
+            .features(CargoOpt::AllFeatures)
+            .exec()
+            .unwrap();
+        let package = metadata
+            .packages
+            .iter()
+            .find(|package| package.name == "cargo-geiger-serde")
+            .unwrap();
+        let specification = format!("{}:{}", package.name, package.version);
+        let mut builder = KratesBuilder::new();
+        builder.exclude([specification.parse().unwrap()]);
+        let krates = builder
+            .build_with_metadata(metadata.clone(), |_| ())
+            .unwrap();
+        assert!(krates.node_for_kid(&package.id.clone().into()).is_none());
+        let pattern = Pattern::new(vec![
+            Chunk::Package,
+            Chunk::Raw(" | ".to_owned()),
+            Chunk::License,
+            Chunk::Raw(" | ".to_owned()),
+            Chunk::Repository,
+        ]);
+        let parameters = CargoMetadataParameters {
+            krates: &krates,
+            metadata: &metadata,
+        };
+        let display = Display {
+            cargo_metadata_parameters: &parameters,
+            pattern: &pattern,
+            package: &package.id,
+        };
+        assert_eq!(
+            display.to_string(),
+            format!(
+                "{} {} | {} | {}",
+                package.name,
+                package.version,
+                package.license.as_deref().unwrap(),
+                package.repository.as_deref().unwrap()
+            )
+        );
     }
 }

@@ -23,6 +23,17 @@ use krates::cm::PackageId as CargoMetadataPackageId;
 
 use cargo_geiger_serde::DependencyKind as CargoGeigerSerdeDependencyKind;
 
+impl GetPackage for Metadata {
+    fn get_package(
+        &self,
+        package_id: &CargoMetadataPackageId,
+    ) -> Option<&CargoMetadataPackage> {
+        self.packages
+            .iter()
+            .find(|package| package.id == *package_id)
+    }
+}
+
 impl DepsNotReplaced for Metadata {
     fn deps_not_replaced<T: ToCargoMetadataPackage + Display>(
         &self,

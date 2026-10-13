@@ -55,6 +55,7 @@ pub fn scan_forbid_to_table(
                     gctx,
                     ScanMode::EntryPointsOnly,
                     print_config,
+                    None,
                 )?;
 
                 handle_package_text_tree_line(

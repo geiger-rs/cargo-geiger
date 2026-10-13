@@ -103,13 +103,19 @@ fn scan(
     );
 
     match resolve_rs_file_deps(&compile_options, workspace) {
-        Ok(rs_files_used) => {
+        Ok(dependency_groups) => {
             let geiger_context = find_unsafe(
                 cargo_metadata_parameters,
                 scan_parameters.gctx,
                 ScanMode::Full,
                 scan_parameters.print_config,
+                Some(&dependency_groups),
             )?;
+            let rs_files_used = dependency_groups
+                .into_iter()
+                .flatten()
+                .filter(|path| path.extension().is_some_and(|ext| ext == "rs"))
+                .collect();
             Ok(ScanDetails {
                 rs_files_used,
                 geiger_context,

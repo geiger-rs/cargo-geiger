@@ -5,9 +5,8 @@ use custom_executor::{CustomExecutor, CustomExecutorInnerContext};
 use cargo::core::compiler::Executor;
 use cargo::core::manifest::TargetKind;
 use cargo::core::Workspace;
-use cargo::ops;
-use cargo::ops::{CleanOptions, CompileOptions};
-use cargo::util::{interning::InternedString, CargoResult};
+use cargo::ops::{self, CompileOptions};
+use cargo::util::CargoResult;
 use cargo::GlobalContext;
 use cargo_util::paths;
 use geiger::RsFileMetrics;
@@ -17,7 +16,7 @@ use std::fmt;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
-use walkdir::{DirEntry, WalkDir};
+use walkdir::DirEntry;
 
 /// Provides information needed to scan for crate root
 /// `#![forbid(unsafe_code)]`.
@@ -144,94 +143,49 @@ pub fn is_file_with_ext(entry: &DirEntry, file_ext: &str) -> bool {
     ext.to_string_lossy() == file_ext
 }
 
-/// Trigger a `cargo clean` + `cargo check` and listen to the cargo/rustc
-/// communication to figure out which source files were used by the build.
+/// Compile through an executor and retain only dep-info emitted by that build.
 pub fn resolve_rs_file_deps(
     compile_options: &CompileOptions,
     workspace: &Workspace,
-) -> Result<HashSet<PathBuf>, RsResolveError> {
+) -> Result<Vec<HashSet<PathBuf>>, RsResolveError> {
     let gctx = workspace.gctx();
-    let (pkg_set, _) = ops::resolve_ws(workspace, false)
-        .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
-    let packages = pkg_set
-        .package_ids()
-        .map(|package_id| package_id.name().as_str().to_owned())
-        .collect();
-    // Need to run a cargo clean to identify all new .d deps files.
-    // TODO: Figure out how this can be avoided to improve performance, clean
-    // Rust builds are __slow__.
-    let clean_options = CleanOptions {
-        gctx,
-        spec: packages,
-        targets: vec![],
-        profile_specified: false,
-        // A temporary hack to get cargo 0.43 to build, TODO: look closer at the updated cargo API
-        // later.
-        requested_profile: InternedString::new("dev"),
-        doc: false,
-        dry_run: false,
-    };
-
-    ops::clean(workspace, &clean_options)
-        .map_err(|e| RsResolveError::Cargo(e.to_string()))?;
-
     let inner_arc = Arc::new(Mutex::new(CustomExecutorInnerContext::default()));
     {
         compile_with_exec(compile_options, gctx, inner_arc.clone(), workspace)?;
     }
 
-    let workspace_root = workspace.root().to_path_buf();
     let inner_mutex =
         Arc::try_unwrap(inner_arc).map_err(|_| RsResolveError::ArcUnwrap())?;
-    let (rs_files, out_dir_args) = {
+    let (rs_files, dep_info_files) = {
         let ctx = inner_mutex.into_inner()?;
-        (ctx.rs_file_args, ctx.out_dir_args)
+        (ctx.rs_file_args, ctx.dep_info_files)
     };
-    let mut path_buf_hash_set = HashSet::<PathBuf>::new();
-    for out_dir in out_dir_args {
-        // TODO: Figure out if the `.d` dep files are used by one or more rustc
-        // calls. It could be useful to know which `.d` dep files belong to
-        // which rustc call. That would allow associating each `.rs` file found
-        // in each dep file with a PackageId.
-        add_dir_entries_to_path_buf_hash_set(
-            out_dir,
-            &mut path_buf_hash_set,
-            workspace_root.clone(),
-        )?;
+    let mut dependency_groups = Vec::new();
+    for (dep_file, cwd) in dep_info_files {
+        let dependencies = parse_rustc_dep_info(&dep_file).map_err(|e| {
+            RsResolveError::DepParse(e.to_string(), dep_file.clone())
+        })?;
+        let paths = dependencies
+            .into_iter()
+            .flat_map(|(_, inputs)| inputs)
+            .map(|path| cwd.join(path))
+            .map(|path| {
+                path.canonicalize()
+                    .map_err(|error| RsResolveError::Io(error, path))
+            })
+            .collect::<Result<HashSet<_>, _>>()?;
+        dependency_groups.push(paths);
     }
     for path_buf in rs_files {
-        // rs_files must already be canonicalized
-        path_buf_hash_set.insert(path_buf);
-    }
-
-    Ok(path_buf_hash_set)
-}
-
-fn add_dir_entries_to_path_buf_hash_set(
-    out_dir: PathBuf,
-    path_buf_hash_set: &mut HashSet<PathBuf>,
-    workspace_root: PathBuf,
-) -> Result<(), RsResolveError> {
-    for entry in WalkDir::new(&out_dir) {
-        let entry = entry.map_err(RsResolveError::Walkdir)?;
-        if !is_file_with_ext(&entry, "d") {
-            continue;
-        }
-        let dependencies = parse_rustc_dep_info(entry.path()).map_err(|e| {
-            RsResolveError::DepParse(e.to_string(), entry.path().to_path_buf())
-        })?;
-        let canonical_paths = dependencies
-            .into_iter()
-            .flat_map(|(_, dependency_files)| dependency_files)
-            .map(PathBuf::from)
-            .map(|pb| workspace_root.join(pb))
-            .map(|pb| pb.canonicalize().map_err(|e| RsResolveError::Io(e, pb)));
-        for path_buf in canonical_paths {
-            path_buf_hash_set.insert(path_buf?);
+        if !dependency_groups
+            .iter()
+            .any(|group| group.contains(&path_buf))
+        {
+            dependency_groups.push(HashSet::from([path_buf]));
         }
     }
 
-    Ok(())
+    Ok(dependency_groups)
 }
 
 fn compile_with_exec(
@@ -292,6 +246,7 @@ fn parse_rustc_dep_info(
 mod rs_file_tests {
     use super::*;
     use rstest::*;
+    use walkdir::WalkDir;
 
     #[rstest(
         input_rs_file,

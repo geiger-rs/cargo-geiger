@@ -2,9 +2,8 @@ use cargo::core::compiler::{CompileMode, Executor, Unit};
 use cargo::core::{PackageId, Target};
 use cargo::util::CargoResult;
 use cargo_util::ProcessBuilder;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
-use std::ffi::OsString;
 use std::fmt;
 use std::io;
 use std::path::PathBuf;
@@ -46,22 +45,10 @@ impl Executor for CustomExecutor {
         _id: PackageId,
         _target: &Target,
         _mode: CompileMode,
-        _on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>,
-        _on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+        on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+        on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
     ) -> CargoResult<()> {
-        let mut args = cmd.get_args();
-        let out_dir_key = OsString::from("--out-dir");
-
-        args.position(|s| *s == out_dir_key).ok_or_else(|| {
-            CustomExecutorError::OutDirKeyMissing(cmd.to_string())
-        })?;
-
-        let out_dir = args
-            .next()
-            .ok_or_else(|| {
-                CustomExecutorError::OutDirValueMissing(cmd.to_string())
-            })
-            .map(PathBuf::from)?;
+        let args = cmd.get_args();
 
         // This can be different from the cwd used to launch the wrapping cargo
         // plugin. Discovered while fixing
@@ -86,9 +73,18 @@ impl Executor for CustomExecutor {
                     .map_err(|e| CustomExecutorError::Io(e, raw_path))?;
                 ctx.rs_file_args.insert(path);
             }
-            ctx.out_dir_args.insert(out_dir);
         }
-        cmd.exec()?;
+        cmd.exec_with_streaming(
+            &mut |line| {
+                self.record_dep_info(line, &cwd)?;
+                on_stdout_line(line)
+            },
+            &mut |line| {
+                self.record_dep_info(line, &cwd)?;
+                on_stderr_line(line)
+            },
+            false,
+        )?;
         Ok(())
     }
 
@@ -113,7 +109,29 @@ pub struct CustomExecutorInnerContext {
     /// Stores all lib.rs, main.rs etc. passed to rustc during the build.
     pub rs_file_args: HashSet<PathBuf>,
 
-    /// Investigate if this needs to be intercepted like this or if it can be
-    /// looked up in a nicer way.
-    pub out_dir_args: HashSet<PathBuf>,
+    /// Dep-info artifacts emitted by this build and their invocation directories.
+    pub dep_info_files: HashMap<PathBuf, PathBuf>,
+}
+
+impl CustomExecutor {
+    fn record_dep_info(
+        &self,
+        line: &str,
+        cwd: &std::path::Path,
+    ) -> CargoResult<()> {
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(line) {
+            if value.get("emit").and_then(|v| v.as_str()) == Some("dep-info") {
+                if let Some(path) =
+                    value.get("artifact").and_then(|v| v.as_str())
+                {
+                    let mut ctx = self.inner_ctx.lock().map_err(|e| {
+                        CustomExecutorError::InnerContextMutex(e.to_string())
+                    })?;
+                    ctx.dep_info_files
+                        .insert(cwd.join(path), cwd.to_path_buf());
+                }
+            }
+        }
+        Ok(())
+    }
 }
