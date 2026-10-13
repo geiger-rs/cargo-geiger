@@ -109,8 +109,7 @@ pub struct CustomExecutorInnerContext {
     /// Stores all lib.rs, main.rs etc. passed to rustc during the build.
     pub rs_file_args: HashSet<PathBuf>,
 
-    /// Investigate if this needs to be intercepted like this or if it can be
-    /// looked up in a nicer way.
+    /// Dep-info artifacts emitted by this build and their invocation directories.
     pub dep_info_files: HashMap<PathBuf, PathBuf>,
 }
 

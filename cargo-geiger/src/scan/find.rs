@@ -21,6 +21,10 @@ use std::sync::mpsc::sync_channel;
 use std::sync::{Arc, Mutex};
 use walkdir::WalkDir;
 
+/// Scan package Rust sources and report progress through Cargo.
+///
+/// Compiler dependency groups add generated Rust inputs attributed by target
+/// roots. Without them, only sources in package directories are scanned.
 pub fn find_unsafe(
     cargo_metadata_parameters: &CargoMetadataParameters,
     gctx: &GlobalContext,
