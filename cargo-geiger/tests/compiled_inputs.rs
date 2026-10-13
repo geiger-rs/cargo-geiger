@@ -1,6 +1,5 @@
-use assert_cmd::prelude::*;
 use cargo_geiger_serde::SafetyReport;
-use std::{fs, process::Command};
+use std::fs;
 
 #[test]
 fn generated_rust_is_counted_and_resource_inputs_are_not_rust() {
@@ -40,8 +39,7 @@ fn generated_rust_is_counted_and_resource_inputs_are_not_rust() {
     )
     .unwrap();
     for format in ["Ascii", "Json"] {
-        let output = Command::cargo_bin("cargo-geiger")
-            .unwrap()
+        let output = assert_cmd::cargo_bin_cmd!("cargo-geiger")
             .args([
                 "geiger",
                 "--all-targets",

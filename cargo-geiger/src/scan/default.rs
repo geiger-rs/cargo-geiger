@@ -14,7 +14,7 @@ use super::{
 
 use table::scan_to_table;
 
-use cargo::core::compiler::CompileMode;
+use cargo::core::compiler::UserIntent;
 use cargo::core::resolver::features::CliFeatures;
 use cargo::core::Workspace;
 use cargo::ops::CompileOptions;
@@ -57,7 +57,7 @@ fn build_compile_options<'a>(
     gctx: &'a GlobalContext,
 ) -> CompileOptions {
     let mut compile_options =
-        CompileOptions::new(gctx, CompileMode::Check { test: false }).unwrap();
+        CompileOptions::new(gctx, UserIntent::Check { test: false }).unwrap();
 
     let uses_default_features = !args.no_default_features;
 
