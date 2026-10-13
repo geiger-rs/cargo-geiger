@@ -68,6 +68,12 @@ fn generated_rust_is_counted_and_resource_inputs_are_not_rust() {
         );
         assert!(!String::from_utf8_lossy(&output.stderr)
             .contains("Failed to parse"));
+        assert!(!String::from_utf8_lossy(&output.stderr)
+            .contains("Failed to format Package"));
+        if format == "Ascii" {
+            assert!(String::from_utf8_lossy(&output.stdout)
+                .contains("foreign-input-proof 0.1.0"));
+        }
         if format == "Json" {
             let report: SafetyReport =
                 serde_json::from_slice(&output.stdout).unwrap();
