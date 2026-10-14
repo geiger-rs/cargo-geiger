@@ -449,7 +449,7 @@ dependencies = [
  "better-panic",
  "cargo",
  "cargo-geiger-serde",
- "cargo-platform 0.1.9",
+ "cargo-platform 0.3.3",
  "cargo-util",
  "colored",
  "console 0.15.11",
