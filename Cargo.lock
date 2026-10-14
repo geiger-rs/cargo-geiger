@@ -452,7 +452,7 @@ dependencies = [
  "cargo-platform 0.1.9",
  "cargo-util",
  "colored",
- "console 0.15.11",
+ "console 0.16.6",
  "fs_extra",
  "geiger",
  "insta",
@@ -694,7 +694,6 @@ dependencies = [
  "encode_unicode",
  "libc",
  "once_cell",
- "unicode-width",
  "windows-sys 0.59.0",
 ]
 
@@ -706,6 +705,7 @@ checksum = "e96a4956774c13c126a8b5af4daa79384f4d826534c95a02d76afb39e2ab64e3"
 dependencies = [
  "encode_unicode",
  "libc",
+ "unicode-width",
  "windows-sys 0.61.2",
 ]
 
